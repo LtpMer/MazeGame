@@ -2,109 +2,392 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Maze Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maze Builder</title>
   <style>
     body {
-      margin: 0; padding: 0;
-      display: flex; flex-direction: column; align-items: center;
+      margin: 0;
+      padding: 0;
       font-family: Arial, sans-serif;
       user-select: none;
-      -webkit-user-select: none;
-      -ms-user-select: none;
+      background: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     #gameCanvas {
-      border: 1px solid black;
+      border: 2px solid black;
       margin-top: 20px;
-      touch-action: none; /* Disable default touch gestures */
-      background: white;
       cursor: crosshair;
+      touch-action: none;
     }
     #controlsContainer {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      font-size: 16px;
-      background-color: rgba(0,0,0,0.5);
-      color: white;
+      margin-top: 15px;
+      background: rgba(0,0,0,0.6);
       padding: 10px;
       border-radius: 8px;
-      max-width: 200px;
-      z-index: 10;
-    }
-    #buildControls, #typesControls {
-      margin-top: 10px;
-      display: none;
+      color: white;
+      max-width: 650px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
     }
     button {
-      margin: 5px 3px;
-      padding: 5px 10px;
+      padding: 8px 15px;
       font-size: 16px;
       cursor: pointer;
-      user-select: none;
+      border-radius: 5px;
+      border: none;
+      background: #444;
+      color: white;
+      transition: background-color 0.3s;
+      min-width: 100px;
+      text-align: center;
     }
-    button.active {
-      background-color: #4CAF50;
+    button:hover {
+      background: #666;
+    }
+    button.selected {
+      background: #0a8cff !important;
       color: white;
     }
-
-    /* Mobile on-screen joystick */
-    #mobileControls {
-      display: none;
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 20;
-      user-select: none;
-    }
-    .joy-button {
-      width: 60px;
-      height: 60px;
-      margin: 0 5px;
-      background-color: rgba(0,0,0,0.7);
-      border-radius: 10px;
-      color: white;
-      font-weight: bold;
-      font-size: 24px;
-      display: inline-flex;
+    #typeSelector {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
       justify-content: center;
-      align-items: center;
-      touch-action: manipulation;
-      user-select: none;
+      max-width: 650px;
     }
   </style>
 </head>
 <body>
+
   <div id="controlsContainer">
-    <h3>Controls:</h3>
-    <p>Arrow Keys or WASD to Move</p>
-    <button id="toggleBuildBtn">Toggle Build Mode</button>
-    <div id="buildControls">
-      <button id="drawBtn" class="active">Draw Block</button>
-      <button id="deleteBtn">Delete Block</button>
-      <br/>
-      <button id="toggleTypesBtn">Toggle Types</button>
-      <div id="typesControls">
-        <button id="typeWallBtn" class="active">Wall (Black)</button>
-        <button id="typeDesignBtn">Design (Gray)</button>
-        <button id="typeMovableBtn">Movable (Blue)</button>
-        <button id="typePlayerBtn">Player (Red)</button>
-        <button id="typeWinBtn">Win (Green)</button>
-      </div>
+    <button id="toggleBuildBtn">Enter Build Mode</button>
+    <button id="drawBtn" class="selected">Draw Mode</button>
+    <button id="deleteBtn">Delete Mode</button>
+  </div>
+
+  <div id="controlsContainer" style="margin-top: 5px;">
+    <div id="typeSelector">
+      <button data-type="0" class="selected">Empty</button>
+      <button data-type="1">Wall (Black)</button>
+      <button data-type="2">Design (Gray)</button>
+      <button data-type="3">Moving (Blue)</button>
+      <button data-type="4">Player (Red)</button>
+      <button data-type="5">Win (Green)</button>
     </div>
   </div>
 
   <canvas id="gameCanvas" width="600" height="600"></canvas>
 
-  <!-- Mobile on-screen joystick -->
-  <div id="mobileControls">
-    <button class="joy-button" id="btnUp">↑</button>
-    <button class="joy-button" id="btnLeft">←</button>
-    <button class="joy-button" id="btnDown">↓</button>
-    <button class="joy-button" id="btnRight">→</button>
-  </div>
+<script>
+(() => {
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
 
-  <script src="game.js"></script>
+  const cols = 25;
+  const rows = 25;
+  const cellSize = canvas.width / cols;
+
+  // Maze: 2D array storing block types:
+  // 0 = empty, 1 = wall, 2 = design, 3 = moving, 4 = player, 5 = win
+  let maze = [];
+
+  // Player and win positions (unique)
+  let player = { x: 1, y: 1 };
+  let win = { x: cols - 2, y: rows - 2 };
+
+  // Controls state
+  let buildMode = false;
+  let drawMode = "draw"; // or "delete"
+  let selectedType = 1; // default: wall
+
+  // Movement keys
+  let keys = {};
+
+  // Moving variables for smooth control
+  let moveDelay = 6;
+  let moveCounter = 0;
+
+  // Drawing variables for hold to draw/delete
+  let isDrawing = false;
+
+  // Initialize maze with some blocks + random player/win spawn
+  function generateMaze() {
+    maze = [];
+    for (let x = 0; x < cols; x++) {
+      maze[x] = [];
+      for (let y = 0; y < rows; y++) {
+        // Random walls (30%) + empty else
+        maze[x][y] = Math.random() < 0.3 ? 1 : 0;
+      }
+    }
+    // Clear player and win spots
+    // Place player and win randomly in empty spots
+    placeUniqueBlock(4); // player
+    placeUniqueBlock(5); // win
+  }
+
+  // Place player or win (4 or 5) in random empty cell
+  function placeUniqueBlock(type) {
+    // Remove old block of that type if exists
+    for (let x = 0; x < cols; x++) {
+      for (let y = 0; y < rows; y++) {
+        if (maze[x][y] === type) {
+          maze[x][y] = 0;
+        }
+      }
+    }
+    // Find random empty cell to place
+    let placed = false;
+    while (!placed) {
+      let rx = Math.floor(Math.random() * cols);
+      let ry = Math.floor(Math.random() * rows);
+      if (maze[rx][ry] === 0) {
+        maze[rx][ry] = type;
+        if (type === 4) player = { x: rx, y: ry };
+        if (type === 5) win = { x: rx, y: ry };
+        placed = true;
+      }
+    }
+  }
+
+  // Draw the maze
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let x = 0; x < cols; x++) {
+      for (let y = 0; y < rows; y++) {
+        switch (maze[x][y]) {
+          case 1:
+            ctx.fillStyle = "black"; // wall
+            break;
+          case 2:
+            ctx.fillStyle = "gray"; // design (no collision)
+            break;
+          case 3:
+            ctx.fillStyle = "blue"; // moving block
+            break;
+          case 4:
+            ctx.fillStyle = "red"; // player
+            break;
+          case 5:
+            ctx.fillStyle = "green"; // win
+            break;
+          default:
+            ctx.fillStyle = "white"; // empty
+        }
+        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+
+        // Draw grid lines lightly
+        ctx.strokeStyle = "#ccc";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+      }
+    }
+  }
+
+  // Check if player can move to cell (x,y)
+  function canMoveTo(x, y) {
+    if (x < 0 || x >= cols || y < 0 || y >= rows) return false;
+    // Wall (1) and moving (3) block collision
+    if (maze[x][y] === 1 || maze[x][y] === 3) return false;
+    // Design (2) and empty (0) allowed
+    // Player and win (4,5) treated as empty here
+    return true;
+  }
+
+  // Player movement and pushing moving blocks
+  function movePlayer() {
+    if (buildMode) return;
+
+    if (moveCounter < moveDelay) {
+      moveCounter++;
+      return;
+    }
+    moveCounter = 0;
+
+    let dx = 0, dy = 0;
+    if (keys["ArrowUp"] || keys["w"]) dy = -1;
+    else if (keys["ArrowDown"] || keys["s"]) dy = 1;
+    else if (keys["ArrowLeft"] || keys["a"]) dx = -1;
+    else if (keys["ArrowRight"] || keys["d"]) dx = 1;
+
+    if (dx === 0 && dy === 0) return;
+
+    let newX = player.x + dx;
+    let newY = player.y + dy;
+
+    // If moving block in front, try to push it
+    if (maze[newX] && maze[newX][newY] === 3) {
+      let pushX = newX + dx;
+      let pushY = newY + dy;
+      if (canMoveTo(pushX, pushY) && maze[pushX][pushY] === 0) {
+        maze[pushX][pushY] = 3; // move block pushed forward
+        maze[newX][newY] = 0;   // old spot empty now
+        player.x = newX;
+        player.y = newY;
+      }
+      // else blocked, do nothing
+    } else if (canMoveTo(newX, newY)) {
+      player.x = newX;
+      player.y = newY;
+    }
+
+    // Check win condition
+    if (player.x === win.x && player.y === win.y) {
+      alert("You Win!");
+      generateMaze();
+    }
+  }
+
+  // Get cell position from mouse or touch event
+  function getCellFromEvent(evt) {
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+    if (evt.touches && evt.touches.length) {
+      clientX = evt.touches[0].clientX;
+      clientY = evt.touches[0].clientY;
+    } else {
+      clientX = evt.clientX;
+      clientY = evt.clientY;
+    }
+    const x = Math.floor((clientX - rect.left) / cellSize);
+    const y = Math.floor((clientY - rect.top) / cellSize);
+    return { x, y };
+  }
+
+  // Draw or delete blocks on canvas when building
+  function handleDrawDelete(evt) {
+    if (!buildMode) return;
+    evt.preventDefault();
+
+    const { x, y } = getCellFromEvent(evt);
+    if (x < 0 || x >= cols || y < 0 || y >= rows) return;
+
+    if (drawMode === "draw") {
+      if (selectedType === 4) {
+        // Remove old player pos
+        maze[player.x][player.y] = 0;
+        player = { x, y };
+        maze[x][y] = 4;
+      } else if (selectedType === 5) {
+        // Remove old win pos
+        maze[win.x][win.y] = 0;
+        win = { x, y };
+        maze[x][y] = 5;
+      } else {
+        // Don't overwrite player or win positions
+        if ((player.x === x && player.y === y) || (win.x === x && win.y === y)) return;
+        maze[x][y] = selectedType;
+      }
+    } else if (drawMode === "delete") {
+      // Allow deleting any except player and win (optional: allow if you want)
+      if ((player.x === x && player.y === y) || (win.x === x && win.y === y)) return;
+      maze[x][y] = 0;
+    }
+  }
+
+  // Event listeners for drawing with mouse and touch
+
+  canvas.addEventListener("mousedown", e => {
+    if (!buildMode) return;
+    isDrawing = true;
+    handleDrawDelete(e);
+  });
+  canvas.addEventListener("mousemove", e => {
+    if (!buildMode || !isDrawing) return;
+    handleDrawDelete(e);
+  });
+  window.addEventListener("mouseup", e => {
+    isDrawing = false;
+  });
+
+  // Touch support (touchstart, touchmove, touchend)
+  canvas.addEventListener("touchstart", e => {
+    if (!buildMode) return;
+    isDrawing = true;
+    handleDrawDelete(e);
+  }, { passive: false });
+
+  canvas.addEventListener("touchmove", e => {
+    if (!buildMode || !isDrawing) return;
+    handleDrawDelete(e);
+  }, { passive: false });
+
+  window.addEventListener("touchend", e => {
+    isDrawing = false;
+  });
+
+  // Keyboard events for player movement
+  document.addEventListener("keydown", e => {
+    keys[e.key] = true;
+  });
+  document.addEventListener("keyup", e => {
+    keys[e.key] = false;
+  });
+
+  // Buttons and controls
+  const toggleBuildBtn = document.getElementById("toggleBuildBtn");
+  const drawBtn = document.getElementById("drawBtn");
+  const deleteBtn = document.getElementById("deleteBtn");
+  const typeButtons = document.querySelectorAll("#typeSelector button");
+
+  toggleBuildBtn.addEventListener("click", () => {
+    buildMode = !buildMode;
+    toggleBuildBtn.textContent = buildMode ? "Exit Build Mode" : "Enter Build Mode";
+    // Highlight or reset draw/delete buttons
+    if (buildMode) {
+      drawBtn.disabled = false;
+      deleteBtn.disabled = false;
+      typeButtons.forEach(b => b.disabled = false);
+    } else {
+      drawBtn.disabled = true;
+      deleteBtn.disabled = true;
+      typeButtons.forEach(b => b.disabled = true);
+      isDrawing = false;
+    }
+  });
+
+  drawBtn.addEventListener("click", () => {
+    drawMode = "draw";
+    drawBtn.classList.add("selected");
+    deleteBtn.classList.remove("selected");
+  });
+
+  deleteBtn.addEventListener("click", () => {
+    drawMode = "delete";
+    deleteBtn.classList.add("selected");
+    drawBtn.classList.remove("selected");
+  });
+
+  typeButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      selectedType = parseInt(btn.dataset.type);
+      typeButtons.forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+    });
+  });
+
+  // Disable build mode controls initially
+  drawBtn.disabled = true;
+  deleteBtn.disabled = true;
+  typeButtons.forEach(b => b.disabled = true);
+
+  // Main game loop
+  function loop() {
+    movePlayer();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // Initialize maze and start
+  generateMaze();
+  loop();
+})();
+</script>
+
 </body>
 </html>
