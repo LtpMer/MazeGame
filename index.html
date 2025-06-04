@@ -3,666 +3,395 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Full Maze Game with Build Mode + Leaderboard</title>
+<title>Maze Game with Buttons and Moving Blocks</title>
 <style>
   body {
-    margin:0; padding:0;
+    margin: 0; padding: 0;
+    display: flex; flex-direction: column; align-items: center;
     font-family: Arial, sans-serif;
-    background:#222;
-    color:#eee;
-    user-select:none;
   }
-  #container {
-    display:flex;
-    flex-wrap: wrap;
-    gap:20px;
-    padding:20px;
-    max-width: 1000px;
-    margin: auto;
-  }
-  canvas {
-    background:#fff;
-    border:2px solid #555;
+  #gameCanvas {
+    border: 1px solid black;
+    margin-top: 20px;
     cursor: crosshair;
   }
-  #ui {
-    flex: 1 1 300px;
-    max-width: 300px;
-    background: #333;
+  #controlsContainer {
+    position: absolute;
+    top: 50px;
+    left: 20px;
+    font-size: 16px;
+    background-color: rgba(0,0,0,0.5);
+    color: white;
+    padding: 10px;
     border-radius: 8px;
-    padding: 15px;
+  }
+  #buildControls {
+    margin-top: 10px;
+    display: none;
   }
   button {
-    margin: 4px 2px;
-    padding: 6px 12px;
+    margin: 5px;
+    padding: 5px 10px;
     font-size: 16px;
     cursor: pointer;
   }
-  #buildControls, #loginControls, #leaderboardSection, #saveLoadSection, #configSection {
-    margin-top: 12px;
-  }
-  #blockTypes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .blockBtn {
-    flex: 1 1 40px;
-    height: 40px;
-    border: none;
-    border-radius: 4px;
+  .selected {
+    background-color: #555;
     color: white;
-    font-weight: bold;
-    cursor: pointer;
   }
-  .selectedBlock {
-    outline: 3px solid yellow;
-  }
-  #usernameInput, #passwordInput {
-    width: 100%;
-    padding: 6px;
-    margin: 4px 0 8px;
-    font-size: 16px;
-    border-radius: 4px;
-    border: none;
-  }
-  #message {
-    margin-top: 10px;
-    min-height: 20px;
-    color: lightcoral;
-  }
-  .adminName {
+  .admin {
     color: red;
-    font-weight: bold;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 8px;
-  }
-  table, th, td {
-    border: 1px solid #555;
-  }
-  th, td {
-    padding: 6px;
-    text-align: center;
-  }
-  #playerStats {
-    margin-top: 12px;
   }
 </style>
 </head>
 <body>
-<div id="container">
-  <canvas id="gameCanvas" width="600" height="600"></canvas>
-  <div id="ui">
-    <h2>Maze Game</h2>
-
-    <div id="loginControls">
-      <input id="usernameInput" placeholder="Username" autocomplete="off" />
-      <input id="passwordInput" type="password" placeholder="Password" autocomplete="off" />
-      <button id="loginBtn">Login / Register</button>
-      <button id="logoutBtn" style="display:none;">Logout</button>
-      <div id="message"></div>
-    </div>
-
-    <div id="playerStats" style="display:none;">
-      <p>Logged in as: <span id="displayUsername"></span></p>
-      <p>Wins: <span id="winCount">0</span></p>
-      <button id="logoutBtn2">Logout</button>
-    </div>
-
-    <button id="toggleBuildBtn" disabled>Toggle Build Mode</button>
-
-    <div id="buildControls" style="display:none;">
-      <h3>Build Mode</h3>
-      <div>
-        <strong>Selected Block:</strong>
-        <div id="blockTypes"></div>
-      </div>
-      <button id="clearBtn">Clear Maze</button>
-      <button id="saveBtn">Save Level (Slot 1)</button>
-      <button id="saveBtn2">Save Level (Slot 2)</button>
-      <button id="saveBtn3">Save Level (Slot 3)</button>
-      <button id="loadBtn1">Load Level Slot 1</button>
-      <button id="loadBtn2">Load Level Slot 2</button>
-      <button id="loadBtn3">Load Level Slot 3</button>
-    </div>
-
-    <div id="leaderboardSection" style="display:none;">
-      <h3>Leaderboard</h3>
-      <table>
-        <thead>
-          <tr><th>Username</th><th>Wins</th></tr>
-        </thead>
-        <tbody id="leaderboardBody"></tbody>
-      </table>
+  <div id="controlsContainer">
+    <h3>Controls:</h3>
+    <p>Arrow Keys or WASD to Move</p>
+    <button id="toggleBuildBtn">Enter Build Mode</button>
+    <div id="buildControls">
+      <button data-block="wall" id="drawWallBtn">Draw Wall</button>
+      <button data-block="design" id="drawDesignBtn">Draw Design Block</button>
+      <button data-block="movable" id="drawMovableBtn">Draw Movable Block</button>
+      <button data-block="button" id="drawButtonBtn">Draw Button Block</button>
+      <button data-block="selfmoving" id="drawSelfMovingBtn">Draw Self-Moving Block</button>
+      <button data-block="player" id="drawPlayerBtn">Place Player</button>
+      <button data-block="win" id="drawWinBtn">Place Win</button>
+      <button data-block="erase" id="eraseBtn">Erase</button>
     </div>
   </div>
-</div>
+
+  <canvas id="gameCanvas" width="600" height="600"></canvas>
 
 <script>
 (() => {
-  // Constants
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
-  const cols = 25;
-  const rows = 25;
+  const toggleBuildBtn = document.getElementById("toggleBuildBtn");
+  const buildControls = document.getElementById("buildControls");
+  const drawWallBtn = document.getElementById("drawWallBtn");
+  const drawDesignBtn = document.getElementById("drawDesignBtn");
+  const drawMovableBtn = document.getElementById("drawMovableBtn");
+  const drawButtonBtn = document.getElementById("drawButtonBtn");
+  const drawSelfMovingBtn = document.getElementById("drawSelfMovingBtn");
+  const drawPlayerBtn = document.getElementById("drawPlayerBtn");
+  const drawWinBtn = document.getElementById("drawWinBtn");
+  const eraseBtn = document.getElementById("eraseBtn");
+
+  const cols = 20;
+  const rows = 20;
   const cellSize = canvas.width / cols;
 
-  const MOVE_DELAY = 6;
+  // Maze grid stores type keys: "empty", "wall", "design", "movable", "button", "selfmoving"
+  // player and win stored separately
+  let maze = [];
+  let player = {x: 0, y: 0};
+  let win = {x: cols - 1, y: rows - 1};
 
-  // Block types and properties
+  // Current drawing block type
+  let currentDrawBlock = "wall";
+  let buildMode = false;
+  let isDrawing = false;
+
+  // Movement keys state
+  const keys = {};
+
+  // Move cooldown (to control player move speed)
+  const MOVE_DELAY = 5;
+  let moveCooldown = 0;
+
+  // For self-moving blocks: store directions and timers
+  // Each cell with "selfmoving" block will have {dx, dy, timer}
+  // We'll store extra info separately
+  let selfMovingBlocksInfo = {};
+
+  // Block types and colors, and properties
   const blockTypes = {
-    empty: { color: "white", solid: false, movable: false },
-    wall: { color: "black", solid: true, movable: false },
-    player: { color: "red", solid: false, movable: false },
-    win: { color: "green", solid: false, movable: false },
-    movableBlock: { color: "blue", solid: true, movable: true },
-    designBlock: { color: "gray", solid: false, movable: false },
+    empty: {name:"Empty", color:"#fff", solid:false, movable:false},
+    wall: {name:"Wall", color:"#888", solid:true, movable:false},
+    design: {name:"Design", color:"#bbb", solid:false, movable:false},
+    movable: {name:"Movable", color:"#00f", solid:true, movable:true},
+    button: {name:"Button", color:"orange", solid:false, movable:false},
+    selfmoving: {name:"Self-Moving", color:"purple", solid:true, movable:true},
   };
 
-  // Admin usernames (can see passwords and are colored red)
-  const admins = ["LtpMer"];
-
-  // State
-  let maze = [];
-  let player = { x: 1, y: 1 };
-  let win = { x: cols - 2, y: rows - 2 };
-  let keys = {};
-  let moveCooldown = 0;
-  let buildMode = false;
-  let selectedBlockType = "wall";
-  let loggedInUser = null;
-
-  // Levels saved per user (in localStorage)
-  // Format: { username: { slot1: data, slot2: data, slot3: data } }
-  // data = JSON string of maze + player + win info
-  let userLevels = {};
-
-  // Wins per user (in localStorage)
-  let userWins = {};
-
-  // Users and passwords (hashed or plaintext for demo - plaintext here for simplicity)
-  // Stored in localStorage under "mazeUsers"
-  // Format: { username: password }
-  let users = {};
-
-  // =========================
-  // Utility & Storage Helpers
-  // =========================
-
-  function saveUsers() {
-    localStorage.setItem("mazeUsers", JSON.stringify(users));
-  }
-
-  function loadUsers() {
-    const data = localStorage.getItem("mazeUsers");
-    if (data) users = JSON.parse(data);
-  }
-
-  function saveUserWins() {
-    localStorage.setItem("mazeUserWins", JSON.stringify(userWins));
-  }
-
-  function loadUserWins() {
-    const data = localStorage.getItem("mazeUserWins");
-    if (data) userWins = JSON.parse(data);
-  }
-
-  function saveUserLevels() {
-    localStorage.setItem("mazeUserLevels", JSON.stringify(userLevels));
-  }
-
-  function loadUserLevels() {
-    const data = localStorage.getItem("mazeUserLevels");
-    if (data) userLevels = JSON.parse(data);
-  }
-
-  function saveCurrentUser() {
-    if (loggedInUser) localStorage.setItem("mazeCurrentUser", loggedInUser);
-  }
-
-  function loadCurrentUser() {
-    const user = localStorage.getItem("mazeCurrentUser");
-    if (user && users[user]) {
-      loggedInUser = user;
-      return true;
-    }
-    return false;
-  }
-
-  // ===============
-  // Maze Generation
-  // ===============
-
-  // Generates empty maze with border walls
-  function generateEmptyMaze() {
+  function initMaze() {
     maze = [];
-    for (let x = 0; x < cols; x++) {
+    selfMovingBlocksInfo = {};
+    for(let x=0; x<cols; x++) {
       maze[x] = [];
-      for (let y = 0; y < rows; y++) {
-        if (x === 0 || y === 0 || x === cols - 1 || y === rows - 1) maze[x][y] = "wall";
-        else maze[x][y] = "empty";
+      for(let y=0; y<rows; y++) {
+        maze[x][y] = "empty";
       }
     }
-  }
-
-  // Place player and win in random empty spots
-  function placePlayerAndWin() {
+    // Random player/win spawn in empty spots
     placeRandom("player");
     placeRandom("win");
   }
 
-  // Place a block of given type at random empty spot
   function placeRandom(type) {
-    for (let attempts = 0; attempts < 1000; attempts++) {
-      let x = Math.floor(Math.random() * cols);
-      let y = Math.floor(Math.random() * rows);
-      if (maze[x][y] === "empty") {
-        if (type === "player") {
-          player.x = x;
-          player.y = y;
-        } else if (type === "win") {
-          win.x = x;
-          win.y = y;
+    let tries = 0;
+    while(tries < 1000) {
+      const x = Math.floor(Math.random() * cols);
+      const y = Math.floor(Math.random() * rows);
+      if(maze[x][y] === "empty" && !((player.x === x && player.y === y) || (win.x === x && win.y === y))) {
+        if(type === "player") {
+          player = {x, y};
+        } else if(type === "win") {
+          win = {x, y};
         }
-        maze[x][y] = type;
         return;
       }
+      tries++;
     }
   }
 
-  // =====================
-  // Drawing on Canvas
-  // =====================
-
-  function drawMaze() {
+  function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (let x = 0; x < cols; x++) {
-      for (let y = 0; y < rows; y++) {
+
+    // Draw maze blocks
+    for(let x=0; x<cols; x++) {
+      for(let y=0; y<rows; y++) {
         const type = maze[x][y];
-        let color = blockTypes[type]?.color || "magenta";
-        ctx.fillStyle = color;
-        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-        // Outline design blocks with lighter border
-        if (type === "designBlock") {
-          ctx.strokeStyle = "#aaa";
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
-        }
+        if(type === "empty") continue;
+        ctx.fillStyle = blockTypes[type]?.color || "black";
+        ctx.fillRect(x*cellSize, y*cellSize, cellSize, cellSize);
       }
     }
-    // Draw player on top (red)
-    ctx.fillStyle = blockTypes.player.color;
+
+    // Draw player
+    ctx.fillStyle = "green";
     ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
-    // Draw win on top (green)
-    ctx.fillStyle = blockTypes.win.color;
+
+    // Draw win
+    ctx.fillStyle = "red";
     ctx.fillRect(win.x * cellSize, win.y * cellSize, cellSize, cellSize);
-  }
 
-  // ===================
-  // Input & Movement
-  // ===================
-
-  // Check if position is within maze bounds
-  function inBounds(x, y) {
-    return x >= 0 && y >= 0 && x < cols && y < rows;
-  }
-
-  // Check if block is solid (can't walk through)
-  function isSolid(x, y) {
-    if (!inBounds(x, y)) return true;
-    const type = maze[x][y];
-    if (!blockTypes[type]) return true; // Unknown = solid
-    return blockTypes[type].solid;
-  }
-
-  // Move player with diagonal pass-through logic
-  function movePlayer(dx, dy) {
-    if (buildMode) return;
-
-    let newX = player.x + dx;
-    let newY = player.y + dy;
-
-    // Diagonal movement logic:
-    // If moving diagonally (dx !==0 && dy !==0),
-    // allow move if at least one of the horizontal or vertical steps is NOT solid.
-    if (dx !== 0 && dy !== 0) {
-      let canX = !isSolid(player.x + dx, player.y);
-      let canY = !isSolid(player.x, player.y + dy);
-      if (canX || canY) {
-        // Also check destination block itself is not solid
-        if (!isSolid(newX, newY)) {
-          player.x = newX;
-          player.y = newY;
-        }
-      }
-    } else {
-      // Non diagonal move: just move if destination is not solid
-      if (!isSolid(newX, newY)) {
-        player.x = newX;
-        player.y = newY;
-      }
+    // Draw grid lines (optional)
+    ctx.strokeStyle = "#ccc";
+    for(let x=0; x<=cols; x++) {
+      ctx.beginPath();
+      ctx.moveTo(x*cellSize, 0);
+      ctx.lineTo(x*cellSize, canvas.height);
+      ctx.stroke();
     }
-
-    // Check win condition
-    if (player.x === win.x && player.y === win.y) {
-      alert("You Win!");
-      // Increase user wins count
-      if (loggedInUser) {
-        userWins[loggedInUser] = (userWins[loggedInUser] || 0) + 1;
-        saveUserWins();
-        updateWinCount();
-        updateLeaderboard();
-      }
-      resetMaze();
+    for(let y=0; y<=rows; y++) {
+      ctx.beginPath();
+      ctx.moveTo(0, y*cellSize);
+      ctx.lineTo(canvas.width, y*cellSize);
+      ctx.stroke();
     }
   }
 
-  // Handle keyboard input
-  function handleKeys() {
-    let dx = 0, dy = 0;
-    if (keys["ArrowUp"] || keys["w"]) dy -= 1;
-    if (keys["ArrowDown"] || keys["s"]) dy += 1;
-    if (keys["ArrowLeft"] || keys["a"]) dx -= 1;
-    if (keys["ArrowRight"] || keys["d"]) dx += 1;
-    if (dx !== 0 || dy !== 0) {
-      movePlayer(dx, dy);
-    }
-  }
-
-  // ==============
-  // Build Mode
-  // ==============
-
-  function toggleBuildMode() {
-    if (!loggedInUser) return;
-    buildMode = !buildMode;
-    document.getElementById("buildControls").style.display = buildMode ? "block" : "none";
-    document.getElementById("toggleBuildBtn").textContent = buildMode ? "Exit Build Mode" : "Enter Build Mode";
-    drawBlockTypesUI();
-  }
-
-  function drawBlockTypesUI() {
-    const container = document.getElementById("blockTypes");
-    container.innerHTML = "";
-    if (!buildMode) return;
-
-    for (const type in blockTypes) {
-      const btn = document.createElement("button");
-      btn.textContent = type;
-      btn.classList.add("blockBtn");
-      btn.style.backgroundColor = blockTypes[type].color;
-      if (type === selectedBlockType) btn.classList.add("selectedBlock");
-      btn.onclick = () => {
-        selectedBlockType = type;
-        drawBlockTypesUI();
-      };
-      container.appendChild(btn);
-    }
-  }
-
-  // On canvas click (or drag), paint block if buildMode on
-  let mouseDown = false;
-  canvas.addEventListener("mousedown", (e) => {
-    if (!buildMode) return;
-    mouseDown = true;
-    paintBlockAtEvent(e);
-  });
-  canvas.addEventListener("mouseup", () => {
-    mouseDown = false;
-  });
-  canvas.addEventListener("mouseleave", () => {
-    mouseDown = false;
-  });
-  canvas.addEventListener("mousemove", (e) => {
-    if (mouseDown) paintBlockAtEvent(e);
-  });
-
-  function paintBlockAtEvent(e) {
-    const rect = canvas.getBoundingClientRect();
-    let x = Math.floor((e.clientX - rect.left) / cellSize);
-    let y = Math.floor((e.clientY - rect.top) / cellSize);
-    if (!inBounds(x, y)) return;
-
-    // We can't place player or win block over existing player or win
-    if (selectedBlockType === "player") {
-      // Remove old player position
-      maze[player.x][player.y] = "empty";
-      player.x = x; player.y = y;
-      maze[x][y] = "player";
-    } else if (selectedBlockType === "win") {
-      // Remove old win position
-      maze[win.x][win.y] = "empty";
-      win.x = x; win.y = y;
-      maze[x][y] = "win";
-    } else {
-      // Other block types
-      // Avoid overwriting player or win positions
-      if ((x === player.x && y === player.y) || (x === win.x && y === win.y)) return;
-
-      maze[x][y] = selectedBlockType;
-    }
-  }
-
-  // Clear maze (empty except borders)
-  function clearMaze() {
-    generateEmptyMaze();
-    placePlayerAndWin();
-  }
-
-  // ===================
-  // Save/Load Level
-  // ===================
-
-  // Save current maze + player + win to user's slot
-  function saveLevel(slot) {
-    if (!loggedInUser) return alert("Please login to save.");
-    if (!userLevels[loggedInUser]) userLevels[loggedInUser] = {};
-    const data = {
-      maze,
-      player,
-      win,
-    };
-    userLevels[loggedInUser][slot] = JSON.stringify(data);
-    saveUserLevels();
-    alert(`Level saved to slot ${slot}`);
-  }
-
-  // Load user's level from slot
-  function loadLevel(slot) {
-    if (!loggedInUser) return alert("Please login to load.");
-    if (!userLevels[loggedInUser] || !userLevels[loggedInUser][slot]) return alert("No saved level in that slot.");
-    const data = JSON.parse(userLevels[loggedInUser][slot]);
-    maze = data.maze;
-    player = data.player;
-    win = data.win;
-  }
-
-  // ==================
-  // Login & Register
-  // ==================
-
-  function login(username, password) {
-    username = username.trim();
-    password = password.trim();
-    if (!username || !password) {
-      showMessage("Username and password cannot be empty.");
-      return false;
-    }
-
-    // Register new user if not exist
-    if (!users[username]) {
-      users[username] = password;
-      saveUsers();
-      showMessage("Registered new user: " + username);
-    } else {
-      // Check password
-      if (users[username] !== password) {
-        showMessage("Incorrect password.");
-        return false;
-      }
-    }
-
-    loggedInUser = username;
-    saveCurrentUser();
-    showMessage("Logged in as " + username);
-    setupAfterLogin();
+  // Check if player can move to cell (no solid blocks there, inside bounds)
+  function canMoveTo(x, y) {
+    if(x < 0 || y < 0 || x >= cols || y >= rows) return false;
+    if(blockTypes[maze[x][y]]?.solid) return false;
+    // Check if movable block occupies there (player can't walk into movable blocks)
+    if(maze[x][y] === "movable" || maze[x][y] === "selfmoving") return false;
     return true;
   }
 
-  function logout() {
-    loggedInUser = null;
-    localStorage.removeItem("mazeCurrentUser");
-    showMessage("Logged out.");
-    setupAfterLogout();
-  }
+  // Handle player movement from keys
+  function handleMovement() {
+    if(moveCooldown > 0) return;
+    let dx = 0, dy = 0;
+    if(keys["ArrowUp"] || keys["w"]) dy = -1;
+    else if(keys["ArrowDown"] || keys["s"]) dy = 1;
+    else if(keys["ArrowLeft"] || keys["a"]) dx = -1;
+    else if(keys["ArrowRight"] || keys["d"]) dx = 1;
 
-  // ================
-  // UI Updates
-  // ================
+    if(dx !== 0 || dy !== 0) {
+      const nx = player.x + dx;
+      const ny = player.y + dy;
 
-  function showMessage(msg) {
-    document.getElementById("message").textContent = msg;
-  }
-
-  function setupAfterLogin() {
-    document.getElementById("loginControls").style.display = "none";
-    document.getElementById("playerStats").style.display = "block";
-    document.getElementById("displayUsername").textContent = loggedInUser;
-    document.getElementById("toggleBuildBtn").disabled = false;
-    updateWinCount();
-    updateLeaderboard();
-  }
-
-  function setupAfterLogout() {
-    document.getElementById("loginControls").style.display = "block";
-    document.getElementById("playerStats").style.display = "none";
-    document.getElementById("toggleBuildBtn").disabled = true;
-    document.getElementById("buildControls").style.display = "none";
-    buildMode = false;
-    showMessage("");
-  }
-
-  function updateWinCount() {
-    let wins = userWins[loggedInUser] || 0;
-    document.getElementById("winCount").textContent = wins;
-  }
-
-  function updateLeaderboard() {
-    const tbody = document.getElementById("leaderboardBody");
-    tbody.innerHTML = "";
-    let entries = [];
-    for (const user in users) {
-      entries.push({
-        username: user,
-        wins: userWins[user] || 0,
-      });
-    }
-    // Sort by wins descending
-    entries.sort((a, b) => b.wins - a.wins);
-    for (const e of entries) {
-      const tr = document.createElement("tr");
-      const nameTd = document.createElement("td");
-      if (admins.includes(e.username)) {
-        nameTd.innerHTML = `<span class="adminName">${e.username}</span>`;
-      } else {
-        nameTd.textContent = e.username;
-      }
-      const winsTd = document.createElement("td");
-      winsTd.textContent = e.wins;
-      tr.appendChild(nameTd);
-      tr.appendChild(winsTd);
-      tbody.appendChild(tr);
-    }
-    document.getElementById("leaderboardSection").style.display = entries.length > 0 ? "block" : "none";
-  }
-
-  // =============
-  // Reset maze
-  // =============
-
-  function resetMaze() {
-    clearMaze();
-  }
-
-  // =====================
-  // Initialize everything
-  // =====================
-
-  function init() {
-    loadUsers();
-    loadUserWins();
-    loadUserLevels();
-
-    if (loadCurrentUser()) {
-      setupAfterLogin();
-    } else {
-      setupAfterLogout();
-      clearMaze();
-    }
-
-    // Event listeners
-    window.addEventListener("keydown", (e) => {
-      keys[e.key.toLowerCase()] = true;
-      e.preventDefault();
-    });
-    window.addEventListener("keyup", (e) => {
-      keys[e.key.toLowerCase()] = false;
-      e.preventDefault();
-    });
-
-    // Login button
-    document.getElementById("loginBtn").onclick = () => {
-      const username = document.getElementById("usernameInput").value;
-      const password = document.getElementById("passwordInput").value;
-      if (login(username, password)) {
-        document.getElementById("usernameInput").value = "";
-        document.getElementById("passwordInput").value = "";
-      }
-    };
-
-    // Logout buttons
-    document.getElementById("logoutBtn").onclick = logout;
-    document.getElementById("logoutBtn2").onclick = logout;
-
-    // Toggle build mode button
-    document.getElementById("toggleBuildBtn").onclick = toggleBuildMode;
-
-    // Clear maze
-    document.getElementById("clearBtn").onclick = () => {
-      if (confirm("Clear maze?")) clearMaze();
-    };
-
-    // Save/load buttons
-    document.getElementById("saveBtn").onclick = () => saveLevel("slot1");
-    document.getElementById("saveBtn2").onclick = () => saveLevel("slot2");
-    document.getElementById("saveBtn3").onclick = () => saveLevel("slot3");
-    document.getElementById("loadBtn1").onclick = () => loadLevel("slot1");
-    document.getElementById("loadBtn2").onclick = () => loadLevel("slot2");
-    document.getElementById("loadBtn3").onclick = () => loadLevel("slot3");
-
-    // Initial maze generation
-    resetMaze();
-
-    // Main loop
-    function loop() {
-      if (!buildMode) {
-        if (moveCooldown <= 0) {
-          handleKeys();
+      // If moving into movable block, try to push it if possible
+      if(maze[nx]?.[ny] === "movable") {
+        const pushX = nx + dx;
+        const pushY = ny + dy;
+        if(canMoveTo(pushX, pushY) && maze[pushX][pushY] === "empty") {
+          maze[pushX][pushY] = "movable";
+          maze[nx][ny] = "empty";
+          player.x = nx;
+          player.y = ny;
           moveCooldown = MOVE_DELAY;
-        } else {
-          moveCooldown--;
+          checkWin();
+          draw();
+          return;
         }
+      } else if(canMoveTo(nx, ny)) {
+        player.x = nx;
+        player.y = ny;
+        moveCooldown = MOVE_DELAY;
+        checkWin();
+        draw();
       }
-      drawMaze();
-      requestAnimationFrame(loop);
     }
-    loop();
   }
 
-  init();
+  // Check win condition
+  function checkWin() {
+    if(player.x === win.x && player.y === win.y) {
+      alert("You win!");
+      placeRandom("player");
+      placeRandom("win");
+      draw();
+    }
+  }
+
+  // --- Build mode drawing ---
+
+  function canvasCoordsToCell(mx, my) {
+    return {
+      x: Math.floor(mx / cellSize),
+      y: Math.floor(my / cellSize)
+    };
+  }
+
+  function drawBlockAt(x, y) {
+    if(x < 0 || y < 0 || x >= cols || y >= rows) return;
+
+    if(currentDrawBlock === "player") {
+      player = {x, y};
+      draw();
+      return;
+    }
+    if(currentDrawBlock === "win") {
+      win = {x, y};
+      draw();
+      return;
+    }
+    if(currentDrawBlock === "erase") {
+      maze[x][y] = "empty";
+      delete selfMovingBlocksInfo[`${x},${y}`];
+      draw();
+      return;
+    }
+    maze[x][y] = currentDrawBlock;
+
+    // Initialize self-moving block info if needed
+    if(currentDrawBlock === "selfmoving") {
+      selfMovingBlocksInfo[`${x},${y}`] = {
+        dx: 1,
+        dy: 0,
+        timer: 0
+      };
+    } else {
+      delete selfMovingBlocksInfo[`${x},${y}`];
+    }
+
+    draw();
+  }
+
+  canvas.addEventListener("mousedown", (e) => {
+    if(!buildMode) return;
+    isDrawing = true;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const cell = canvasCoordsToCell(mx, my);
+    drawBlockAt(cell.x, cell.y);
+  });
+
+  canvas.addEventListener("mousemove", (e) => {
+    if(!buildMode || !isDrawing) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const cell = canvasCoordsToCell(mx, my);
+    drawBlockAt(cell.x, cell.y);
+  });
+
+  window.addEventListener("mouseup", () => {
+    isDrawing = false;
+  });
+
+  // Buttons for selecting block type
+  function clearSelection() {
+    [drawWallBtn, drawDesignBtn, drawMovableBtn, drawButtonBtn, drawSelfMovingBtn, drawPlayerBtn, drawWinBtn, eraseBtn].forEach(b => {
+      b.classList.remove("selected");
+    });
+  }
+
+  [drawWallBtn, drawDesignBtn, drawMovableBtn, drawButtonBtn, drawSelfMovingBtn, drawPlayerBtn, drawWinBtn, eraseBtn].forEach(button => {
+    button.addEventListener("click", () => {
+      clearSelection();
+      button.classList.add("selected");
+      currentDrawBlock = button.dataset.block;
+    });
+  });
+
+  toggleBuildBtn.addEventListener("click", () => {
+    buildMode = !buildMode;
+    buildControls.style.display = buildMode ? "block" : "none";
+    toggleBuildBtn.textContent = buildMode ? "Exit Build Mode" : "Enter Build Mode";
+    draw();
+  });
+
+  // Update self-moving blocks every few frames
+  let frameCount = 0;
+  function updateSelfMovingBlocks() {
+    frameCount++;
+    if(frameCount % 15 !== 0) return; // slow down movement
+
+    const newPositions = {};
+
+    for(const key in selfMovingBlocksInfo) {
+      const [xStr, yStr] = key.split(",");
+      let x = parseInt(xStr);
+      let y = parseInt(yStr);
+      const info = selfMovingBlocksInfo[key];
+
+      const nx = x + info.dx;
+      const ny = y + info.dy;
+
+      // Check if can move to next cell
+      if(nx < 0 || ny < 0 || nx >= cols || ny >= rows) {
+        // Bounce back direction
+        info.dx = -info.dx;
+        info.dy = -info.dy;
+        continue;
+      }
+      if(maze[nx][ny] === "empty" && (nx !== player.x || ny !== player.y) && (nx !== win.x || ny !== win.y)) {
+        // Move block
+        maze[nx][ny] = "selfmoving";
+        maze[x][y] = "empty";
+        newPositions[`${nx},${ny}`] = {dx: info.dx, dy: info.dy, timer: info.timer};
+        delete selfMovingBlocksInfo[key];
+      } else {
+        // Bounce back direction
+        info.dx = -info.dx;
+        info.dy = -info.dy;
+      }
+    }
+    Object.assign(selfMovingBlocksInfo, newPositions);
+  }
+
+  // Main game loop
+  function gameLoop() {
+    if(!buildMode) {
+      handleMovement();
+      updateSelfMovingBlocks();
+      draw();
+    }
+    if(moveCooldown > 0) moveCooldown--;
+    requestAnimationFrame(gameLoop);
+  }
+
+  // Initialize and start
+  initMaze();
+  draw();
+  gameLoop();
+
+  // Keyboard handlers
+  window.addEventListener("keydown", (e) => {
+    if(buildMode) return;
+    keys[e.key] = true;
+  });
+  window.addEventListener("keyup", (e) => {
+    keys[e.key] = false;
+  });
+
 })();
 </script>
 
