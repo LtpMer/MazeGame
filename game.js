@@ -6,8 +6,8 @@ const rows = 25;
 const cellSize = canvas.width / cols;
 
 let maze;
-let player;
-let win;
+let player = null;
+let win = null;
 let keys = {};
 
 let moveDelay = 6;
@@ -15,7 +15,7 @@ let moveCounter = 0;
 
 let buildMode = false;
 let drawMode = "draw"; // "draw" or "delete"
-let typeMode = "wall"; // default building block type
+let typeMode = "wall"; // block type to draw or delete
 
 const toggleBuildBtn = document.getElementById("toggleBuildBtn");
 const buildControls = document.getElementById("buildControls");
@@ -26,16 +26,23 @@ const toggleTypesBtn = document.getElementById("toggleTypesBtn");
 const typesControls = document.getElementById("typesControls");
 const typeWallBtn = document.getElementById("typeWallBtn");
 const typeDesignBtn = document.getElementById("typeDesignBtn");
+const typeMovableBtn = document.getElementById("typeMovableBtn");
 const typePlayerBtn = document.getElementById("typePlayerBtn");
 const typeWinBtn = document.getElementById("typeWinBtn");
-const typeMovableBtn = document.getElementById("typeMovableBtn");
 
 function generateMaze(cols, rows) {
   const maze = Array.from({ length: cols }, () =>
-    Array.from({ length: rows }, () => (Math.random() < 0.3 ? 1 : 0))
+    Array.from({ length: rows }, () => {
+      // Generate different blocks with probabilities
+      const rnd = Math.random();
+      if (rnd < 0.25) return 1; // wall (black)
+      if (rnd < 0.35) return 2; // design (gray)
+      if (rnd < 0.45) return 3; // movable (blue)
+      return 0; // empty
+    })
   );
 
-  // Make sure borders are walls to contain maze
+  // Make borders walls to contain maze
   for (let x = 0; x < cols; x++) {
     maze[x][0] = 1;
     maze[x][rows - 1] = 1;
@@ -58,14 +65,14 @@ function findRandomEmptyCell(maze) {
     }
     tries++;
   }
-  // fallback default
+  // fallback
   return { x: 1, y: 1 };
 }
 
 function initializeGame() {
   maze = generateMaze(cols, rows);
 
-  // Random player and win positions on empty cells (not overlapping)
+  // Set player and win to random empty cells
   player = findRandomEmptyCell(maze);
   do {
     win = findRandomEmptyCell(maze);
@@ -87,17 +94,21 @@ function draw() {
     }
   }
 
-  // Draw win block (green)
-  ctx.fillStyle = "green";
-  ctx.fillRect(win.x * cellSize, win.y * cellSize, cellSize, cellSize);
+  // Draw win block if exists
+  if (win) {
+    ctx.fillStyle = "green";
+    ctx.fillRect(win.x * cellSize, win.y * cellSize, cellSize, cellSize);
+  }
 
-  // Draw player block (red)
-  ctx.fillStyle = "red";
-  ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
+  // Draw player block if exists
+  if (player) {
+    ctx.fillStyle = "red";
+    ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
+  }
 }
 
 function movePlayer() {
-  if (buildMode) return;
+  if (buildMode || !player) return;
 
   if (moveCounter < moveDelay) {
     moveCounter++;
@@ -144,7 +155,7 @@ function movePlayer() {
     }
   }
 
-  if (player.x === win.x && player.y === win.y) {
+  if (win && player.x === win.x && player.y === win.y) {
     alert("You Win!");
     location.reload();
   }
@@ -181,34 +192,31 @@ canvas.addEventListener("mousemove", (e) => {
 
 function handleCanvasAction(e) {
   const { x, y } = getMouseCell(e);
-
   if (x < 0 || x >= cols || y < 0 || y >= rows) return;
-
-  // Player and Win can only be placed on empty cells (0)
-  if ((typeMode === "player" || typeMode === "win") && maze[x][y] !== 0) {
-    return;
-  }
 
   if (drawMode === "draw") {
     if (typeMode === "player") {
-      player.x = x;
-      player.y = y;
+      // Place player only on empty cells, remove old player
+      if (maze[x][y] === 0) {
+        player = { x, y };
+      }
     } else if (typeMode === "win") {
-      win.x = x;
-      win.y = y;
+      if (maze[x][y] === 0) {
+        win = { x, y };
+      }
     } else {
+      // Place block types (wall, design, movable)
       maze[x][y] = getTypeValue(typeMode);
     }
   } else if (drawMode === "delete") {
-    // If deleting player or win, reset their positions to defaults
+    // Delete block or player/win if clicked
     if (typeMode === "player") {
-      if (player.x === x && player.y === y) {
-        // Reset player pos randomly to avoid stuck
-        player = findRandomEmptyCell(maze);
+      if (player && player.x === x && player.y === y) {
+        player = null; // delete player
       }
     } else if (typeMode === "win") {
-      if (win.x === x && win.y === y) {
-        win = findRandomEmptyCell(maze);
+      if (win && win.x === x && win.y === y) {
+        win = null; // delete win
       }
     } else {
       maze[x][y] = 0;
@@ -279,7 +287,6 @@ window.addEventListener("keyup", (e) => {
   keys[e.key.toLowerCase()] = false;
 });
 
-// Initialize player and win positions randomly on maze start
 initializeGame();
 
 function loop() {
