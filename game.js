@@ -1,6 +1,9 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+const drawBtn = document.getElementById("drawMode");
+const eraseBtn = document.getElementById("eraseMode");
+
 const cols = 25;
 const rows = 25;
 const cellSize = canvas.width / cols;
@@ -13,16 +16,25 @@ let keys = {};
 let moveDelay = 6;
 let moveCounter = 0;
 
-let buildMode = false;
-const buildButton = document.getElementById("toggleBuildMode");
+let drawMode = false;
+let eraseMode = false;
 
-buildButton.addEventListener("click", () => {
-  buildMode = !buildMode;
-  buildButton.textContent = buildMode ? "Exit Build Mode" : "Toggle Build Mode";
+drawBtn.addEventListener("click", () => {
+  drawMode = true;
+  eraseMode = false;
+  drawBtn.style.backgroundColor = "green";
+  eraseBtn.style.backgroundColor = "";
+});
+
+eraseBtn.addEventListener("click", () => {
+  drawMode = false;
+  eraseMode = true;
+  eraseBtn.style.backgroundColor = "red";
+  drawBtn.style.backgroundColor = "";
 });
 
 canvas.addEventListener("click", (e) => {
-  if (!buildMode) return;
+  if (!drawMode && !eraseMode) return;
 
   const rect = canvas.getBoundingClientRect();
   const x = Math.floor((e.clientX - rect.left) / cellSize);
@@ -30,7 +42,8 @@ canvas.addEventListener("click", (e) => {
 
   if ((x === player.x && y === player.y) || (x === win.x && y === win.y)) return;
 
-  maze[x][y] = maze[x][y] === 1 ? 0 : 1; // Toggle wall
+  if (drawMode) maze[x][y] = 1;
+  if (eraseMode) maze[x][y] = 0;
 });
 
 function generateMaze(cols, rows) {
@@ -52,7 +65,7 @@ function draw() {
     }
   }
 
-  // Win pad
+  // Win
   ctx.fillStyle = "green";
   ctx.fillRect(win.x * cellSize, win.y * cellSize, cellSize, cellSize);
 
@@ -70,4 +83,39 @@ function movePlayer() {
 
   let dx = 0, dy = 0;
   if (keys["ArrowUp"] || keys["w"]) dy = -1;
-  if (keys["ArrowDown"] |
+  if (keys["ArrowDown"] || keys["s"]) dy = 1;
+  if (keys["ArrowLeft"] || keys["a"]) dx = -1;
+  if (keys["ArrowRight"] || keys["d"]) dx = 1;
+
+  const newX = player.x + dx;
+  const newY = player.y + dy;
+
+  if (
+    newX >= 0 && newX < cols &&
+    newY >= 0 && newY < rows &&
+    maze[newX][newY] === 0
+  ) {
+    player.x = newX;
+    player.y = newY;
+  }
+
+  if (player.x === win.x && player.y === win.y) {
+    alert("You Win!");
+    location.reload();
+  }
+}
+
+document.addEventListener("keydown", (e) => {
+  keys[e.key] = true;
+});
+document.addEventListener("keyup", (e) => {
+  keys[e.key] = false;
+});
+
+function loop() {
+  if (!drawMode && !eraseMode) movePlayer();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
