@@ -1,50 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Maze Game</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      font-family: Arial, sans-serif;
-    }
-    #gameCanvas {
-      border: 1px solid black;
-      margin-top: 20px;
-    }
-    #controlsContainer {
-      position: absolute;
-      top: 100px;
-      left: 20px;
-      font-size: 16px;
-      background-color: rgba(0, 0, 0, 0.5);
-      color: white;
-      padding: 10px;
-      border-radius: 8px;
-    }
-    .edit-button {
-      margin: 10px 5px;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        #gameCanvas {
+            border: 1px solid black;
+            margin-top: 20px;
+        }
+        #textContainer {
+            text-align: center;
+            padding-top: 20px;
+            font-size: 18px;
+        }
+        #controlsContainer {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            font-size: 16px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        #buildControls {
+            margin-top: 10px;
+        }
+        #buildControls button {
+            margin: 5px;
+            padding: 6px 12px;
+            font-size: 16px;
+        }
+    </style>
 </head>
 <body>
-  <div id="controlsContainer">
-    <h3>Controls:</h3>
-    <p>Arrow Keys or WASD to Move</p>
-  </div>
-  <div>
-    <button id="drawMode" class="edit-button">Draw Walls</button>
-    <button id="eraseMode" class="edit-button">Delete Walls</button>
-  </div>
-  <canvas id="gameCanvas" width="600" height="600"></canvas>
-  <script src="game.js"></script>
+    <div id="textContainer"></div>
+    <div id="controlsContainer">
+        <h3>Controls:</h3>
+        <p>Arrow Keys or WASD to Move</p>
+    </div>
+    <div id="buildControls">
+        <button id="toggleBuild">Toggle Build Mode</button>
+        <button id="drawMode" style="display: none;">Draw Block</button>
+        <button id="deleteMode" style="display: none;">Delete Block</button>
+    </div>
+    <canvas id="gameCanvas" width="600" height="600"></canvas>
+    <script src="game.js"></script>
 </body>
 </html>
