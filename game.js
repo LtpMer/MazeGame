@@ -1,48 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Maze Game with Leaderboard & Login</title>
-<style>
-  #gameCanvas {
-    border: 1px solid black;
-    display: block;
-    margin-bottom: 10px;
-  }
-  #usersList {
-    max-height: 150px;
-    overflow-y: auto;
-    border: 1px solid #ccc;
-    padding: 5px;
-    width: 250px;
-    font-family: monospace;
-  }
-  .admin {
-    color: red;
-    font-weight: bold;
-  }
-  #loginSection {
-    margin-bottom: 10px;
-  }
-</style>
-</head>
-<body>
-
-<canvas id="gameCanvas" width="500" height="500"></canvas>
-
-<div id="loginSection">
-  <input id="usernameInput" placeholder="Username" />
-  <input id="passwordInput" type="password" placeholder="Password" />
-  <button id="loginBtn">Login</button>
-  <button id="logoutBtn" style="display:none;">Logout</button>
-  <div id="loginMessage"></div>
-</div>
-
-<h3>Leaderboard</h3>
-<div id="usersList">Please login to see leaderboard.</div>
-
-<script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -79,12 +34,11 @@ const adminUsername = "admin";
 
 let currentUser = null;
 
-// Initialize some users if none exist
+// Initialize default users and stats if not present
 if (!localStorage.getItem("users")) {
-  // admin user, plus example user
   const defaultUsers = {
     admin: "adminpass",
-    user1: "password1"
+    user1: "password1",
   };
   localStorage.setItem("users", JSON.stringify(defaultUsers));
 }
@@ -114,7 +68,7 @@ function updateLeaderboard() {
     return;
   }
 
-  Object.entries(users).forEach(([user, pass]) => {
+  Object.entries(users).forEach(([user]) => {
     const div = document.createElement("div");
     div.textContent = `${user} — Wins: ${stats[user] || 0}`;
     if (user === adminUsername) div.classList.add("admin");
@@ -169,6 +123,7 @@ function draw() {
     }
   }
 
+  // Draw player and win separately to keep their colors even if maze changed
   ctx.fillStyle = blockTypes.player.color;
   ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
 
@@ -208,27 +163,19 @@ function handleMovement() {
   let dx = 0,
     dy = 0;
 
+  // Check movement keys with priority - do not allow diagonal moves
   if ((keys["ArrowUp"] || keys["w"]) && !(keys["ArrowDown"] || keys["s"])) dy = -1;
   else if ((keys["ArrowDown"] || keys["s"]) && !(keys["ArrowUp"] || keys["w"])) dy = 1;
 
   if ((keys["ArrowLeft"] || keys["a"]) && !(keys["ArrowRight"] || keys["d"])) dx = -1;
   else if ((keys["ArrowRight"] || keys["d"]) && !(keys["ArrowLeft"] || keys["a"])) dx = 1;
 
+  // Prevent diagonal movement: if both dx and dy non-zero, ignore dx
   if (dx !== 0 && dy !== 0) {
-    let nx = player.x + dx;
-    let ny = player.y + dy;
+    dx = 0; // prioritize vertical movement over horizontal
+  }
 
-    if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
-      maze[player.x][player.y] = "empty";
-      player.x = nx;
-      player.y = ny;
-      maze[player.x][player.y] = "player";
-
-      moveCooldown = MOVE_DELAY;
-      checkWin();
-      draw();
-    }
-  } else if (dx !== 0 || dy !== 0) {
+  if (dx !== 0 || dy !== 0) {
     let nx = player.x + dx;
     let ny = player.y + dy;
 
@@ -245,6 +192,7 @@ function handleMovement() {
   }
 }
 
+// Keyboard event listeners
 document.addEventListener("keydown", (e) => {
   keys[e.key] = true;
 });
@@ -253,13 +201,13 @@ document.addEventListener("keyup", (e) => {
   keys[e.key] = false;
 });
 
+// Game loop
 function loop() {
   handleMovement();
   requestAnimationFrame(loop);
 }
 
 // Login system
-
 function login(username, password) {
   const users = loadUsers();
   if (users[username] && users[username] === password) {
@@ -299,12 +247,8 @@ logoutBtn.addEventListener("click", () => {
   logout();
 });
 
+// Initialize game
 generateMaze();
 draw();
 updateLeaderboard();
 loop();
-
-</script>
-
-</body>
-</html>
