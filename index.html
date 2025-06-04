@@ -3,40 +3,27 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Maze Game with Buttons and Moving Blocks</title>
+<title>Maze Game with Button & Moving Block</title>
 <style>
   body {
     margin: 0; padding: 0;
     display: flex; flex-direction: column; align-items: center;
     font-family: Arial, sans-serif;
+    user-select: none;
   }
   #gameCanvas {
     border: 1px solid black;
-    margin-top: 20px;
+    margin-top: 10px;
     cursor: crosshair;
   }
-  #controlsContainer {
-    position: absolute;
-    top: 50px;
-    left: 20px;
-    font-size: 16px;
-    background-color: rgba(0,0,0,0.5);
-    color: white;
-    padding: 10px;
-    border-radius: 8px;
+  #controls {
+    margin-top: 10px;
   }
   #buildControls {
     margin-top: 10px;
-    display: none;
   }
-  button {
-    margin: 5px;
-    padding: 5px 10px;
-    font-size: 16px;
-    cursor: pointer;
-  }
-  .selected {
-    background-color: #555;
+  button.selected {
+    background-color: #4CAF50;
     color: white;
   }
   .admin {
@@ -45,198 +32,204 @@
 </style>
 </head>
 <body>
-  <div id="controlsContainer">
-    <h3>Controls:</h3>
-    <p>Arrow Keys or WASD to Move</p>
-    <button id="toggleBuildBtn">Enter Build Mode</button>
-    <div id="buildControls">
-      <button data-block="wall" id="drawWallBtn">Draw Wall</button>
-      <button data-block="design" id="drawDesignBtn">Draw Design Block</button>
-      <button data-block="movable" id="drawMovableBtn">Draw Movable Block</button>
-      <button data-block="button" id="drawButtonBtn">Draw Button Block</button>
-      <button data-block="selfmoving" id="drawSelfMovingBtn">Draw Self-Moving Block</button>
-      <button data-block="player" id="drawPlayerBtn">Place Player</button>
-      <button data-block="win" id="drawWinBtn">Place Win</button>
-      <button data-block="erase" id="eraseBtn">Erase</button>
-    </div>
-  </div>
 
-  <canvas id="gameCanvas" width="600" height="600"></canvas>
+<h1>Maze Game with Button & Moving Block</h1>
+
+<div id="controls">
+  <button id="toggleBuildBtn">Enter Build Mode</button>
+  <div id="buildControls" style="display:none;">
+    <button data-block="wall" id="drawWallBtn">Draw Wall</button>
+    <button data-block="design" id="drawDesignBtn">Design Block</button>
+    <button data-block="movable" id="drawMovableBtn">Movable Block</button>
+    <button data-block="player" id="drawPlayerBtn">Player</button>
+    <button data-block="win" id="drawWinBtn">Win</button>
+    <button data-block="button" id="drawButtonBtn">Button Block</button>
+    <button data-block="auto" id="drawAutoBtn">Auto-Move Block</button>
+    <button data-block="erase" id="eraseBtn">Erase</button>
+  </div>
+</div>
+
+<canvas id="gameCanvas" width="600" height="600"></canvas>
 
 <script>
 (() => {
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
-  const toggleBuildBtn = document.getElementById("toggleBuildBtn");
-  const buildControls = document.getElementById("buildControls");
-  const drawWallBtn = document.getElementById("drawWallBtn");
-  const drawDesignBtn = document.getElementById("drawDesignBtn");
-  const drawMovableBtn = document.getElementById("drawMovableBtn");
-  const drawButtonBtn = document.getElementById("drawButtonBtn");
-  const drawSelfMovingBtn = document.getElementById("drawSelfMovingBtn");
-  const drawPlayerBtn = document.getElementById("drawPlayerBtn");
-  const drawWinBtn = document.getElementById("drawWinBtn");
-  const eraseBtn = document.getElementById("eraseBtn");
 
   const cols = 20;
   const rows = 20;
   const cellSize = canvas.width / cols;
 
-  // Maze grid stores type keys: "empty", "wall", "design", "movable", "button", "selfmoving"
-  // player and win stored separately
-  let maze = [];
-  let player = {x: 0, y: 0};
-  let win = {x: cols - 1, y: rows - 1};
-
-  // Current drawing block type
-  let currentDrawBlock = "wall";
-  let buildMode = false;
-  let isDrawing = false;
-
-  // Movement keys state
-  const keys = {};
-
-  // Move cooldown (to control player move speed)
-  const MOVE_DELAY = 5;
-  let moveCooldown = 0;
-
-  // For self-moving blocks: store directions and timers
-  // Each cell with "selfmoving" block will have {dx, dy, timer}
-  // We'll store extra info separately
-  let selfMovingBlocksInfo = {};
-
-  // Block types and colors, and properties
+  // Maze blocks: empty, wall, design (non-solid gray), movable (blue), player, win, button, auto
   const blockTypes = {
-    empty: {name:"Empty", color:"#fff", solid:false, movable:false},
-    wall: {name:"Wall", color:"#888", solid:true, movable:false},
-    design: {name:"Design", color:"#bbb", solid:false, movable:false},
-    movable: {name:"Movable", color:"#00f", solid:true, movable:true},
-    button: {name:"Button", color:"orange", solid:false, movable:false},
-    selfmoving: {name:"Self-Moving", color:"purple", solid:true, movable:true},
+    empty: {color: "white", solid: false, movable: false},
+    wall: {color: "black", solid: true, movable: false},
+    design: {color: "gray", solid: false, movable: false},
+    movable: {color: "blue", solid: true, movable: true},
+    player: {color: "green", solid: false, movable: false},
+    win: {color: "gold", solid: false, movable: false},
+    button: {color: "orange", solid: false, movable: false},
+    auto: {color: "purple", solid: true, movable: true, autoMove: true},
   };
 
-  function initMaze() {
+  let maze = [];
+  let player = {x: 0, y: 0};
+  let win = {x: cols-1, y: rows-1};
+
+  // For auto-moving blocks
+  let autoBlocks = [];
+
+  let buildMode = false;
+  let currentDrawBlock = "wall";
+  let isDrawing = false;
+
+  // Track keys pressed
+  let keys = {};
+  const MOVE_DELAY = 6;
+  let moveCooldown = 0;
+
+  // Toggles for demo: we toggle solid/movable property of movable blocks on button press
+  let movableBlocksSolid = true;
+
+  function initMazeEmpty() {
     maze = [];
-    selfMovingBlocksInfo = {};
     for(let x=0; x<cols; x++) {
       maze[x] = [];
       for(let y=0; y<rows; y++) {
         maze[x][y] = "empty";
       }
     }
-    // Random player/win spawn in empty spots
-    placeRandom("player");
-    placeRandom("win");
+    // Clear autoBlocks list
+    autoBlocks = [];
+
+    // Place player and win in random positions on empty cells
+    player = placeRandom("player");
+    win = placeRandom("win");
   }
 
   function placeRandom(type) {
-    let tries = 0;
-    while(tries < 1000) {
+    while(true) {
       const x = Math.floor(Math.random() * cols);
       const y = Math.floor(Math.random() * rows);
-      if(maze[x][y] === "empty" && !((player.x === x && player.y === y) || (win.x === x && win.y === y))) {
-        if(type === "player") {
-          player = {x, y};
-        } else if(type === "win") {
-          win = {x, y};
-        }
-        return;
+      if(maze[x][y] === "empty" && !(player.x === x && player.y === y) && !(win.x === x && win.y === y)) {
+        if(type === "player") return {x,y};
+        if(type === "win") return {x,y};
+        maze[x][y] = type;
+        if(type === "auto") autoBlocks.push({x,y,dir:getRandomDir()});
+        return {x,y};
       }
-      tries++;
     }
   }
 
   function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw maze blocks
+    ctx.clearRect(0,0,canvas.width,canvas.height);
     for(let x=0; x<cols; x++) {
       for(let y=0; y<rows; y++) {
         const type = maze[x][y];
-        if(type === "empty") continue;
-        ctx.fillStyle = blockTypes[type]?.color || "black";
+        if(type === "empty") {
+          ctx.fillStyle = blockTypes.empty.color;
+        } else {
+          let color = blockTypes[type]?.color || "magenta";
+          if(type === "movable") {
+            // Reflect current toggle state for movable blocks' solidity with alpha
+            ctx.fillStyle = movableBlocksSolid ? color : "rgba(0,0,255,0.5)";
+          } else {
+            ctx.fillStyle = color;
+          }
+        }
         ctx.fillRect(x*cellSize, y*cellSize, cellSize, cellSize);
+
+        // Draw grid lines for clarity
+        ctx.strokeStyle = "lightgray";
+        ctx.strokeRect(x*cellSize, y*cellSize, cellSize, cellSize);
       }
     }
-
-    // Draw player
-    ctx.fillStyle = "green";
-    ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
-
-    // Draw win
-    ctx.fillStyle = "red";
-    ctx.fillRect(win.x * cellSize, win.y * cellSize, cellSize, cellSize);
-
-    // Draw grid lines (optional)
-    ctx.strokeStyle = "#ccc";
-    for(let x=0; x<=cols; x++) {
-      ctx.beginPath();
-      ctx.moveTo(x*cellSize, 0);
-      ctx.lineTo(x*cellSize, canvas.height);
-      ctx.stroke();
-    }
-    for(let y=0; y<=rows; y++) {
-      ctx.beginPath();
-      ctx.moveTo(0, y*cellSize);
-      ctx.lineTo(canvas.width, y*cellSize);
-      ctx.stroke();
-    }
+    // Draw player and win on top
+    ctx.fillStyle = blockTypes.player.color;
+    ctx.fillRect(player.x*cellSize, player.y*cellSize, cellSize, cellSize);
+    ctx.fillStyle = blockTypes.win.color;
+    ctx.fillRect(win.x*cellSize, win.y*cellSize, cellSize, cellSize);
   }
 
-  // Check if player can move to cell (no solid blocks there, inside bounds)
-  function canMoveTo(x, y) {
+  // Check if position is within maze and not solid (consider current movable block toggle)
+  function canMoveTo(x,y) {
     if(x < 0 || y < 0 || x >= cols || y >= rows) return false;
-    if(blockTypes[maze[x][y]]?.solid) return false;
-    // Check if movable block occupies there (player can't walk into movable blocks)
-    if(maze[x][y] === "movable" || maze[x][y] === "selfmoving") return false;
+    let type = maze[x][y];
+    if(type === "empty" || type === "design" || type === "button") return true;
+    if(type === "movable") return !movableBlocksSolid ? true : false;
+    if(type === "auto") return false; // solid
+    if(type === "wall") return false;
     return true;
   }
 
-  // Handle player movement from keys
-  function handleMovement() {
+  function movePlayer(dx, dy) {
     if(moveCooldown > 0) return;
-    let dx = 0, dy = 0;
-    if(keys["ArrowUp"] || keys["w"]) dy = -1;
-    else if(keys["ArrowDown"] || keys["s"]) dy = 1;
-    else if(keys["ArrowLeft"] || keys["a"]) dx = -1;
-    else if(keys["ArrowRight"] || keys["d"]) dx = 1;
-
-    if(dx !== 0 || dy !== 0) {
-      const nx = player.x + dx;
-      const ny = player.y + dy;
-
-      // If moving into movable block, try to push it if possible
-      if(maze[nx]?.[ny] === "movable") {
-        const pushX = nx + dx;
-        const pushY = ny + dy;
-        if(canMoveTo(pushX, pushY) && maze[pushX][pushY] === "empty") {
-          maze[pushX][pushY] = "movable";
-          maze[nx][ny] = "empty";
-          player.x = nx;
-          player.y = ny;
-          moveCooldown = MOVE_DELAY;
-          checkWin();
-          draw();
-          return;
-        }
-      } else if(canMoveTo(nx, ny)) {
-        player.x = nx;
-        player.y = ny;
-        moveCooldown = MOVE_DELAY;
-        checkWin();
-        draw();
-      }
+    let nx = player.x + dx;
+    let ny = player.y + dy;
+    if(canMoveTo(nx, ny)) {
+      player.x = nx;
+      player.y = ny;
+      moveCooldown = MOVE_DELAY;
+      checkButtonTrigger(nx, ny);
+      checkWin();
+      draw();
     }
   }
 
-  // Check win condition
   function checkWin() {
     if(player.x === win.x && player.y === win.y) {
       alert("You win!");
-      placeRandom("player");
-      placeRandom("win");
+      // Reset player and win random
+      player = placeRandom("player");
+      win = placeRandom("win");
       draw();
     }
+  }
+
+  function checkButtonTrigger(x,y) {
+    if(maze[x][y] === "button") {
+      movableBlocksSolid = !movableBlocksSolid;
+      alert("Button pressed! Movable blocks solidity toggled: " + movableBlocksSolid);
+      draw();
+    }
+  }
+
+  // Auto-moving blocks move every fixed frames randomly if possible
+  const AUTO_MOVE_INTERVAL = 30;
+  let autoMoveCounter = 0;
+
+  function moveAutoBlocks() {
+    autoBlocks.forEach(block => {
+      // Attempt to move block in its direction if possible
+      const nx = block.x + block.dir.dx;
+      const ny = block.y + block.dir.dy;
+      if(canAutoMoveTo(nx, ny)) {
+        maze[block.x][block.y] = "empty";
+        block.x = nx;
+        block.y = ny;
+        maze[block.x][block.y] = "auto";
+      } else {
+        block.dir = getRandomDir();
+      }
+    });
+  }
+
+  function canAutoMoveTo(x,y) {
+    if(x < 0 || y < 0 || x >= cols || y >= rows) return false;
+    const type = maze[x][y];
+    if(type === "empty" || type === "design" || type === "button") return true;
+    // Avoid player, win, walls, movable, auto blocks
+    return false;
+  }
+
+  function getRandomDir() {
+    const dirs = [
+      {dx:1, dy:0},
+      {dx:-1, dy:0},
+      {dx:0, dy:1},
+      {dx:0, dy:-1},
+    ];
+    return dirs[Math.floor(Math.random()*dirs.length)];
   }
 
   // --- Build mode drawing ---
@@ -244,153 +237,153 @@
   function canvasCoordsToCell(mx, my) {
     return {
       x: Math.floor(mx / cellSize),
-      y: Math.floor(my / cellSize)
+      y: Math.floor(my / cellSize),
     };
   }
 
-  function drawBlockAt(x, y) {
+  function drawBlockAt(x,y) {
     if(x < 0 || y < 0 || x >= cols || y >= rows) return;
 
+    // Prevent placing player or win on non-empty cells
     if(currentDrawBlock === "player") {
-      player = {x, y};
-      draw();
+      if(!(player.x === x && player.y === y)) {
+        player = {x,y};
+        draw();
+      }
       return;
     }
     if(currentDrawBlock === "win") {
-      win = {x, y};
+      if(!(win.x === x && win.y === y)) {
+        win = {x,y};
+        draw();
+      }
+      return;
+    }
+
+    // For erase, set empty
+    if(currentDrawBlock === "erase") {
+      // Remove from autoBlocks if any
+      if(maze[x][y] === "auto") {
+        autoBlocks = autoBlocks.filter(b => !(b.x === x && b.y === y));
+      }
+      maze[x][y] = "empty";
       draw();
       return;
     }
-    if(currentDrawBlock === "erase") {
-      maze[x][y] = "empty";
-      delete selfMovingBlocksInfo[`${x},${y}`];
-      draw();
+
+    // Prevent placing blocks over player or win
+    if((player.x === x && player.y === y) || (win.x === x && win.y === y)) {
       return;
+    }
+
+    // Place block normally
+    if(currentDrawBlock === "auto") {
+      // Add auto block if empty
+      if(maze[x][y] === "empty") {
+        maze[x][y] = "auto";
+        autoBlocks.push({x,y,dir:getRandomDir()});
+        draw();
+      }
+      return;
+    }
+
+    if(maze[x][y] === "auto") {
+      // remove from autoBlocks if overwriting
+      autoBlocks = autoBlocks.filter(b => !(b.x === x && b.y === y));
     }
     maze[x][y] = currentDrawBlock;
-
-    // Initialize self-moving block info if needed
-    if(currentDrawBlock === "selfmoving") {
-      selfMovingBlocksInfo[`${x},${y}`] = {
-        dx: 1,
-        dy: 0,
-        timer: 0
-      };
-    } else {
-      delete selfMovingBlocksInfo[`${x},${y}`];
-    }
-
     draw();
   }
 
-  canvas.addEventListener("mousedown", (e) => {
+  // Mouse handling for drawing blocks
+  canvas.addEventListener("mousedown", e => {
     if(!buildMode) return;
     isDrawing = true;
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    const cell = canvasCoordsToCell(mx, my);
+    const cell = canvasCoordsToCell(mx,my);
     drawBlockAt(cell.x, cell.y);
   });
 
-  canvas.addEventListener("mousemove", (e) => {
+  canvas.addEventListener("mousemove", e => {
     if(!buildMode || !isDrawing) return;
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    const cell = canvasCoordsToCell(mx, my);
+    const cell = canvasCoordsToCell(mx,my);
     drawBlockAt(cell.x, cell.y);
   });
 
-  window.addEventListener("mouseup", () => {
+  window.addEventListener("mouseup", e => {
     isDrawing = false;
   });
 
-  // Buttons for selecting block type
-  function clearSelection() {
-    [drawWallBtn, drawDesignBtn, drawMovableBtn, drawButtonBtn, drawSelfMovingBtn, drawPlayerBtn, drawWinBtn, eraseBtn].forEach(b => {
-      b.classList.remove("selected");
-    });
-  }
-
-  [drawWallBtn, drawDesignBtn, drawMovableBtn, drawButtonBtn, drawSelfMovingBtn, drawPlayerBtn, drawWinBtn, eraseBtn].forEach(button => {
-    button.addEventListener("click", () => {
-      clearSelection();
-      button.classList.add("selected");
-      currentDrawBlock = button.dataset.block;
-    });
+  // Keyboard controls for movement
+  window.addEventListener("keydown", e => {
+    if(buildMode) return;
+    if(moveCooldown > 0) return;
+    switch(e.key) {
+      case "ArrowUp":
+      case "w":
+      case "W":
+        movePlayer(0,-1);
+        break;
+      case "ArrowDown":
+      case "s":
+      case "S":
+        movePlayer(0,1);
+        break;
+      case "ArrowLeft":
+      case "a":
+      case "A":
+        movePlayer(-1,0);
+        break;
+      case "ArrowRight":
+      case "d":
+      case "D":
+        movePlayer(1,0);
+        break;
+    }
   });
 
+  // Toggle build mode button & buttons
+  const toggleBuildBtn = document.getElementById("toggleBuildBtn");
+  const buildControls = document.getElementById("buildControls");
   toggleBuildBtn.addEventListener("click", () => {
     buildMode = !buildMode;
     buildControls.style.display = buildMode ? "block" : "none";
     toggleBuildBtn.textContent = buildMode ? "Exit Build Mode" : "Enter Build Mode";
-    draw();
   });
 
-  // Update self-moving blocks every few frames
-  let frameCount = 0;
-  function updateSelfMovingBlocks() {
-    frameCount++;
-    if(frameCount % 15 !== 0) return; // slow down movement
+  // Draw block type buttons
+  const drawButtons = document.querySelectorAll("#buildControls button[data-block]");
+  drawButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentDrawBlock = btn.dataset.block;
+      drawButtons.forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+    });
+  });
 
-    const newPositions = {};
+  // Init maze & draw
+  initMazeEmpty();
+  draw();
 
-    for(const key in selfMovingBlocksInfo) {
-      const [xStr, yStr] = key.split(",");
-      let x = parseInt(xStr);
-      let y = parseInt(yStr);
-      const info = selfMovingBlocksInfo[key];
-
-      const nx = x + info.dx;
-      const ny = y + info.dy;
-
-      // Check if can move to next cell
-      if(nx < 0 || ny < 0 || nx >= cols || ny >= rows) {
-        // Bounce back direction
-        info.dx = -info.dx;
-        info.dy = -info.dy;
-        continue;
-      }
-      if(maze[nx][ny] === "empty" && (nx !== player.x || ny !== player.y) && (nx !== win.x || ny !== win.y)) {
-        // Move block
-        maze[nx][ny] = "selfmoving";
-        maze[x][y] = "empty";
-        newPositions[`${nx},${ny}`] = {dx: info.dx, dy: info.dy, timer: info.timer};
-        delete selfMovingBlocksInfo[key];
-      } else {
-        // Bounce back direction
-        info.dx = -info.dx;
-        info.dy = -info.dy;
-      }
-    }
-    Object.assign(selfMovingBlocksInfo, newPositions);
-  }
-
-  // Main game loop
+  // Game loop to move auto blocks and update cooldown
   function gameLoop() {
     if(!buildMode) {
-      handleMovement();
-      updateSelfMovingBlocks();
-      draw();
+      if(moveCooldown > 0) moveCooldown--;
+      autoMoveCounter++;
+      if(autoMoveCounter >= AUTO_MOVE_INTERVAL) {
+        moveAutoBlocks();
+        autoMoveCounter = 0;
+        draw();
+      }
     }
-    if(moveCooldown > 0) moveCooldown--;
     requestAnimationFrame(gameLoop);
   }
-
-  // Initialize and start
-  initMaze();
-  draw();
   gameLoop();
-
-  // Keyboard handlers
-  window.addEventListener("keydown", (e) => {
-    if(buildMode) return;
-    keys[e.key] = true;
-  });
-  window.addEventListener("keyup", (e) => {
-    keys[e.key] = false;
-  });
 
 })();
 </script>
