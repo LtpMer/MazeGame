@@ -10,9 +10,28 @@ let player = { x: 1, y: 1 };
 let win = { x: cols - 2, y: rows - 2 };
 let keys = {};
 
-// Movement speed (frames between moves)
 let moveDelay = 6;
 let moveCounter = 0;
+
+let buildMode = false;
+const buildButton = document.getElementById("toggleBuildMode");
+
+buildButton.addEventListener("click", () => {
+  buildMode = !buildMode;
+  buildButton.textContent = buildMode ? "Exit Build Mode" : "Toggle Build Mode";
+});
+
+canvas.addEventListener("click", (e) => {
+  if (!buildMode) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) / cellSize);
+  const y = Math.floor((e.clientY - rect.top) / cellSize);
+
+  if ((x === player.x && y === player.y) || (x === win.x && y === win.y)) return;
+
+  maze[x][y] = maze[x][y] === 1 ? 0 : 1; // Toggle wall
+});
 
 function generateMaze(cols, rows) {
   const maze = Array.from({ length: cols }, () =>
@@ -51,40 +70,4 @@ function movePlayer() {
 
   let dx = 0, dy = 0;
   if (keys["ArrowUp"] || keys["w"]) dy = -1;
-  if (keys["ArrowDown"] || keys["s"]) dy = 1;
-  if (keys["ArrowLeft"] || keys["a"]) dx = -1;
-  if (keys["ArrowRight"] || keys["d"]) dx = 1;
-
-  let newX = player.x + dx;
-  let newY = player.y + dy;
-
-  if (
-    newX >= 0 && newX < cols &&
-    newY >= 0 && newY < rows &&
-    maze[newX][newY] === 0
-  ) {
-    player.x = newX;
-    player.y = newY;
-  }
-
-  // Win check
-  if (player.x === win.x && player.y === win.y) {
-    alert("You Win!");
-    location.reload();
-  }
-}
-
-document.addEventListener("keydown", (e) => {
-  keys[e.key] = true;
-});
-document.addEventListener("keyup", (e) => {
-  keys[e.key] = false;
-});
-
-function loop() {
-  movePlayer();
-  draw();
-  requestAnimationFrame(loop);
-}
-
-loop();
+  if (keys["ArrowDown"] |
