@@ -1,135 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Maze Game - Full Working Example</title>
+<style>
+  body {
+    margin: 0; padding: 0; font-family: Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  #gameCanvas {
+    border: 1px solid black;
+    touch-action: none; /* for mobile touch support */
+    margin-top: 20px;
+    background: #eee;
+  }
+  #controls {
+    margin-top: 10px;
+  }
+  button {
+    margin-right: 5px;
+    font-size: 16px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<h2>Maze Game</h2>
+<div id="controls">
+  <button id="toggleBuildBtn">Toggle Build Mode (OFF)</button>
+  <button id="drawWallBtn" disabled>Draw Wall</button>
+  <button id="deleteWallBtn" disabled>Delete Wall</button>
+</div>
+<canvas id="gameCanvas" width="600" height="600"></canvas>
+
+<script>
 (() => {
-  const adminUsername = "LtpMer";
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
 
-  // Keys for localStorage
-  const USERS_KEY = "maze_users";
-  const WIN_STATS_KEY = "maze_winStats";
-  const CURRENT_USER_KEY = "maze_currentUser";
+  const cols = 25;
+  const rows = 25;
+  const cellSize = canvas.width / cols;
 
-  let currentUser = null;
+  let maze = [];
+  let player = { x: 0, y: 0 };
+  let win = { x: 0, y: 0 };
+  let keys = {};
+  let buildMode = false;
+  let drawMode = "draw"; // "draw" or "delete"
 
-  const loginBtn = document.getElementById("loginBtn");
-  const usernameInput = document.getElementById("usernameInput");
-  const passwordInput = document.getElementById("passwordInput");
-  const loginStatus = document.getElementById("loginStatus");
-  const usersList = document.getElementById("usersList");
+  const toggleBuildBtn = document.getElementById("toggleBuildBtn");
+  const drawWallBtn = document.getElementById("drawWallBtn");
+  const deleteWallBtn = document.getElementById("deleteWallBtn");
 
-  // Load users from localStorage
-  function loadUsers() {
-    const raw = localStorage.getItem(USERS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  }
-
-  // Save users to localStorage
-  function saveUsers(users) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  }
-
-  // Load win stats
-  function getWinStats() {
-    const raw = localStorage.getItem(WIN_STATS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  }
-
-  // Save win stats
-  function setWinStats(stats) {
-    localStorage.setItem(WIN_STATS_KEY, JSON.stringify(stats));
-  }
-
-  // Increment wins for a user
-  function incrementWinStat(user) {
-    if (!user) return;
-    const stats = getWinStats();
-    stats[user] = (stats[user] || 0) + 1;
-    setWinStats(stats);
-    updateLeaderboard();
-  }
-
-  // Update the leaderboard display
-  function updateLeaderboard() {
-    const users = loadUsers();
-    const stats = getWinStats();
-    usersList.innerHTML = "";
-
-    if (!currentUser) {
-      usersList.textContent = "Please login to see leaderboard.";
-      return;
+  // Initialize maze: 0=empty, 1=wall
+  function generateMaze() {
+    maze = [];
+    for (let x = 0; x < cols; x++) {
+      maze[x] = [];
+      for (let y = 0; y < rows; y++) {
+        maze[x][y] = Math.random() < 0.3 ? 1 : 0;
+      }
+    }
+    // Make sure borders are walls
+    for (let i = 0; i < cols; i++) {
+      maze[i][0] = 1;
+      maze[i][rows - 1] = 1;
+    }
+    for (let j = 0; j < rows; j++) {
+      maze[0][j] = 1;
+      maze[cols - 1][j] = 1;
     }
 
-    Object.entries(users).forEach(([user, pass]) => {
-      const div = document.createElement("div");
-      div.textContent = user;
-
-      if (user === adminUsername) {
-        div.classList.add("admin");
-      }
-
-      // Show passwords only if current user is admin
-      if (currentUser === adminUsername) {
-        div.textContent += ` — pass: ${pass}`;
-      }
-
-      // Show win count for all users
-      if (stats[user]) {
-        div.textContent += ` | Wins: ${stats[user]}`;
-      }
-
-      usersList.appendChild(div);
-    });
+    // Place player and win randomly on empty cells
+    player = getRandomEmptyCell();
+    win = getRandomEmptyCell();
+    // Make sure player and win don't overlap
+    while (win.x === player.x && win.y === player.y) {
+      win = getRandomEmptyCell();
+    }
   }
 
-  // Handle login button click
-  loginBtn.addEventListener("click", () => {
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value;
+  function getRandomEmptyCell() {
+    let x, y;
+    do {
+      x = Math.floor(Math.random() * cols);
+      y = Math.floor(Math.random() * rows);
+    } while (maze[x][y] !== 0);
+    return { x, y };
+  }
 
-    if (!username || !password) {
-      loginStatus.textContent = "Please enter username and password.";
-      return;
-    }
-
-    const users = loadUsers();
-
-    if (users[username]) {
-      // Existing user - check password
-      if (users[username] === password) {
-        currentUser = username;
-        loginStatus.textContent = `Welcome back, ${username}!`;
-      } else {
-        loginStatus.textContent = "Wrong password.";
-        return;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let x = 0; x < cols; x++) {
+      for (let y = 0; y < rows; y++) {
+        if (maze[x][y] === 1) {
+          ctx.fillStyle = "black"; // Wall
+        } else {
+          ctx.fillStyle = "white"; // Empty space
+        }
+        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+        ctx.strokeStyle = "#ccc";
+        ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
       }
-    } else {
-      // New user registration
-      users[username] = password;
-      saveUsers(users);
-      currentUser = username;
-      loginStatus.textContent = `Registered and logged in as ${username}.`;
+    }
+    // Draw win spot (green)
+    ctx.fillStyle = "green";
+    ctx.fillRect(win.x * cellSize, win.y * cellSize, cellSize, cellSize);
+    // Draw player (red)
+    ctx.fillStyle = "red";
+    ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
+  }
+
+  // Movement
+  function movePlayer() {
+    if (buildMode) return; // No movement in build mode
+
+    let dx = 0, dy = 0;
+    if (keys["ArrowUp"] || keys["w"]) dy = -1;
+    else if (keys["ArrowDown"] || keys["s"]) dy = 1;
+    else if (keys["ArrowLeft"] || keys["a"]) dx = -1;
+    else if (keys["ArrowRight"] || keys["d"]) dx = 1;
+
+    let newX = player.x + dx;
+    let newY = player.y + dy;
+
+    if (
+      newX >= 0 && newX < cols &&
+      newY >= 0 && newY < rows &&
+      maze[newX][newY] === 0
+    ) {
+      player.x = newX;
+      player.y = newY;
     }
 
-    localStorage.setItem(CURRENT_USER_KEY, currentUser);
-    updateLeaderboard();
+    if (player.x === win.x && player.y === win.y) {
+      alert("You Win!");
+      generateMaze();
+    }
+  }
+
+  // Mouse / Touch position to cell coords
+  function getMouseCell(evt) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+    const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+    const x = Math.floor((clientX - rect.left) / cellSize);
+    const y = Math.floor((clientY - rect.top) / cellSize);
+    return { x, y };
+  }
+
+  // Draw/delete walls by mouse or touch
+  function handleDraw(evt) {
+    if (!buildMode) return;
+    evt.preventDefault();
+
+    const { x, y } = getMouseCell(evt);
+    if (x < 0 || x >= cols || y < 0 || y >= rows) return;
+    // Can't change player or win cell
+    if ((x === player.x && y === player.y) || (x === win.x && y === win.y)) return;
+
+    if (drawMode === "draw") {
+      maze[x][y] = 1;
+    } else if (drawMode === "delete") {
+      maze[x][y] = 0;
+    }
+  }
+
+  // Event listeners
+  document.addEventListener("keydown", (e) => {
+    keys[e.key] = true;
+  });
+  document.addEventListener("keyup", (e) => {
+    keys[e.key] = false;
   });
 
-  // Try to auto-login user from localStorage on page load
-  function tryAutoLogin() {
-    const savedUser = localStorage.getItem(CURRENT_USER_KEY);
-    const users = loadUsers();
+  canvas.addEventListener("mousedown", (e) => {
+    handleDraw(e);
+    canvas.addEventListener("mousemove", handleDraw);
+  });
+  canvas.addEventListener("mouseup", () => {
+    canvas.removeEventListener("mousemove", handleDraw);
+  });
 
-    if (savedUser && users[savedUser]) {
-      currentUser = savedUser;
-      loginStatus.textContent = `Welcome back, ${currentUser}!`;
-      updateLeaderboard();
-    }
+  // Touch events for mobile
+  canvas.addEventListener("touchstart", handleDraw);
+  canvas.addEventListener("touchmove", handleDraw);
+
+  // Buttons handlers
+  toggleBuildBtn.addEventListener("click", () => {
+    buildMode = !buildMode;
+    toggleBuildBtn.textContent = "Toggle Build Mode (" + (buildMode ? "ON" : "OFF") + ")";
+    drawWallBtn.disabled = !buildMode;
+    deleteWallBtn.disabled = !buildMode;
+  });
+
+  drawWallBtn.addEventListener("click", () => {
+    drawMode = "draw";
+    drawWallBtn.style.backgroundColor = "lightgreen";
+    deleteWallBtn.style.backgroundColor = "";
+  });
+  deleteWallBtn.addEventListener("click", () => {
+    drawMode = "delete";
+    deleteWallBtn.style.backgroundColor = "lightcoral";
+    drawWallBtn.style.backgroundColor = "";
+  });
+
+  // Init
+  generateMaze();
+  drawWallBtn.style.backgroundColor = "lightgreen";
+
+  // Game loop
+  function loop() {
+    movePlayer();
+    draw();
+    requestAnimationFrame(loop);
   }
-
-  // Call auto-login on script start
-  tryAutoLogin();
-
-  // Example usage: incrementWinStat(currentUser); when player wins
-
-  // Expose incrementWinStat to global for usage in game code
-  window.incrementWinStat = incrementWinStat;
-  window.getCurrentUser = () => currentUser;
+  loop();
 
 })();
+</script>
+
+</body>
+</html>
