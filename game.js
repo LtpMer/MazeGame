@@ -30,10 +30,15 @@ const typeMovableBtn = document.getElementById("typeMovableBtn");
 const typePlayerBtn = document.getElementById("typePlayerBtn");
 const typeWinBtn = document.getElementById("typeWinBtn");
 
+const mobileControls = document.getElementById("mobileControls");
+const btnUp = document.getElementById("btnUp");
+const btnDown = document.getElementById("btnDown");
+const btnLeft = document.getElementById("btnLeft");
+const btnRight = document.getElementById("btnRight");
+
 function generateMaze(cols, rows) {
   const maze = Array.from({ length: cols }, () =>
     Array.from({ length: rows }, () => {
-      // Generate different blocks with probabilities
       const rnd = Math.random();
       if (rnd < 0.25) return 1; // wall (black)
       if (rnd < 0.35) return 2; // design (gray)
@@ -42,7 +47,7 @@ function generateMaze(cols, rows) {
     })
   );
 
-  // Make borders walls to contain maze
+  // Borders walls
   for (let x = 0; x < cols; x++) {
     maze[x][0] = 1;
     maze[x][rows - 1] = 1;
@@ -65,18 +70,23 @@ function findRandomEmptyCell(maze) {
     }
     tries++;
   }
-  // fallback
   return { x: 1, y: 1 };
 }
 
 function initializeGame() {
   maze = generateMaze(cols, rows);
 
-  // Set player and win to random empty cells
   player = findRandomEmptyCell(maze);
   do {
     win = findRandomEmptyCell(maze);
   } while (win.x === player.x && win.y === player.y);
+
+  // Show mobile controls only if on mobile device (simple detection)
+  if (/Mobi|Android/i.test(navigator.userAgent)) {
+    mobileControls.style.display = "block";
+  } else {
+    mobileControls.style.display = "none";
+  }
 }
 
 function draw() {
@@ -85,22 +95,20 @@ function draw() {
   for (let x = 0; x < cols; x++) {
     for (let y = 0; y < rows; y++) {
       switch (maze[x][y]) {
-        case 1: ctx.fillStyle = "black"; break;       // wall
-        case 2: ctx.fillStyle = "gray"; break;        // design block
-        case 3: ctx.fillStyle = "blue"; break;        // movable block
-        default: ctx.fillStyle = "white";              // empty
+        case 1: ctx.fillStyle = "black"; break;
+        case 2: ctx.fillStyle = "gray"; break;
+        case 3: ctx.fillStyle = "blue"; break;
+        default: ctx.fillStyle = "white";
       }
       ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
     }
   }
 
-  // Draw win block if exists
   if (win) {
     ctx.fillStyle = "green";
     ctx.fillRect(win.x * cellSize, win.y * cellSize, cellSize, cellSize);
   }
 
-  // Draw player block if exists
   if (player) {
     ctx.fillStyle = "red";
     ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
@@ -132,11 +140,9 @@ function movePlayer() {
   let nextCell = maze[newX][newY];
 
   if (nextCell === 0 || nextCell === 2) {
-    // empty or design block, move freely
     player.x = newX;
     player.y = newY;
   } else if (nextCell === 3) {
-    // Movable block, try to push
     let pushX = newX + dx;
     let pushY = newY + dy;
 
@@ -144,12 +150,9 @@ function movePlayer() {
 
     let pushCell = maze[pushX][pushY];
 
-    // Can push if pushCell empty(0) or design block(2)
     if (pushCell === 0 || pushCell === 2) {
-      // Move block
       maze[pushX][pushY] = 3;
       maze[newX][newY] = 0;
-      // Move player
       player.x = newX;
       player.y = newY;
     }
@@ -168,35 +171,25 @@ function getMouseCell(evt) {
   return { x, y };
 }
 
-let isMouseDown = false;
-
-canvas.addEventListener("mousedown", (e) => {
-  if (!buildMode) return;
-  isMouseDown = true;
-  handleCanvasAction(e);
-});
-
-canvas.addEventListener("mouseup", () => {
-  isMouseDown = false;
-});
-
-canvas.addEventListener("mouseleave", () => {
-  isMouseDown = false;
-});
-
-canvas.addEventListener("mousemove", (e) => {
-  if (!buildMode) return;
-  if (!isMouseDown) return;
-  handleCanvasAction(e);
-});
+let isTouchDown = false;
 
 function handleCanvasAction(e) {
-  const { x, y } = getMouseCell(e);
+  e.preventDefault();
+  let clientX, clientY;
+  if (e.touches) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor((clientX - rect.left) / cellSize);
+  const y = Math.floor((clientY - rect.top) / cellSize);
   if (x < 0 || x >= cols || y < 0 || y >= rows) return;
 
   if (drawMode === "draw") {
     if (typeMode === "player") {
-      // Place player only on empty cells, remove old player
       if (maze[x][y] === 0) {
         player = { x, y };
       }
@@ -205,24 +198,46 @@ function handleCanvasAction(e) {
         win = { x, y };
       }
     } else {
-      // Place block types (wall, design, movable)
       maze[x][y] = getTypeValue(typeMode);
     }
   } else if (drawMode === "delete") {
-    // Delete block or player/win if clicked
     if (typeMode === "player") {
       if (player && player.x === x && player.y === y) {
-        player = null; // delete player
+        player = null;
       }
     } else if (typeMode === "win") {
       if (win && win.x === x && win.y === y) {
-        win = null; // delete win
+        win = null;
       }
     } else {
       maze[x][y] = 0;
     }
   }
 }
+
+canvas.addEventListener("mousedown", (e) => {
+  if (!buildMode) return;
+  isTouchDown = true;
+  handleCanvasAction(e);
+});
+canvas.addEventListener("mouseup", () => (isTouchDown = false));
+canvas.addEventListener("mousemove", (e) => {
+  if (!buildMode) return;
+  if (!isTouchDown) return;
+  handleCanvasAction(e);
+});
+
+canvas.addEventListener("touchstart", (e) => {
+  if (!buildMode) return;
+  isTouchDown = true;
+  handleCanvasAction(e);
+});
+canvas.addEventListener("touchmove", (e) => {
+  if (!buildMode) return;
+  if (!isTouchDown) return;
+  handleCanvasAction(e);
+});
+canvas.addEventListener("touchend", () => (isTouchDown = false));
 
 function getTypeValue(type) {
   switch (type) {
@@ -233,53 +248,7 @@ function getTypeValue(type) {
   }
 }
 
-toggleBuildBtn.addEventListener("click", () => {
-  buildMode = !buildMode;
-  buildControls.style.display = buildMode ? "block" : "none";
-  typesControls.style.display = "none";
-  toggleTypesBtn.textContent = "Toggle Types";
-
-  drawMode = "draw";
-  drawBtn.classList.add("active");
-  deleteBtn.classList.remove("active");
-});
-
-drawBtn.addEventListener("click", () => {
-  drawMode = "draw";
-  drawBtn.classList.add("active");
-  deleteBtn.classList.remove("active");
-});
-
-deleteBtn.addEventListener("click", () => {
-  drawMode = "delete";
-  deleteBtn.classList.add("active");
-  drawBtn.classList.remove("active");
-});
-
-toggleTypesBtn.addEventListener("click", () => {
-  if (typesControls.style.display === "block") {
-    typesControls.style.display = "none";
-    toggleTypesBtn.textContent = "Toggle Types";
-  } else {
-    typesControls.style.display = "block";
-    toggleTypesBtn.textContent = "Hide Types";
-  }
-});
-
-function selectType(button, type) {
-  typeMode = type;
-  [typeWallBtn, typeDesignBtn, typeMovableBtn, typePlayerBtn, typeWinBtn].forEach(btn => btn.classList.remove("active"));
-  button.classList.add("active");
-}
-
-typeWallBtn.addEventListener("click", () => selectType(typeWallBtn, "wall"));
-typeDesignBtn.addEventListener("click", () => selectType(typeDesignBtn, "design"));
-typeMovableBtn.addEventListener("click", () => selectType(typeMovableBtn, "movable"));
-typePlayerBtn.addEventListener("click", () => selectType(typePlayerBtn, "player"));
-typeWinBtn.addEventListener("click", () => selectType(typeWinBtn, "win"));
-
-selectType(typeWallBtn, "wall");
-
+// Keyboard controls
 window.addEventListener("keydown", (e) => {
   keys[e.key.toLowerCase()] = true;
 });
@@ -287,12 +256,82 @@ window.addEventListener("keyup", (e) => {
   keys[e.key.toLowerCase()] = false;
 });
 
-initializeGame();
+// Build mode toggle
+toggleBuildBtn.onclick = () => {
+  buildMode = !buildMode;
+  buildControls.style.display = buildMode ? "block" : "none";
+  toggleBuildBtn.textContent = buildMode ? "Exit Build Mode" : "Toggle Build Mode";
+};
 
-function loop() {
-  movePlayer();
-  draw();
-  requestAnimationFrame(loop);
+// Draw/Delete toggle
+drawBtn.onclick = () => {
+  drawMode = "draw";
+  drawBtn.classList.add("active");
+  deleteBtn.classList.remove("active");
+};
+deleteBtn.onclick = () => {
+  drawMode = "delete";
+  deleteBtn.classList.add("active");
+  drawBtn.classList.remove("active");
+};
+
+// Show/hide types
+toggleTypesBtn.onclick = () => {
+  if (typesControls.style.display === "block") {
+    typesControls.style.display = "none";
+  } else {
+    typesControls.style.display = "block";
+  }
+};
+
+// Type buttons logic
+function setTypeMode(newType) {
+  typeMode = newType;
+  typeWallBtn.classList.remove("active");
+  typeDesignBtn.classList.remove("active");
+  typeMovableBtn.classList.remove("active");
+  typePlayerBtn.classList.remove("active");
+  typeWinBtn.classList.remove("active");
+
+  if (newType === "wall") typeWallBtn.classList.add("active");
+  else if (newType === "design") typeDesignBtn.classList.add("active");
+  else if (newType === "movable") typeMovableBtn.classList.add("active");
+  else if (newType === "player") typePlayerBtn.classList.add("active");
+  else if (newType === "win") typeWinBtn.classList.add("active");
 }
 
-loop();
+typeWallBtn.onclick = () => setTypeMode("wall");
+typeDesignBtn.onclick = () => setTypeMode("design");
+typeMovableBtn.onclick = () => setTypeMode("movable");
+typePlayerBtn.onclick = () => setTypeMode("player");
+typeWinBtn.onclick = () => setTypeMode("win");
+
+// Mobile joystick buttons
+btnUp.addEventListener("touchstart", () => (keys["w"] = true));
+btnUp.addEventListener("touchend", () => (keys["w"] = false));
+btnDown.addEventListener("touchstart", () => (keys["s"] = true));
+btnDown.addEventListener("touchend", () => (keys["s"] = false));
+btnLeft.addEventListener("touchstart", () => (keys["a"] = true));
+btnLeft.addEventListener("touchend", () => (keys["a"] = false));
+btnRight.addEventListener("touchstart", () => (keys["d"] = true));
+btnRight.addEventListener("touchend", () => (keys["d"] = false));
+
+// Also support mouse click for mobile buttons (desktop)
+btnUp.addEventListener("mousedown", () => (keys["w"] = true));
+btnUp.addEventListener("mouseup", () => (keys["w"] = false));
+btnDown.addEventListener("mousedown", () => (keys["s"] = true));
+btnDown.addEventListener("mouseup", () => (keys["s"] = false));
+btnLeft.addEventListener("mousedown", () => (keys["a"] = true));
+btnLeft.addEventListener("mouseup", () => (keys["a"] = false));
+btnRight.addEventListener("mousedown", () => (keys["d"] = true));
+btnRight.addEventListener("mouseup", () => (keys["d"] = false));
+
+// Main game loop
+function gameLoop() {
+  movePlayer();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+initializeGame();
+gameLoop();
