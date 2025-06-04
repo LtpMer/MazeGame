@@ -5,9 +5,9 @@ const cols = 25;
 const rows = 25;
 const cellSize = canvas.width / cols;
 
-let maze = generateMaze(cols, rows);
-let player = { x: 1, y: 1 };
-let win = { x: cols - 2, y: rows - 2 };
+let maze;
+let player;
+let win;
 let keys = {};
 
 let moveDelay = 6;
@@ -15,7 +15,7 @@ let moveCounter = 0;
 
 let buildMode = false;
 let drawMode = "draw"; // "draw" or "delete"
-let typeMode = "wall"; // default type for building
+let typeMode = "wall"; // default building block type
 
 const toggleBuildBtn = document.getElementById("toggleBuildBtn");
 const buildControls = document.getElementById("buildControls");
@@ -31,13 +31,45 @@ const typeWinBtn = document.getElementById("typeWinBtn");
 const typeMovableBtn = document.getElementById("typeMovableBtn");
 
 function generateMaze(cols, rows) {
-  // 0 = empty, 1 = wall, 2 = design block, 3 = movable block
   const maze = Array.from({ length: cols }, () =>
     Array.from({ length: rows }, () => (Math.random() < 0.3 ? 1 : 0))
   );
-  maze[1][1] = 0;
-  maze[cols - 2][rows - 2] = 0;
+
+  // Make sure borders are walls to contain maze
+  for (let x = 0; x < cols; x++) {
+    maze[x][0] = 1;
+    maze[x][rows - 1] = 1;
+  }
+  for (let y = 0; y < rows; y++) {
+    maze[0][y] = 1;
+    maze[cols - 1][y] = 1;
+  }
+
   return maze;
+}
+
+function findRandomEmptyCell(maze) {
+  let tries = 0;
+  while (tries < 1000) {
+    let x = Math.floor(Math.random() * cols);
+    let y = Math.floor(Math.random() * rows);
+    if (maze[x][y] === 0) {
+      return { x, y };
+    }
+    tries++;
+  }
+  // fallback default
+  return { x: 1, y: 1 };
+}
+
+function initializeGame() {
+  maze = generateMaze(cols, rows);
+
+  // Random player and win positions on empty cells (not overlapping)
+  player = findRandomEmptyCell(maze);
+  do {
+    win = findRandomEmptyCell(maze);
+  } while (win.x === player.x && win.y === player.y);
 }
 
 function draw() {
@@ -55,17 +87,17 @@ function draw() {
     }
   }
 
-  // Win pad
+  // Draw win block (green)
   ctx.fillStyle = "green";
   ctx.fillRect(win.x * cellSize, win.y * cellSize, cellSize, cellSize);
 
-  // Player
+  // Draw player block (red)
   ctx.fillStyle = "red";
   ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
 }
 
 function movePlayer() {
-  if (buildMode || typeMode !== null) return;
+  if (buildMode) return;
 
   if (moveCounter < moveDelay) {
     moveCounter++;
@@ -74,10 +106,10 @@ function movePlayer() {
   moveCounter = 0;
 
   let dx = 0, dy = 0;
-  if (keys["ArrowUp"] || keys["w"]) dy = -1;
-  else if (keys["ArrowDown"] || keys["s"]) dy = 1;
-  else if (keys["ArrowLeft"] || keys["a"]) dx = -1;
-  else if (keys["ArrowRight"] || keys["d"]) dx = 1;
+  if (keys["arrowup"] || keys["w"]) dy = -1;
+  else if (keys["arrowdown"] || keys["s"]) dy = 1;
+  else if (keys["arrowleft"] || keys["a"]) dx = -1;
+  else if (keys["arrowright"] || keys["d"]) dx = 1;
 
   if (dx === 0 && dy === 0) return;
 
@@ -110,9 +142,7 @@ function movePlayer() {
       player.x = newX;
       player.y = newY;
     }
-    // else cannot move/push
   }
-  // else (wall = 1) cannot move
 
   if (player.x === win.x && player.y === win.y) {
     alert("You Win!");
@@ -131,7 +161,6 @@ let isMouseDown = false;
 
 canvas.addEventListener("mousedown", (e) => {
   if (!buildMode) return;
-
   isMouseDown = true;
   handleCanvasAction(e);
 });
@@ -145,69 +174,68 @@ canvas.addEventListener("mouseleave", () => {
 });
 
 canvas.addEventListener("mousemove", (e) => {
-  if (!buildMode || !isMouseDown) return;
+  if (!buildMode) return;
+  if (!isMouseDown) return;
   handleCanvasAction(e);
 });
 
 function handleCanvasAction(e) {
   const { x, y } = getMouseCell(e);
+
   if (x < 0 || x >= cols || y < 0 || y >= rows) return;
 
-  if (typeMode === "wall") {
-    if ((x === player.x && y === player.y) || (x === win.x && y === win.y)) return;
-    if (drawMode === "draw") {
-      maze[x][y] = 1;
-    } else if (drawMode === "delete") {
-      maze[x][y] = 0;
-    }
-  } else if (typeMode === "design") {
-    if ((x === player.x && y === player.y) || (x === win.x && y === win.y)) return;
-    if (drawMode === "draw") {
-      maze[x][y] = 2;
-    } else if (drawMode === "delete") {
-      maze[x][y] = 0;
-    }
-  } else if (typeMode === "player") {
-    if (maze[x][y] !== 1 && maze[x][y] !== 3 && !(x === win.x && y === win.y)) {
-      // Cannot place player on wall or movable block or win spot
+  // Player and Win can only be placed on empty cells (0)
+  if ((typeMode === "player" || typeMode === "win") && maze[x][y] !== 0) {
+    return;
+  }
+
+  if (drawMode === "draw") {
+    if (typeMode === "player") {
       player.x = x;
       player.y = y;
-    }
-  } else if (typeMode === "win") {
-    if (maze[x][y] !== 1 && maze[x][y] !== 3 && !(x === player.x && y === player.y)) {
-      // Cannot place win on wall or movable block or player
+    } else if (typeMode === "win") {
       win.x = x;
       win.y = y;
+    } else {
+      maze[x][y] = getTypeValue(typeMode);
     }
-  } else if (typeMode === "movable") {
-    if ((x === player.x && y === player.y) || (x === win.x && y === win.y)) return;
-    if (drawMode === "draw") {
-      // Only place movable block if not wall or movable block already
-      if (maze[x][y] === 0 || maze[x][y] === 2) {
-        maze[x][y] = 3;
+  } else if (drawMode === "delete") {
+    // If deleting player or win, reset their positions to defaults
+    if (typeMode === "player") {
+      if (player.x === x && player.y === y) {
+        // Reset player pos randomly to avoid stuck
+        player = findRandomEmptyCell(maze);
       }
-    } else if (drawMode === "delete") {
-      if (maze[x][y] === 3) {
-        maze[x][y] = 0;
+    } else if (typeMode === "win") {
+      if (win.x === x && win.y === y) {
+        win = findRandomEmptyCell(maze);
       }
+    } else {
+      maze[x][y] = 0;
     }
   }
 }
 
-// Build mode toggle
+function getTypeValue(type) {
+  switch (type) {
+    case "wall": return 1;
+    case "design": return 2;
+    case "movable": return 3;
+    default: return 0;
+  }
+}
+
 toggleBuildBtn.addEventListener("click", () => {
   buildMode = !buildMode;
   buildControls.style.display = buildMode ? "block" : "none";
-  typesControls.style.display = "none"; // hide types initially
+  typesControls.style.display = "none";
   toggleTypesBtn.textContent = "Toggle Types";
 
-  // Reset draw/delete button
   drawMode = "draw";
   drawBtn.classList.add("active");
   deleteBtn.classList.remove("active");
 });
 
-// Draw / Delete toggle buttons
 drawBtn.addEventListener("click", () => {
   drawMode = "draw";
   drawBtn.classList.add("active");
@@ -220,7 +248,6 @@ deleteBtn.addEventListener("click", () => {
   drawBtn.classList.remove("active");
 });
 
-// Toggle Types UI
 toggleTypesBtn.addEventListener("click", () => {
   if (typesControls.style.display === "block") {
     typesControls.style.display = "none";
@@ -231,35 +258,30 @@ toggleTypesBtn.addEventListener("click", () => {
   }
 });
 
-// Type buttons select
-function selectType(typeBtn, type) {
+function selectType(button, type) {
   typeMode = type;
-  // Remove active from all type buttons
-  [typeWallBtn, typeDesignBtn, typeMovableBtn, typePlayerBtn, typeWinBtn].forEach(btn =>
-    btn.classList.remove("active")
-  );
-  typeBtn.classList.add("active");
+  [typeWallBtn, typeDesignBtn, typeMovableBtn, typePlayerBtn, typeWinBtn].forEach(btn => btn.classList.remove("active"));
+  button.classList.add("active");
 }
 
-// Initialize type buttons with click handlers
 typeWallBtn.addEventListener("click", () => selectType(typeWallBtn, "wall"));
 typeDesignBtn.addEventListener("click", () => selectType(typeDesignBtn, "design"));
 typeMovableBtn.addEventListener("click", () => selectType(typeMovableBtn, "movable"));
 typePlayerBtn.addEventListener("click", () => selectType(typePlayerBtn, "player"));
 typeWinBtn.addEventListener("click", () => selectType(typeWinBtn, "win"));
 
-// Initial active type
 selectType(typeWallBtn, "wall");
 
-// Keyboard control for player movement
-window.addEventListener("keydown", e => {
+window.addEventListener("keydown", (e) => {
   keys[e.key.toLowerCase()] = true;
 });
-window.addEventListener("keyup", e => {
+window.addEventListener("keyup", (e) => {
   keys[e.key.toLowerCase()] = false;
 });
 
-// Main loop
+// Initialize player and win positions randomly on maze start
+initializeGame();
+
 function loop() {
   movePlayer();
   draw();
