@@ -2,369 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Maze Game with Build Mode</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Maze Game</title>
   <style>
     body {
       margin: 0; padding: 0;
-      font-family: Arial, sans-serif;
       display: flex; flex-direction: column; align-items: center;
-      background: #f0f0f0;
+      font-family: Arial, sans-serif;
       user-select: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
     }
     #gameCanvas {
       border: 1px solid black;
       margin-top: 20px;
-      cursor: crosshair;
+      touch-action: none; /* Disable default touch gestures */
       background: white;
+      cursor: crosshair;
     }
     #controlsContainer {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      background-color: rgba(0,0,0,0.7);
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 16px;
+      background-color: rgba(0,0,0,0.5);
       color: white;
-      padding: 12px 16px;
-      border-radius: 10px;
-      width: 200px;
-      box-sizing: border-box;
-      user-select: none;
-      font-size: 14px;
+      padding: 10px;
+      border-radius: 8px;
+      max-width: 200px;
+      z-index: 10;
     }
     #buildControls, #typesControls {
-      margin-top: 12px;
+      margin-top: 10px;
       display: none;
     }
     button {
-      margin: 4px 6px 4px 0;
-      padding: 6px 10px;
-      font-size: 14px;
-      border-radius: 6px;
-      border: none;
+      margin: 5px 3px;
+      padding: 5px 10px;
+      font-size: 16px;
       cursor: pointer;
-      transition: background-color 0.25s ease;
-    }
-    button:focus {
-      outline: none;
-    }
-    #toggleBuildBtn {
-      width: 100%;
-      background-color: #444;
-      color: white;
-      font-weight: bold;
+      user-select: none;
     }
     button.active {
-      background-color: #66bb66 !important;
+      background-color: #4CAF50;
       color: white;
     }
-    #drawBtn.active {
-      background-color: #66bb66;
+
+    /* Mobile on-screen joystick */
+    #mobileControls {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      user-select: none;
     }
-    #deleteBtn.active {
-      background-color: #bb6666;
+    .joy-button {
+      width: 60px;
+      height: 60px;
+      margin: 0 5px;
+      background-color: rgba(0,0,0,0.7);
+      border-radius: 10px;
       color: white;
-    }
-    #typesControls button.active {
-      background-color: #66bb66;
-      color: white;
-    }
-    h3 {
-      margin-top: 0;
-      margin-bottom: 8px;
-      font-weight: normal;
-      font-size: 18px;
-      text-align: center;
+      font-weight: bold;
+      font-size: 24px;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      touch-action: manipulation;
+      user-select: none;
     }
   </style>
 </head>
 <body>
-
   <div id="controlsContainer">
+    <h3>Controls:</h3>
+    <p>Arrow Keys or WASD to Move</p>
     <button id="toggleBuildBtn">Toggle Build Mode</button>
-    
     <div id="buildControls">
       <button id="drawBtn" class="active">Draw Block</button>
       <button id="deleteBtn">Delete Block</button>
+      <br/>
       <button id="toggleTypesBtn">Toggle Types</button>
+      <div id="typesControls">
+        <button id="typeWallBtn" class="active">Wall (Black)</button>
+        <button id="typeDesignBtn">Design (Gray)</button>
+        <button id="typeMovableBtn">Movable (Blue)</button>
+        <button id="typePlayerBtn">Player (Red)</button>
+        <button id="typeWinBtn">Win (Green)</button>
+      </div>
     </div>
-    
-    <div id="typesControls">
-      <h3>Types</h3>
-      <button id="typeWallBtn">Wall (Black)</button>
-      <button id="typeDesignBtn">Design (Gray)</button>
-      <button id="typeMovableBtn">Movable (Blue)</button>
-      <button id="typePlayerBtn">Player (Red)</button>
-      <button id="typeWinBtn">Win (Green)</button>
-    </div>
-    
   </div>
 
   <canvas id="gameCanvas" width="600" height="600"></canvas>
 
-  <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+  <!-- Mobile on-screen joystick -->
+  <div id="mobileControls">
+    <button class="joy-button" id="btnUp">↑</button>
+    <button class="joy-button" id="btnLeft">←</button>
+    <button class="joy-button" id="btnDown">↓</button>
+    <button class="joy-button" id="btnRight">→</button>
+  </div>
 
-    const cols = 25;
-    const rows = 25;
-    const cellSize = canvas.width / cols;
-
-    let maze = generateMaze(cols, rows);
-    let player = { x: 1, y: 1 };
-    let win = { x: cols - 2, y: rows - 2 };
-    let keys = {};
-
-    let moveDelay = 6;
-    let moveCounter = 0;
-
-    let buildMode = false;
-    let drawMode = "draw"; // "draw" or "delete"
-    let typeMode = "wall"; // default type for building
-
-    const toggleBuildBtn = document.getElementById("toggleBuildBtn");
-    const buildControls = document.getElementById("buildControls");
-    const drawBtn = document.getElementById("drawBtn");
-    const deleteBtn = document.getElementById("deleteBtn");
-
-    const toggleTypesBtn = document.getElementById("toggleTypesBtn");
-    const typesControls = document.getElementById("typesControls");
-    const typeWallBtn = document.getElementById("typeWallBtn");
-    const typeDesignBtn = document.getElementById("typeDesignBtn");
-    const typePlayerBtn = document.getElementById("typePlayerBtn");
-    const typeWinBtn = document.getElementById("typeWinBtn");
-    const typeMovableBtn = document.getElementById("typeMovableBtn");
-
-    function generateMaze(cols, rows) {
-      // 0 = empty, 1 = wall, 2 = design block, 3 = movable block
-      const maze = Array.from({ length: cols }, () =>
-        Array.from({ length: rows }, () => (Math.random() < 0.3 ? 1 : 0))
-      );
-      maze[1][1] = 0;
-      maze[cols - 2][rows - 2] = 0;
-      return maze;
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      for (let x = 0; x < cols; x++) {
-        for (let y = 0; y < rows; y++) {
-          switch (maze[x][y]) {
-            case 1: ctx.fillStyle = "black"; break;       // wall
-            case 2: ctx.fillStyle = "gray"; break;        // design block
-            case 3: ctx.fillStyle = "blue"; break;        // movable block
-            default: ctx.fillStyle = "white";              // empty
-          }
-          ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-        }
-      }
-
-      // Win pad
-      ctx.fillStyle = "green";
-      ctx.fillRect(win.x * cellSize, win.y * cellSize, cellSize, cellSize);
-
-      // Player
-      ctx.fillStyle = "red";
-      ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
-    }
-
-    function movePlayer() {
-      if (buildMode) return;
-
-      if (moveCounter < moveDelay) {
-        moveCounter++;
-        return;
-      }
-      moveCounter = 0;
-
-      let dx = 0, dy = 0;
-      if (keys["arrowup"] || keys["w"]) dy = -1;
-      else if (keys["arrowdown"] || keys["s"]) dy = 1;
-      else if (keys["arrowleft"] || keys["a"]) dx = -1;
-      else if (keys["arrowright"] || keys["d"]) dx = 1;
-
-      if (dx === 0 && dy === 0) return;
-
-      let newX = player.x + dx;
-      let newY = player.y + dy;
-
-      if (newX < 0 || newX >= cols || newY < 0 || newY >= rows) return;
-
-      let nextCell = maze[newX][newY];
-
-      if (nextCell === 0 || nextCell === 2) {
-        // empty or design block, move freely
-        player.x = newX;
-        player.y = newY;
-      } else if (nextCell === 3) {
-        // Movable block, try to push
-        let pushX = newX + dx;
-        let pushY = newY + dy;
-
-        if (pushX < 0 || pushX >= cols || pushY < 0 || pushY >= rows) return;
-
-        let pushCell = maze[pushX][pushY];
-
-        // Can push if pushCell empty(0) or design block(2)
-        if (pushCell === 0 || pushCell === 2) {
-          // Move block
-          maze[pushX][pushY] = 3;
-          maze[newX][newY] = 0;
-          // Move player
-          player.x = newX;
-          player.y = newY;
-        }
-        // else cannot move/push
-      }
-      // else (wall = 1) cannot move
-
-      if (player.x === win.x && player.y === win.y) {
-        alert("You Win!");
-        location.reload();
-      }
-    }
-
-    function getMouseCell(evt) {
-      const rect = canvas.getBoundingClientRect();
-      const x = Math.floor((evt.clientX - rect.left) / cellSize);
-      const y = Math.floor((evt.clientY - rect.top) / cellSize);
-      return { x, y };
-    }
-
-    let isMouseDown = false;
-
-    canvas.addEventListener("mousedown", (e) => {
-      if (!buildMode) return;
-
-      isMouseDown = true;
-      handleCanvasAction(e);
-    });
-
-    canvas.addEventListener("mouseup", () => {
-      isMouseDown = false;
-    });
-
-    canvas.addEventListener("mouseleave", () => {
-      isMouseDown = false;
-    });
-
-    canvas.addEventListener("mousemove", (e) => {
-      if (!buildMode) return;
-      if (!isMouseDown) return;
-      handleCanvasAction(e);
-    });
-
-    function handleCanvasAction(e) {
-      const { x, y } = getMouseCell(e);
-
-      if (x < 0 || x >= cols || y < 0 || y >= rows) return;
-
-      // Prevent placing player or win on walls or movable blocks
-      if ((typeMode === "player" || typeMode === "win") && maze[x][y] !== 0) {
-        return;
-      }
-
-      if (drawMode === "draw") {
-        if (typeMode === "player") {
-          player.x = x;
-          player.y = y;
-        } else if (typeMode === "win") {
-          win.x = x;
-          win.y = y;
-        } else {
-          maze[x][y] = getTypeValue(typeMode);
-        }
-      } else if (drawMode === "delete") {
-        // If deleting player or win, reset to empty
-        if (typeMode === "player") {
-          if (player.x === x && player.y === y) {
-            player.x = 1;
-            player.y = 1;
-          }
-        } else if (typeMode === "win") {
-          if (win.x === x && win.y === y) {
-            win.x = cols - 2;
-            win.y = rows - 2;
-          }
-        } else {
-          maze[x][y] = 0;
-        }
-      }
-    }
-
-    function getTypeValue(type) {
-      switch (type) {
-        case "wall": return 1;
-        case "design": return 2;
-        case "movable": return 3;
-        default: return 0;
-      }
-    }
-
-    toggleBuildBtn.addEventListener("click", () => {
-      buildMode = !buildMode;
-      buildControls.style.display = buildMode ? "block" : "none";
-      typesControls.style.display = "none";
-      toggleTypesBtn.textContent = "Toggle Types";
-
-      drawMode = "draw";
-      drawBtn.classList.add("active");
-      deleteBtn.classList.remove("active");
-    });
-
-    drawBtn.addEventListener("click", () => {
-      drawMode = "draw";
-      drawBtn.classList.add("active");
-      deleteBtn.classList.remove("active");
-    });
-
-    deleteBtn.addEventListener("click", () => {
-      drawMode = "delete";
-      deleteBtn.classList.add("active");
-      drawBtn.classList.remove("active");
-    });
-
-    toggleTypesBtn.addEventListener("click", () => {
-      if (typesControls.style.display === "block") {
-        typesControls.style.display = "none";
-        toggleTypesBtn.textContent = "Toggle Types";
-      } else {
-        typesControls.style.display = "block";
-        toggleTypesBtn.textContent = "Hide Types";
-      }
-    });
-
-    function selectType(button, type) {
-      typeMode = type;
-      // Remove active from all type buttons
-      [typeWallBtn, typeDesignBtn, typeMovableBtn, typePlayerBtn, typeWinBtn].forEach(btn => btn.classList.remove("active"));
-      button.classList.add("active");
-    }
-
-    typeWallBtn.addEventListener("click", () => selectType(typeWallBtn, "wall"));
-    typeDesignBtn.addEventListener("click", () => selectType(typeDesignBtn, "design"));
-    typeMovableBtn.addEventListener("click", () => selectType(typeMovableBtn, "movable"));
-    typePlayerBtn.addEventListener("click", () => selectType(typePlayerBtn, "player"));
-    typeWinBtn.addEventListener("click", () => selectType(typeWinBtn, "win"));
-
-    selectType(typeWallBtn, "wall");
-
-    window.addEventListener("keydown", (e) => {
-      keys[e.key.toLowerCase()] = true;
-    });
-    window.addEventListener("keyup", (e) => {
-      keys[e.key.toLowerCase()] = false;
-    });
-
-    function loop() {
-      movePlayer();
-      draw();
-      requestAnimationFrame(loop);
-    }
-
-    loop();
-
-  </script>
-
+  <script src="game.js"></script>
 </body>
 </html>
