@@ -19,6 +19,12 @@
       margin-top: 10px;
       touch-action: none;
     }
+    @media (max-width: 700px) {
+      #gameCanvas {
+        width: 90vw;
+        height: 90vw;
+      }
+    }
     #controls {
       margin-top: 10px;
       display: flex;
@@ -40,10 +46,21 @@
     }
     #buildControls {
       display: none;
-      flex-wrap: wrap;
+      flex-direction: column;
       gap: 6px;
       margin-top: 10px;
       justify-content: center;
+      align-items: center;
+    }
+    #typeButtons {
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      margin-top: 6px;
+    }
+    #deleteBtn.red {
+      background: #ff4444;
     }
     #saveLoadSection {
       margin-top: 15px;
@@ -97,16 +114,20 @@
 
 <div id="controls">
   <button id="toggleBuildBtn">Toggle Build Mode</button>
-  <button id="typesBtn">Types</button>
 </div>
 
 <div id="buildControls">
-  <button data-type="wall" class="typeBtn active">Wall (Black)</button>
-  <button data-type="design" class="typeBtn">Stop Movable (Gray)</button>
-  <button data-type="movable" class="typeBtn">Movable (Blue)</button>
-  <button data-type="player" class="typeBtn">Player (Red)</button>
-  <button data-type="win" class="typeBtn">Win (Green)</button>
-  <button id="deleteBtn">Delete</button>
+  <div style="display: flex; gap: 6px;">
+    <button id="typesBtn">Types</button>
+    <button id="deleteBtn" style="display: none;">Delete</button>
+  </div>
+  <div id="typeButtons">
+    <button data-type="wall" class="typeBtn active">Wall (Black)</button>
+    <button data-type="design" class="typeBtn">Stop Movable (Gray)</button>
+    <button data-type="movable" class="typeBtn">Movable (Blue)</button>
+    <button data-type="player" class="typeBtn">Player (Red)</button>
+    <button data-type="win" class="typeBtn">Win (Green)</button>
+  </div>
 </div>
 
 <canvas id="gameCanvas" width="600" height="600" tabindex="0"></canvas>
@@ -122,49 +143,30 @@
 (() => {
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
-
-  const cols = 25;
-  const rows = 25;
+  const cols = 25, rows = 25;
   const cellSize = canvas.width / cols;
 
-  const BLOCK_TYPES = {
-    empty: 0,
-    wall: 1,
-    design: 2,
-    movable: 3,
-  };
-
+  const BLOCK_TYPES = { empty: 0, wall: 1, design: 2, movable: 3 };
   const BLOCK_COLORS = {
     [BLOCK_TYPES.empty]: "white",
     [BLOCK_TYPES.wall]: "black",
     [BLOCK_TYPES.design]: "gray",
-    [BLOCK_TYPES.movable]: "blue",
+    [BLOCK_TYPES.movable]: "blue"
   };
 
   let maze = [];
   let player = { x: 1, y: 1 };
   let win = { x: cols - 2, y: rows - 2 };
-
   let buildMode = false;
   let currentType = "wall";
   let isDeleting = false;
-
-  let keys = {};
-  let moveDelay = 6;
-  let moveCounter = 0;
+  let keys = {}, moveDelay = 6, moveCounter = 0;
 
   const SAVE_PREFIX = "maze_save_";
   const WIN_STATS_KEY = "maze_winStats";
 
   function generateEmptyMaze() {
-    const m = [];
-    for (let x = 0; x < cols; x++) {
-      m[x] = [];
-      for (let y = 0; y < rows; y++) {
-        m[x][y] = BLOCK_TYPES.empty;
-      }
-    }
-    return m;
+    return Array.from({ length: cols }, () => Array(rows).fill(BLOCK_TYPES.empty));
   }
 
   function isBorder(x, y) {
@@ -172,12 +174,10 @@
   }
 
   function randomEmptyCell(m) {
-    let tries = 0;
-    while (tries < 10000) {
+    for (let tries = 0; tries < 10000; tries++) {
       const x = Math.floor(Math.random() * cols);
       const y = Math.floor(Math.random() * rows);
       if (m[x][y] === BLOCK_TYPES.empty) return { x, y };
-      tries++;
     }
     return { x: 1, y: 1 };
   }
@@ -186,13 +186,9 @@
     const m = generateEmptyMaze();
     for (let x = 0; x < cols; x++) {
       for (let y = 0; y < rows; y++) {
-        if (Math.random() < 0.3 && !isBorder(x, y)) {
-          m[x][y] = BLOCK_TYPES.wall;
-        } else if (Math.random() < 0.05 && !isBorder(x, y)) {
-          m[x][y] = BLOCK_TYPES.design;
-        } else if (Math.random() < 0.05 && !isBorder(x, y)) {
-          m[x][y] = BLOCK_TYPES.movable;
-        }
+        if (Math.random() < 0.3 && !isBorder(x, y)) m[x][y] = BLOCK_TYPES.wall;
+        else if (Math.random() < 0.05 && !isBorder(x, y)) m[x][y] = BLOCK_TYPES.design;
+        else if (Math.random() < 0.05 && !isBorder(x, y)) m[x][y] = BLOCK_TYPES.movable;
       }
     }
     player = randomEmptyCell(m);
@@ -204,8 +200,7 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (let x = 0; x < cols; x++) {
       for (let y = 0; y < rows; y++) {
-        const type = maze[x][y];
-        ctx.fillStyle = BLOCK_COLORS[type] || "white";
+        ctx.fillStyle = BLOCK_COLORS[maze[x][y]] || "white";
         ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
       }
     }
@@ -213,32 +208,17 @@
     ctx.fillRect(win.x * cellSize, win.y * cellSize, cellSize, cellSize);
     ctx.fillStyle = "red";
     ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
-
-    ctx.strokeStyle = "#999";
-    for (let x = 0; x <= cols; x++) {
-      ctx.beginPath();
-      ctx.moveTo(x * cellSize, 0);
-      ctx.lineTo(x * cellSize, canvas.height);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= rows; y++) {
-      ctx.beginPath();
-      ctx.moveTo(0, y * cellSize);
-      ctx.lineTo(canvas.width, y * cellSize);
-      ctx.stroke();
-    }
   }
 
   function isBlocked(x, y) {
-    if (x < 0 || y < 0 || x >= cols || y >= rows) return true;
-    return maze[x][y] === BLOCK_TYPES.wall || maze[x][y] === BLOCK_TYPES.movable;
+    return x < 0 || y < 0 || x >= cols || y >= rows ||
+      maze[x][y] === BLOCK_TYPES.wall || maze[x][y] === BLOCK_TYPES.movable;
   }
 
   function movePlayer(dx, dy) {
     if (buildMode) return;
     const newX = player.x + dx;
     const newY = player.y + dy;
-
     if (isBlocked(newX, newY)) {
       if (maze[newX][newY] === BLOCK_TYPES.movable) {
         const pushX = newX + dx;
@@ -251,9 +231,7 @@
       }
       return;
     }
-
     player = { x: newX, y: newY };
-
     if (player.x === win.x && player.y === win.y) {
       alert("You Win!");
       incrementWinStat();
@@ -306,13 +284,37 @@
 
   function toggleBuildMode() {
     buildMode = !buildMode;
-    document.getElementById("buildControls").style.display = buildMode ? "flex" : "none";
+    const buildControls = document.getElementById("buildControls");
+    const typeButtons = document.getElementById("typeButtons");
+    const deleteBtn = document.getElementById("deleteBtn");
+    buildControls.style.display = buildMode ? "flex" : "none";
+    typeButtons.style.display = "none";
+    deleteBtn.style.display = "none";
     document.getElementById("toggleBuildBtn").classList.toggle("active", buildMode);
+    isDeleting = false;
+    deleteBtn.classList.remove("red");
   }
+
+  document.getElementById("typesBtn").addEventListener("click", () => {
+    if (!buildMode) return;
+    const typeButtons = document.getElementById("typeButtons");
+    const deleteBtn = document.getElementById("deleteBtn");
+    const showing = typeButtons.style.display === "flex";
+    typeButtons.style.display = showing ? "none" : "flex";
+    deleteBtn.style.display = showing ? "none" : "inline-block";
+  });
+
+  document.getElementById("deleteBtn").addEventListener("click", () => {
+    isDeleting = !isDeleting;
+    const btn = document.getElementById("deleteBtn");
+    btn.classList.toggle("red", isDeleting);
+    [...document.querySelectorAll(".typeBtn")].forEach(btn => btn.classList.remove("active"));
+  });
 
   function setBuildType(type) {
     currentType = type;
     isDeleting = false;
+    document.getElementById("deleteBtn").classList.remove("red");
     [...document.querySelectorAll(".typeBtn")].forEach(btn => btn.classList.remove("active"));
     document.querySelector(`.typeBtn[data-type=${type}]`).classList.add("active");
   }
@@ -322,9 +324,8 @@
     const rect = canvas.getBoundingClientRect();
     const x = Math.floor((e.clientX - rect.left) / cellSize);
     const y = Math.floor((e.clientY - rect.top) / cellSize);
-
     if (isDeleting) {
-      if (maze[x][y] !== undefined) maze[x][y] = BLOCK_TYPES.empty;
+      maze[x][y] = BLOCK_TYPES.empty;
     } else if (currentType === "player") {
       player = { x, y };
     } else if (currentType === "win") {
@@ -335,10 +336,6 @@
   });
 
   document.getElementById("toggleBuildBtn").addEventListener("click", toggleBuildMode);
-  document.getElementById("deleteBtn").addEventListener("click", () => {
-    isDeleting = true;
-    [...document.querySelectorAll(".typeBtn")].forEach(btn => btn.classList.remove("active"));
-  });
   [...document.querySelectorAll(".typeBtn")].forEach(btn =>
     btn.addEventListener("click", () => setBuildType(btn.dataset.type))
   );
@@ -349,14 +346,12 @@
     btn.addEventListener("click", () => loadMaze(btn.dataset.slot))
   );
   document.getElementById("clearMazeBtn").addEventListener("click", clearMaze);
-
   window.addEventListener("keydown", handleKeyDown);
   window.addEventListener("keyup", handleKeyUp);
 
   function resetMaze() {
     maze = generateRandomMaze();
   }
-
   function incrementWinStat() {
     let stats = JSON.parse(localStorage.getItem(WIN_STATS_KEY) || "{}");
     stats["wins"] = (stats["wins"] || 0) + 1;
