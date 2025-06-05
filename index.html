@@ -83,6 +83,11 @@
 
 <h1>LtpMer's Maze Game</h1>
 
+  <!-- Firebase App (core) SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<!-- Firebase Realtime Database -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
 <div id="loginSection">
   <h3>Login / Register</h3>
   <input type="text" id="usernameInput" placeholder="Username" />
@@ -255,333 +260,350 @@
     }
 
     // Draw win
-    ctx.fillStyle = "green";
-    ctx.fillRect(win.x*cellSize, win.y*cellSize, cellSize, cellSize);
+    if (win.x >= 0 && win.y >= 0) {
+      ctx.fillStyle = "green";
+      ctx.fillRect(win.x*cellSize, win.y*cellSize, cellSize, cellSize);
+    }
 
     // Draw player
-    ctx.fillStyle = "red";
-    ctx.fillRect(player.x*cellSize, player.y*cellSize, cellSize, cellSize);
+    if (player.x >= 0 && player.y >= 0) {
+      ctx.fillStyle = "red";
+      ctx.fillRect(player.x*cellSize, player.y*cellSize, cellSize, cellSize);
+    }
 
-    // Draw grid lines
-    ctx.strokeStyle = "#999";
+    // Grid lines
+    ctx.strokeStyle = "#aaa";
     ctx.lineWidth = 1;
-    for (let i=0; i<=cols; i++) {
+    for (let x=0; x<=cols; x++) {
       ctx.beginPath();
-      ctx.moveTo(i*cellSize,0);
-      ctx.lineTo(i*cellSize, canvas.height);
+      ctx.moveTo(x*cellSize,0);
+      ctx.lineTo(x*cellSize,canvas.height);
       ctx.stroke();
     }
-    for (let i=0; i<=rows; i++) {
+    for (let y=0; y<=rows; y++) {
       ctx.beginPath();
-      ctx.moveTo(0,i*cellSize);
-      ctx.lineTo(canvas.width,i*cellSize);
+      ctx.moveTo(0,y*cellSize);
+      ctx.lineTo(canvas.width,y*cellSize);
       ctx.stroke();
     }
   }
 
   // Move player if possible
-  function movePlayer(dx, dy) {
+  function tryMovePlayer(dx, dy) {
+    if (buildMode) return; // disable movement in build mode
+
     const nx = player.x + dx;
     const ny = player.y + dy;
-    if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) return;
-    // Check wall or design block (impassable)
-    if (maze[nx][ny] === BLOCK_TYPES.wall || maze[nx][ny] === BLOCK_TYPES.design) return;
-    // Movable block: try to push it if possible
+
+    if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) return; // out of bounds
+
+    // If wall, no move
+    if (maze[nx][ny] === BLOCK_TYPES.wall) return;
+
+    // If movable block, check if can push
     if (maze[nx][ny] === BLOCK_TYPES.movable) {
-      const mx = nx + dx;
-      const my = ny + dy;
-      if (mx < 0 || my < 0 || mx >= cols || my >= rows) return;
-      if (maze[mx][my] === BLOCK_TYPES.empty) {
-        maze[mx][my] = BLOCK_TYPES.movable;
-        maze[nx][ny] = BLOCK_TYPES.empty;
-      } else {
-        return; // blocked
-      }
+      const nx2 = nx + dx;
+      const ny2 = ny + dy;
+      if (nx2 < 0 || ny2 < 0 || nx2 >= cols || ny2 >= rows) return; // no move out of bounds
+      if (maze[nx2][ny2] !== BLOCK_TYPES.empty) return; // can't push
+
+      // push block
+      maze[nx2][ny2] = BLOCK_TYPES.movable;
+      maze[nx][ny] = BLOCK_TYPES.empty;
     }
+
+    // move player
     player.x = nx;
     player.y = ny;
 
     // Check win condition
     if (player.x === win.x && player.y === win.y) {
-      alert("You win! Congratulations!");
-      increaseWinStat(currentUser);
-      updateLeaderboardUI();
+      alert("You Win! 🎉");
+      recordWin();
     }
   }
 
-  // Increase win stats for user
-  function increaseWinStat(username) {
-    if (!username) return;
+  // Record win stats for current user
+  function recordWin() {
+    if (!currentUser) return;
+
     const winStats = JSON.parse(localStorage.getItem(WIN_STATS_KEY) || "{}");
-    winStats[username] = (winStats[username]||0) + 1;
+    if (!winStats[currentUser]) winStats[currentUser] = 0;
+    winStats[currentUser]++;
     localStorage.setItem(WIN_STATS_KEY, JSON.stringify(winStats));
+
+    updateLeaderboard();
   }
 
-  // Draw loop
-  function gameLoop() {
-    if (!buildMode) {
-      if (moveCounter <= 0) {
-        if (keys["ArrowUp"]) movePlayer(0,-1);
-        if (keys["ArrowDown"]) movePlayer(0,1);
-        if (keys["ArrowLeft"]) movePlayer(-1,0);
-        if (keys["ArrowRight"]) movePlayer(1,0);
-        moveCounter = moveDelay;
-      } else {
-        moveCounter--;
-      }
-    }
-    draw();
-    requestAnimationFrame(gameLoop);
-  }
+  // --- BUILD MODE ---
 
-  // Build mode place block at clicked cell
-  function placeBlock(x, y) {
-    if (!buildMode) return;
-    if (x<0 || y<0 || x>=cols || y>=rows) return;
+  // Place block on maze
+  function placeBlock(x,y,type) {
+    if (x < 0 || y < 0 || x >= cols || y >= rows) return;
 
-    if (currentType === "player") {
-      player.x = x;
-      player.y = y;
-      return;
-    }
-    if (currentType === "win") {
-      win.x = x;
-      win.y = y;
-      return;
-    }
+    // Player and win can't be overwritten by blocks in build mode
+    if (player.x === x && player.y === y) return;
+    if (win.x === x && win.y === y) return;
 
-    if (isDeleting) {
-      maze[x][y] = BLOCK_TYPES.empty;
-      return;
-    }
-
-    switch (currentType) {
+    switch(type) {
       case "wall": maze[x][y] = BLOCK_TYPES.wall; break;
       case "design": maze[x][y] = BLOCK_TYPES.design; break;
       case "movable": maze[x][y] = BLOCK_TYPES.movable; break;
+      case "player":
+        // Move player to this position if empty
+        if (maze[x][y] === BLOCK_TYPES.empty) {
+          player.x = x;
+          player.y = y;
+        }
+        break;
+      case "win":
+        if (maze[x][y] === BLOCK_TYPES.empty) {
+          win.x = x;
+          win.y = y;
+        }
+        break;
+      case "delete":
+        maze[x][y] = BLOCK_TYPES.empty;
+        break;
     }
   }
+
+  // Toggle build mode UI
+  function toggleBuildMode() {
+    buildMode = !buildMode;
+    document.getElementById("buildControls").style.display = buildMode ? "flex" : "none";
+    document.getElementById("toggleBuildBtn").textContent = buildMode ? "Exit Build Mode" : "Toggle Build Mode";
+    draw();
+  }
+
+  // --- SAVE/LOAD ---
 
   // Save maze to localStorage for current user and slot
   function saveMaze(slot) {
     if (!currentUser) {
-      setSaveStatus("Please login to save.");
+      alert("Please login to save your maze.");
       return;
     }
     const key = SAVE_PREFIX + currentUser + "_" + slot;
-    const data = {
+    const saveObj = {
       maze,
       player,
-      win,
+      win
     };
-    localStorage.setItem(key, JSON.stringify(data));
-    setSaveStatus(`Saved to slot ${slot}.`);
+    localStorage.setItem(key, JSON.stringify(saveObj));
+    document.getElementById("saveStatus").textContent = `Maze saved in slot ${slot}.`;
   }
 
   // Load maze from localStorage for current user and slot
   function loadMaze(slot) {
     if (!currentUser) {
-      setSaveStatus("Please login to load.");
+      alert("Please login to load your maze.");
       return;
     }
     const key = SAVE_PREFIX + currentUser + "_" + slot;
     const dataStr = localStorage.getItem(key);
     if (!dataStr) {
-      setSaveStatus(`No saved data in slot ${slot}.`);
+      alert(`No saved maze in slot ${slot}.`);
       return;
     }
-    try {
-      const data = JSON.parse(dataStr);
-      maze = data.maze || generateEmptyMaze();
-      player = data.player || {x:1,y:1};
-      win = data.win || {x:cols-2,y:rows-2};
-      setSaveStatus(`Loaded slot ${slot}.`);
-    } catch {
-      setSaveStatus("Error loading data.");
-    }
+    const data = JSON.parse(dataStr);
+    maze = data.maze;
+    player = data.player;
+    win = data.win;
+    draw();
+    document.getElementById("saveStatus").textContent = `Maze loaded from slot ${slot}.`;
   }
 
-  // Clear maze to empty
+  // Clear entire maze to empty
   function clearMaze() {
+    if (!buildMode) {
+      alert("Clear maze is only available in build mode.");
+      return;
+    }
     maze = generateEmptyMaze();
-    player = {x:1,y:1};
-    win = {x:cols-2,y:rows-2};
+    player = { x: 1, y: 1 };
+    win = { x: cols - 2, y: rows - 2 };
+    draw();
   }
 
-  // Login/register user
-  function loginUser(username, password) {
+  // --- LOGIN SYSTEM ---
+
+  // Load users from localStorage
+  function loadUsers() {
+    return JSON.parse(localStorage.getItem(USERS_KEY) || "{}");
+  }
+
+  // Save users to localStorage
+  function saveUsers(users) {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  }
+
+  // Register or login user
+  function login(username, password) {
     if (!username || !password) {
-      setLoginStatus("Please enter username and password.");
-      return;
+      showLoginStatus("Username and password required.");
+      return false;
     }
-    let users = JSON.parse(localStorage.getItem(USERS_KEY) || "{}");
+
+    const users = loadUsers();
+
     if (users[username]) {
-      // Check password
-      if (users[username] !== password) {
-        setLoginStatus("Incorrect password.");
-        return;
+      // User exists, check password
+      if (users[username] === password) {
+        currentUser = username;
+        showLoginStatus(`Welcome back, ${username}!`);
+        updateLeaderboard();
+        return true;
+      } else {
+        showLoginStatus("Wrong password.");
+        return false;
       }
-      currentUser = username;
-      setLoginStatus(`Welcome back, ${username}!`);
     } else {
-      // Register new
+      // Register new user
       users[username] = password;
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      saveUsers(users);
       currentUser = username;
-      setLoginStatus(`Registered and logged in as ${username}.`);
+      showLoginStatus(`Registered and logged in as ${username}.`);
+      updateLeaderboard();
+      return true;
     }
-    updateLeaderboardUI();
-    updateUsersListUI();
   }
 
-  // Update leaderboard UI showing all users sorted by win stats desc
-  function updateLeaderboardUI() {
-    const leaderboardDiv = document.getElementById("usersList");
-    if (!currentUser) {
-      leaderboardDiv.innerHTML = "Please login to see leaderboard.";
-      return;
-    }
-    const users = JSON.parse(localStorage.getItem(USERS_KEY) || "{}");
+  function showLoginStatus(msg) {
+    document.getElementById("loginStatus").textContent = msg;
+  }
+
+  // Update leaderboard display
+  function updateLeaderboard() {
+    const usersList = document.getElementById("usersList");
+    const users = loadUsers();
     const winStats = JSON.parse(localStorage.getItem(WIN_STATS_KEY) || "{}");
 
-    // Build array of {username, wins}
-    const arr = Object.keys(users).map(u => ({
-      username: u,
-      wins: winStats[u] || 0,
-      password: users[u]
-    }));
-    // Sort desc by wins
-    arr.sort((a,b) => b.wins - a.wins);
+    const entries = Object.keys(users).map(u => {
+      return {
+        username: u,
+        wins: winStats[u] || 0,
+        password: users[u],
+        isAdmin: (u.toLowerCase() === adminUsername.toLowerCase())
+      };
+    });
 
-    // Build HTML
-    let html = "";
-    for (const u of arr) {
-      let userClass = "";
-      if (u.username === adminUsername) userClass = "admin";
+    // Sort descending by wins
+    entries.sort((a,b) => b.wins - a.wins);
 
-      // Show password in red if currentUser is admin
-      let passDisplay = "";
-      if (currentUser === adminUsername) {
-        passDisplay = `<span class="admin"> (pass: ${u.password})</span>`;
-      }
-
-      html += `<div class="${userClass}">${u.username}: ${u.wins} wins${passDisplay}</div>`;
-    }
-    leaderboardDiv.innerHTML = html;
+    usersList.innerHTML = "";
+    entries.forEach(e => {
+      const div = document.createElement("div");
+      div.innerHTML = `<b${e.isAdmin ? ' class="admin"' : ''}>${e.username}</b>: Wins: ${e.wins} — Password: ${e.password}`;
+      usersList.appendChild(div);
+    });
   }
 
-  // Update users list (same as leaderboard) on login/register
-  function updateUsersListUI() {
-    updateLeaderboardUI();
-  }
+  // --- EVENT HANDLERS ---
 
-  // UI helper to show login status
-  function setLoginStatus(msg) {
-    const el = document.getElementById("loginStatus");
-    el.textContent = msg;
-  }
-
-  // UI helper to show save/load status
-  function setSaveStatus(msg) {
-    const el = document.getElementById("saveStatus");
-    el.textContent = msg;
-  }
-
-  // Setup event listeners for keyboard
-  window.addEventListener("keydown", e => {
-    if (buildMode) return; // no move in build mode
+  // Keyboard controls for player movement
+  window.addEventListener("keydown", (e) => {
     keys[e.key] = true;
+
+    if (!buildMode) {
+      if (e.key === "ArrowUp" || e.key === "w") tryMovePlayer(0, -1);
+      else if (e.key === "ArrowDown" || e.key === "s") tryMovePlayer(0, 1);
+      else if (e.key === "ArrowLeft" || e.key === "a") tryMovePlayer(-1, 0);
+      else if (e.key === "ArrowRight" || e.key === "d") tryMovePlayer(1, 0);
+    }
   });
-  window.addEventListener("keyup", e => {
+
+  window.addEventListener("keyup", (e) => {
     keys[e.key] = false;
   });
 
-  // Canvas click for build mode
-  canvas.addEventListener("click", e => {
+  // Canvas click for build mode placing blocks
+  canvas.addEventListener("click", (e) => {
     if (!buildMode) return;
+
     const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left)/cellSize);
-    const y = Math.floor((e.clientY - rect.top)/cellSize);
-    placeBlock(x,y);
+    const x = Math.floor((e.clientX - rect.left) / cellSize);
+    const y = Math.floor((e.clientY - rect.top) / cellSize);
+
+    if (isDeleting) {
+      placeBlock(x, y, "delete");
+    } else {
+      placeBlock(x, y, currentType);
+    }
+    draw();
   });
 
-  // Buttons
-  const toggleBuildBtn = document.getElementById("toggleBuildBtn");
-  const buildControls = document.getElementById("buildControls");
-  toggleBuildBtn.addEventListener("click", () => {
-    buildMode = !buildMode;
-    buildControls.style.display = buildMode ? "flex" : "none";
-    setSaveStatus("");
-    setLoginStatus("");
+  // Touch controls for mobile buttons
+  const mobileControls = document.getElementById("mobileControls");
+  mobileControls.style.display = "flex";
+
+  mobileControls.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      const dir = btn.getAttribute("data-dir");
+      if (dir === "up") tryMovePlayer(0, -1);
+      else if (dir === "down") tryMovePlayer(0, 1);
+      else if (dir === "left") tryMovePlayer(-1, 0);
+      else if (dir === "right") tryMovePlayer(1, 0);
+    });
   });
 
-  // Build type buttons
-  const typeButtons = document.querySelectorAll(".typeBtn");
-  typeButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      typeButtons.forEach(b => b.classList.remove("active"));
+  // Buttons and controls setup
+  document.getElementById("toggleBuildBtn").onclick = toggleBuildMode;
+
+  document.getElementById("typesBtn").onclick = () => {
+    const buildControls = document.getElementById("buildControls");
+    buildControls.style.display = buildControls.style.display === "flex" ? "none" : "flex";
+  };
+
+  document.querySelectorAll(".typeBtn").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".typeBtn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
-      currentType = btn.dataset.type;
       isDeleting = false;
-    });
+      currentType = btn.getAttribute("data-type");
+    };
   });
 
-  // Delete button for build mode
-  const deleteBtn = document.getElementById("deleteBtn");
-  deleteBtn.addEventListener("click", () => {
-    typeButtons.forEach(b => b.classList.remove("active"));
+  document.getElementById("deleteBtn").onclick = () => {
     isDeleting = true;
-  });
+    document.querySelectorAll(".typeBtn").forEach(b => b.classList.remove("active"));
+  };
 
-  // Save/load buttons
   document.querySelectorAll(".saveBtn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      saveMaze(btn.dataset.slot);
-    });
+    btn.onclick = () => {
+      const slot = btn.getAttribute("data-slot");
+      saveMaze(slot);
+    };
   });
+
   document.querySelectorAll(".loadBtn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      loadMaze(btn.dataset.slot);
-    });
+    btn.onclick = () => {
+      const slot = btn.getAttribute("data-slot");
+      loadMaze(slot);
+    };
   });
 
-  // Clear maze button
-  document.getElementById("clearMazeBtn").addEventListener("click", () => {
-    clearMaze();
-  });
+  document.getElementById("clearMazeBtn").onclick = () => {
+    if (confirm("Clear the entire maze?")) clearMaze();
+  };
 
-  // Login button
-  document.getElementById("loginBtn").addEventListener("click", () => {
+  document.getElementById("loginBtn").onclick = () => {
     const username = document.getElementById("usernameInput").value.trim();
     const password = document.getElementById("passwordInput").value;
-    loginUser(username, password);
-  });
+    if (login(username, password)) {
+      draw();
+    }
+  };
 
-  // Mobile controls for movement (optional)
-  const mobileControls = document.getElementById("mobileControls");
-  if ('ontouchstart' in window) {
-    mobileControls.style.display = "flex";
-    mobileControls.querySelectorAll("button").forEach(btn => {
-      btn.addEventListener("touchstart", () => {
-        switch(btn.dataset.dir) {
-          case "up": movePlayer(0,-1); break;
-          case "down": movePlayer(0,1); break;
-          case "left": movePlayer(-1,0); break;
-          case "right": movePlayer(1,0); break;
-        }
-      });
-    });
-  }
+  // --- INITIALIZATION ---
 
-  // Initialize maze on load
-  function init() {
-    maze = generateRandomMaze();
-    draw();
-    updateLeaderboardUI();
-  }
+  maze = generateRandomMaze();
+  draw();
+  updateLeaderboard();
 
-  init();
-  gameLoop();
+  canvas.focus();
+
 })();
 </script>
 
