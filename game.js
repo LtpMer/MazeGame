@@ -36,7 +36,7 @@ const adminUsername = "admin";
 
 let currentUser = null;
 
-// LocalStorage user & stats management
+// LocalStorage user management (no more local win stats)
 if (!localStorage.getItem("users")) {
   const defaultUsers = {
     admin: "adminpass",
@@ -44,41 +44,33 @@ if (!localStorage.getItem("users")) {
   };
   localStorage.setItem("users", JSON.stringify(defaultUsers));
 }
-if (!localStorage.getItem("winStats")) {
-  localStorage.setItem("winStats", JSON.stringify({}));
-}
 
 function loadUsers() {
   return JSON.parse(localStorage.getItem("users") || "{}");
 }
 
-function getWinStats() {
-  return JSON.parse(localStorage.getItem("winStats") || "{}");
-}
-
-function saveWinStats(stats) {
-  localStorage.setItem("winStats", JSON.stringify(stats));
-}
+// GLOBAL LEADERBOARD FUNCTIONS USING FIREBASE
 
 function updateLeaderboard() {
-  const users = loadUsers();
-  const stats = getWinStats();
-  usersList.innerHTML = "";
-
   if (!currentUser) {
     usersList.textContent = "Please login to see leaderboard.";
     return;
   }
 
-  Object.entries(users).forEach(([user]) => {
-    const div = document.createElement("div");
-    div.textContent = `${user} — Wins: ${stats[user] || 0}`;
-    if (user === adminUsername) div.classList.add("admin");
-    usersList.appendChild(div);
+  // Load leaderboard data from Firebase
+  db.ref('leaderboard').once('value').then(snapshot => {
+    const data = snapshot.val() || {};
+    usersList.innerHTML = "";
+
+    Object.entries(data).forEach(([user, wins]) => {
+      const div = document.createElement("div");
+      div.textContent = `${user} — Wins: ${wins}`;
+      if (user === adminUsername) div.classList.add("admin");
+      usersList.appendChild(div);
+    });
   });
 }
 
-// Maze generation & drawing functions (unchanged)
 function generateMaze() {
   maze = [];
   for (let x = 0; x < cols; x++) {
@@ -145,10 +137,6 @@ function checkWin() {
     alert("You Win!");
 
     if (currentUser) {
-      let stats = getWinStats();
-      stats[currentUser] = (stats[currentUser] || 0) + 1;
-      saveWinStats(stats);
-
       // Update global leaderboard in Firebase
       db.ref('leaderboard/' + currentUser).transaction(currentWins => {
         return (currentWins || 0) + 1;
