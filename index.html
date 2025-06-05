@@ -1,106 +1,87 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>LtpMer's Maze Game</title>
-<style>
-  body {
-    margin: 0; padding: 0;
-    font-family: Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background: #222;
-    color: white;
-  }
-  #gameCanvas {
-    border: 2px solid #555;
-    margin-top: 10px;
-    touch-action: none;
-  }
-  #controls {
-    margin-top: 10px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-  }
-  button {
-    padding: 6px 12px;
-    font-size: 16px;
-    cursor: pointer;
-    border-radius: 5px;
-    border: none;
-    background: #444;
-    color: white;
-  }
-  button.active {
-    background: #4caf50;
-  }
-  #buildControls {
-    display: none;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 10px;
-    justify-content: center;
-  }
-  #loginSection, #leaderboardSection, #saveLoadSection {
-    margin-top: 15px;
-    background: #333;
-    padding: 10px;
-    border-radius: 8px;
-    width: 320px;
-  }
-  input[type=text], input[type=password] {
-    font-size: 16px;
-    padding: 5px;
-    margin: 5px 0;
-    width: 100%;
-    box-sizing: border-box;
-    border-radius: 4px;
-    border: none;
-  }
-  #mobileControls {
-    margin-top: 10px;
-    display: none;
-    gap: 8px;
-  }
-  #mobileControls button {
-    width: 50px; height: 50px;
-    font-weight: bold;
-  }
-  .admin {
-    color: #ff5555;
-    font-weight: bold;
-  }
-  #usersList div {
-    margin-bottom: 3px;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LtpMer's Maze Game</title>
+  <style>
+    body {
+      margin: 0; padding: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #222;
+      color: white;
+    }
+    #gameCanvas {
+      border: 2px solid #555;
+      margin-top: 10px;
+      touch-action: none;
+    }
+    #controls {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    button {
+      padding: 6px 12px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      border: none;
+      background: #444;
+      color: white;
+    }
+    button.active {
+      background: #4caf50;
+    }
+    #buildControls {
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+      justify-content: center;
+    }
+    #saveLoadSection {
+      margin-top: 15px;
+      background: #333;
+      padding: 10px;
+      border-radius: 8px;
+      width: 320px;
+    }
+    input[type=text], input[type=password] {
+      font-size: 16px;
+      padding: 5px;
+      margin: 5px 0;
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 4px;
+      border: none;
+    }
+    #mobileControls {
+      margin-top: 10px;
+      display: none;
+      gap: 8px;
+    }
+    #mobileControls button {
+      width: 50px; height: 50px;
+      font-weight: bold;
+    }
+    .admin {
+      color: #ff5555;
+      font-weight: bold;
+    }
+    #usersList div {
+      margin-bottom: 3px;
+    }
+  </style>
 </head>
 <body>
 
 <h1>LtpMer's Maze Game</h1>
-
-  <!-- Firebase App (core) SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<!-- Firebase Realtime Database -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
-
-<div id="loginSection">
-  <h3>Login / Register</h3>
-  <input type="text" id="usernameInput" placeholder="Username" />
-  <input type="password" id="passwordInput" placeholder="Password" />
-  <button id="loginBtn">Login/Register</button>
-  <div id="loginStatus"></div>
-</div>
-
-<div id="leaderboardSection">
-  <h3>Leaderboard</h3>
-  <div id="usersList">Please login to see leaderboard.</div>
-</div>
 
 <div id="saveLoadSection">
   <h3>Save / Load Maze Slots</h3>
@@ -121,7 +102,7 @@
 
 <div id="buildControls">
   <button data-type="wall" class="typeBtn active">Wall (Black)</button>
-  <button data-type="design" class="typeBtn">Design (Gray)</button>
+  <button data-type="design" class="typeBtn">Stop Movable (Gray)</button>
   <button data-type="movable" class="typeBtn">Movable (Blue)</button>
   <button data-type="player" class="typeBtn">Player (Red)</button>
   <button data-type="win" class="typeBtn">Win (Green)</button>
@@ -142,12 +123,10 @@
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
 
-  // Maze size
   const cols = 25;
   const rows = 25;
   const cellSize = canvas.width / cols;
 
-  // Block types constants
   const BLOCK_TYPES = {
     empty: 0,
     wall: 1,
@@ -155,7 +134,6 @@
     movable: 3,
   };
 
-  // Colors for blocks
   const BLOCK_COLORS = {
     [BLOCK_TYPES.empty]: "white",
     [BLOCK_TYPES.wall]: "black",
@@ -163,35 +141,21 @@
     [BLOCK_TYPES.movable]: "blue",
   };
 
-  // Game state
   let maze = [];
   let player = { x: 1, y: 1 };
   let win = { x: cols - 2, y: rows - 2 };
 
   let buildMode = false;
-  let currentType = "wall"; // default build type
+  let currentType = "wall";
   let isDeleting = false;
 
   let keys = {};
   let moveDelay = 6;
   let moveCounter = 0;
 
-  // Login system
-  const adminUsername = "LtpMer";
-  let currentUser = null;
-
-  // Save/load keys prefix
   const SAVE_PREFIX = "maze_save_";
-
-  // Users storage key
-  const USERS_KEY = "maze_users";
-
-  // Win stats storage key
   const WIN_STATS_KEY = "maze_winStats";
 
-  // --- UTILS ---
-
-  // Generate empty maze
   function generateEmptyMaze() {
     const m = [];
     for (let x = 0; x < cols; x++) {
@@ -203,472 +167,204 @@
     return m;
   }
 
-  // Generate random maze with some walls, design blocks, movable blocks, and player/win placed randomly on empty spots
+  function isBorder(x, y) {
+    return x === 0 || y === 0 || x === cols - 1 || y === rows - 1;
+  }
+
+  function randomEmptyCell(m) {
+    let tries = 0;
+    while (tries < 10000) {
+      const x = Math.floor(Math.random() * cols);
+      const y = Math.floor(Math.random() * rows);
+      if (m[x][y] === BLOCK_TYPES.empty) return { x, y };
+      tries++;
+    }
+    return { x: 1, y: 1 };
+  }
+
   function generateRandomMaze() {
     const m = generateEmptyMaze();
-
-    // Fill some walls (30% chance)
     for (let x = 0; x < cols; x++) {
       for (let y = 0; y < rows; y++) {
-        if (Math.random() < 0.3 && !isBorder(x,y)) {
+        if (Math.random() < 0.3 && !isBorder(x, y)) {
           m[x][y] = BLOCK_TYPES.wall;
-        } else if (Math.random() < 0.05 && !isBorder(x,y)) {
+        } else if (Math.random() < 0.05 && !isBorder(x, y)) {
           m[x][y] = BLOCK_TYPES.design;
-        } else if (Math.random() < 0.05 && !isBorder(x,y)) {
+        } else if (Math.random() < 0.05 && !isBorder(x, y)) {
           m[x][y] = BLOCK_TYPES.movable;
         }
       }
     }
-
-    // Place player and win at random empty spots (not on walls or others)
     player = randomEmptyCell(m);
     win = randomEmptyCell(m);
-
     return m;
   }
 
-  // Check if cell is border (maze edges)
-  function isBorder(x,y) {
-    return x === 0 || y === 0 || x === cols-1 || y === rows-1;
-  }
-
-  // Find a random empty cell (for player or win spawn)
-  function randomEmptyCell(m) {
-    let tries = 0;
-    while (tries < 10000) {
-      const x = Math.floor(Math.random()*cols);
-      const y = Math.floor(Math.random()*rows);
-      if (m[x][y] === BLOCK_TYPES.empty) {
-        return {x,y};
-      }
-      tries++;
-    }
-    // fallback
-    return {x:1,y:1};
-  }
-
-  // Draw the maze and player/win
   function draw() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    // Draw blocks
-    for (let x=0; x<cols; x++) {
-      for (let y=0; y<rows; y++) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let x = 0; x < cols; x++) {
+      for (let y = 0; y < rows; y++) {
         const type = maze[x][y];
         ctx.fillStyle = BLOCK_COLORS[type] || "white";
-        ctx.fillRect(x*cellSize, y*cellSize, cellSize, cellSize);
+        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
       }
     }
-
-    // Draw win
     ctx.fillStyle = "green";
-    ctx.fillRect(win.x*cellSize, win.y*cellSize, cellSize, cellSize);
-
-    // Draw player
+    ctx.fillRect(win.x * cellSize, win.y * cellSize, cellSize, cellSize);
     ctx.fillStyle = "red";
-    ctx.fillRect(player.x*cellSize, player.y*cellSize, cellSize, cellSize);
+    ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
 
-    // Draw grid lines
     ctx.strokeStyle = "#999";
-    ctx.lineWidth = 1;
-    for (let x=0; x<=cols; x++) {
+    for (let x = 0; x <= cols; x++) {
       ctx.beginPath();
-      ctx.moveTo(x*cellSize,0);
-      ctx.lineTo(x*cellSize,canvas.height);
+      ctx.moveTo(x * cellSize, 0);
+      ctx.lineTo(x * cellSize, canvas.height);
       ctx.stroke();
     }
-    for (let y=0; y<=rows; y++) {
+    for (let y = 0; y <= rows; y++) {
       ctx.beginPath();
-      ctx.moveTo(0,y*cellSize);
-      ctx.lineTo(canvas.width,y*cellSize);
+      ctx.moveTo(0, y * cellSize);
+      ctx.lineTo(canvas.width, y * cellSize);
       ctx.stroke();
     }
   }
 
-  // Check if position blocks movement
-  function isBlocked(x,y) {
+  function isBlocked(x, y) {
     if (x < 0 || y < 0 || x >= cols || y >= rows) return true;
-    if (maze[x][y] === BLOCK_TYPES.wall) return true;
-    if (maze[x][y] === BLOCK_TYPES.movable) return true; // can't walk on movable blocks
-    return false;
+    return maze[x][y] === BLOCK_TYPES.wall || maze[x][y] === BLOCK_TYPES.movable;
   }
 
-  // Move player (keyboard or mobile buttons)
   function movePlayer(dx, dy) {
-    if (buildMode) return; // can't move while building
+    if (buildMode) return;
+    const newX = player.x + dx;
+    const newY = player.y + dy;
 
-    let newX = player.x + dx;
-    let newY = player.y + dy;
-
-    if (isBlocked(newX,newY)) {
-      // If blocked by movable block, try pushing it
-      if (maze[newX] && maze[newX][newY] === BLOCK_TYPES.movable) {
-        let pushX = newX + dx;
-        let pushY = newY + dy;
-        if (!isBlocked(pushX,pushY) && maze[pushX][pushY] === BLOCK_TYPES.empty) {
-          // Move the block
+    if (isBlocked(newX, newY)) {
+      if (maze[newX][newY] === BLOCK_TYPES.movable) {
+        const pushX = newX + dx;
+        const pushY = newY + dy;
+        if (!isBlocked(pushX, pushY) && maze[pushX][pushY] === BLOCK_TYPES.empty) {
           maze[pushX][pushY] = BLOCK_TYPES.movable;
           maze[newX][newY] = BLOCK_TYPES.empty;
-          // Move player
-          player.x = newX;
-          player.y = newY;
+          player = { x: newX, y: newY };
         }
       }
       return;
     }
 
-    // Move player normally
-    player.x = newX;
-    player.y = newY;
+    player = { x: newX, y: newY };
 
-    // Check win condition
     if (player.x === win.x && player.y === win.y) {
       alert("You Win!");
-      incrementWinStat(currentUser);
+      incrementWinStat();
       resetMaze();
     }
   }
 
-  // Handle keyboard keys pressed
-  function handleKeyDown(e) {
-    keys[e.key.toLowerCase()] = true;
-  }
-  function handleKeyUp(e) {
-    keys[e.key.toLowerCase()] = false;
-  }
+  function handleKeyDown(e) { keys[e.key.toLowerCase()] = true; }
+  function handleKeyUp(e) { keys[e.key.toLowerCase()] = false; }
 
-  // Main game loop: moves player smoothly with delay
   function gameLoop() {
     if (!buildMode) {
       moveCounter++;
       if (moveCounter >= moveDelay) {
         moveCounter = 0;
-        let dx = 0, dy = 0;
-        if (keys["arrowup"] || keys["w"]) dy = -1;
-        else if (keys["arrowdown"] || keys["s"]) dy = 1;
-        else if (keys["arrowleft"] || keys["a"]) dx = -1;
-        else if (keys["arrowright"] || keys["d"]) dx = 1;
-
-        if (dx !== 0 || dy !== 0) movePlayer(dx, dy);
+        if (keys["arrowup"] || keys["w"]) movePlayer(0, -1);
+        else if (keys["arrowdown"] || keys["s"]) movePlayer(0, 1);
+        else if (keys["arrowleft"] || keys["a"]) movePlayer(-1, 0);
+        else if (keys["arrowright"] || keys["d"]) movePlayer(1, 0);
       }
     }
     draw();
     requestAnimationFrame(gameLoop);
   }
 
-  // Convert mouse/touch to maze cell coords
-  function getCellFromEvent(evt) {
-    const rect = canvas.getBoundingClientRect();
-    let clientX, clientY;
-    if (evt.touches) {
-      clientX = evt.touches[0].clientX;
-      clientY = evt.touches[0].clientY;
-    } else {
-      clientX = evt.clientX;
-      clientY = evt.clientY;
-    }
-    const x = Math.floor((clientX - rect.left) / cellSize);
-    const y = Math.floor((clientY - rect.top) / cellSize);
-    return {x,y};
+  function saveMaze(slot) {
+    const data = { maze, player, win };
+    localStorage.setItem(SAVE_PREFIX + slot, JSON.stringify(data));
+    document.getElementById("saveStatus").innerText = `Saved to Slot ${slot}`;
   }
 
-  // Place or delete blocks in build mode
-  function handleBuildAtCell(x,y) {
-    if (!buildMode) return;
-    if (x < 0 || y < 0 || x >= cols || y >= rows) return;
-
-    if (isDeleting) {
-      // Delete block or player/win if on cell
-      if (player.x === x && player.y === y) {
-        alert("Deleted player position.");
-        player = {x: -1, y: -1};
-      } else if (win.x === x && win.y === y) {
-        alert("Deleted win position.");
-        win = {x: -1, y: -1};
-      } else {
-        maze[x][y] = BLOCK_TYPES.empty;
-      }
+  function loadMaze(slot) {
+    const data = JSON.parse(localStorage.getItem(SAVE_PREFIX + slot));
+    if (data) {
+      maze = data.maze;
+      player = data.player;
+      win = data.win;
+      document.getElementById("saveStatus").innerText = `Loaded Slot ${slot}`;
     } else {
-      // Place selected block
-      if (currentType === "player") {
-        if ((x === win.x && y === win.y) || maze[x][y] !== BLOCK_TYPES.empty) {
-          alert("Cannot place player here.");
-          return;
-        }
-        player = {x,y};
-      } else if (currentType === "win") {
-        if ((x === player.x && y === player.y) || maze[x][y] !== BLOCK_TYPES.empty) {
-          alert("Cannot place win here.");
-          return;
-        }
-        win = {x,y};
-      } else {
-        // Place block type if cell is not occupied by player or win
-        if ((x === player.x && y === player.y) || (x === win.x && y === win.y)) {
-          alert("Cannot place block on player or win.");
-          return;
-        }
-        const typeVal = {
-          "wall": BLOCK_TYPES.wall,
-          "design": BLOCK_TYPES.design,
-          "movable": BLOCK_TYPES.movable
-        }[currentType] || BLOCK_TYPES.empty;
-        maze[x][y] = typeVal;
-      }
+      document.getElementById("saveStatus").innerText = `No data in Slot ${slot}`;
     }
   }
 
-  // Mouse and touch events for build mode
-  let mouseDown = false;
-  canvas.addEventListener("mousedown", e => {
-    if (!buildMode) return;
-    mouseDown = true;
-    const {x,y} = getCellFromEvent(e);
-    handleBuildAtCell(x,y);
-  });
-  canvas.addEventListener("mousemove", e => {
-    if (!buildMode || !mouseDown) return;
-    const {x,y} = getCellFromEvent(e);
-    handleBuildAtCell(x,y);
-  });
-  canvas.addEventListener("mouseup", e => {
-    mouseDown = false;
-  });
-  canvas.addEventListener("mouseleave", e => {
-    mouseDown = false;
-  });
+  function clearMaze() {
+    maze = generateEmptyMaze();
+    player = { x: 1, y: 1 };
+    win = { x: cols - 2, y: rows - 2 };
+    draw();
+  }
 
-  // Touch support for build mode
-  canvas.addEventListener("touchstart", e => {
-    if (!buildMode) return;
-    e.preventDefault();
-    const {x,y} = getCellFromEvent(e);
-    handleBuildAtCell(x,y);
-  }, {passive:false});
-  canvas.addEventListener("touchmove", e => {
-    if (!buildMode) return;
-    e.preventDefault();
-    const {x,y} = getCellFromEvent(e);
-    handleBuildAtCell(x,y);
-  }, {passive:false});
-
-  // Toggle build mode button
-  const toggleBuildBtn = document.getElementById("toggleBuildBtn");
-  const buildControls = document.getElementById("buildControls");
-  toggleBuildBtn.addEventListener("click", () => {
+  function toggleBuildMode() {
     buildMode = !buildMode;
-    buildControls.style.display = buildMode ? "flex" : "none";
-    if (!buildMode) {
-      isDeleting = false;
-      setActiveTypeBtn(currentType);
-    }
-  });
+    document.getElementById("buildControls").style.display = buildMode ? "flex" : "none";
+    document.getElementById("toggleBuildBtn").classList.toggle("active", buildMode);
+  }
 
-  // Type buttons
-  const typeButtons = document.querySelectorAll(".typeBtn");
-  function setActiveTypeBtn(type) {
+  function setBuildType(type) {
     currentType = type;
     isDeleting = false;
-    typeButtons.forEach(btn => {
-      btn.classList.toggle("active", btn.dataset.type === type);
-    });
-  }
-  typeButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      setActiveTypeBtn(btn.dataset.type);
-    });
-  });
-
-  // Delete button
-  const deleteBtn = document.getElementById("deleteBtn");
-  deleteBtn.addEventListener("click", () => {
-    isDeleting = true;
-    typeButtons.forEach(btn => btn.classList.remove("active"));
-    deleteBtn.classList.add("active");
-  });
-
-  // Clear maze button
-  const clearMazeBtn = document.getElementById("clearMazeBtn");
-  clearMazeBtn.addEventListener("click", () => {
-    if (confirm("Clear entire maze? Player and win will remain.")) {
-      maze = generateEmptyMaze();
-    }
-  });
-
-  // Save/Load system
-  function saveSlot(slot) {
-    if (!currentUser) {
-      alert("Please login first to save.");
-      return;
-    }
-    const data = {
-      maze,
-      player,
-      win,
-      stats: getWinStats(),
-    };
-    localStorage.setItem(SAVE_PREFIX + currentUser + "_" + slot, JSON.stringify(data));
-    document.getElementById("saveStatus").textContent = "Saved slot " + slot;
-  }
-  function loadSlot(slot) {
-    if (!currentUser) {
-      alert("Please login first to load.");
-      return;
-    }
-    const dataRaw = localStorage.getItem(SAVE_PREFIX + currentUser + "_" + slot);
-    if (!dataRaw) {
-      alert("No saved data in slot " + slot);
-      return;
-    }
-    const data = JSON.parse(dataRaw);
-    maze = data.maze || generateEmptyMaze();
-    player = data.player || {x:1,y:1};
-    win = data.win || {x:cols-2,y:rows-2};
-    if (data.stats) setWinStats(data.stats);
-    document.getElementById("saveStatus").textContent = "Loaded slot " + slot;
+    [...document.querySelectorAll(".typeBtn")].forEach(btn => btn.classList.remove("active"));
+    document.querySelector(`.typeBtn[data-type=${type}]`).classList.add("active");
   }
 
-  document.querySelectorAll(".saveBtn").forEach(btn => {
-    btn.addEventListener("click", () => saveSlot(btn.dataset.slot));
-  });
-  document.querySelectorAll(".loadBtn").forEach(btn => {
-    btn.addEventListener("click", () => loadSlot(btn.dataset.slot));
-  });
+  canvas.addEventListener("click", e => {
+    if (!buildMode) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) / cellSize);
+    const y = Math.floor((e.clientY - rect.top) / cellSize);
 
-  // Win stats management (per user)
-  function getWinStats() {
-    const raw = localStorage.getItem(WIN_STATS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  }
-  function setWinStats(stats) {
-    localStorage.setItem(WIN_STATS_KEY, JSON.stringify(stats));
-  }
-  function incrementWinStat(user) {
-    if (!user) return;
-    const stats = getWinStats();
-    stats[user] = (stats[user] || 0) + 1;
-    setWinStats(stats);
-    updateLeaderboard();
-  }
-
-  // --- LOGIN SYSTEM ---
-  const loginBtn = document.getElementById("loginBtn");
-  const usernameInput = document.getElementById("usernameInput");
-  const passwordInput = document.getElementById("passwordInput");
-  const loginStatus = document.getElementById("loginStatus");
-  const usersList = document.getElementById("usersList");
-
-  // Load users from storage
-  function loadUsers() {
-    const raw = localStorage.getItem(USERS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  }
-  // Save users to storage
-  function saveUsers(users) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  }
-
-  // Display users list and leaderboard
-  function updateLeaderboard() {
-    const users = loadUsers();
-    const stats = getWinStats();
-    usersList.innerHTML = "";
-
-    if (!currentUser) {
-      usersList.textContent = "Please login to see leaderboard.";
-      return;
-    }
-
-    Object.entries(users).forEach(([user, pass]) => {
-      const div = document.createElement("div");
-      div.textContent = user;
-      if (user === adminUsername) div.classList.add("admin");
-      // Show passwords only to admin
-      if (currentUser === adminUsername) {
-        div.textContent += ` — pass: ${pass}`;
-      }
-      // Show win count
-      if (stats[user]) {
-        div.textContent += ` | Wins: ${stats[user]}`;
-      }
-      usersList.appendChild(div);
-    });
-  }
-
-  // Login/register button click
-  loginBtn.addEventListener("click", () => {
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value;
-
-    if (!username || !password) {
-      loginStatus.textContent = "Please enter username and password.";
-      return;
-    }
-
-    const users = loadUsers();
-    if (users[username]) {
-      // Existing user, check password
-      if (users[username] === password) {
-        currentUser = username;
-        loginStatus.textContent = `Welcome back, ${username}!`;
-      } else {
-        loginStatus.textContent = "Wrong password.";
-        return;
-      }
+    if (isDeleting) {
+      if (maze[x][y] !== undefined) maze[x][y] = BLOCK_TYPES.empty;
+    } else if (currentType === "player") {
+      player = { x, y };
+    } else if (currentType === "win") {
+      win = { x, y };
     } else {
-      // Register new user
-      users[username] = password;
-      saveUsers(users);
-      currentUser = username;
-      loginStatus.textContent = `Registered and logged in as ${username}.`;
+      maze[x][y] = BLOCK_TYPES[currentType];
     }
-    localStorage.setItem("maze_currentUser", currentUser);
-    updateLeaderboard();
   });
 
-  // Auto-login on load if user saved
-  function tryAutoLogin() {
-    const user = localStorage.getItem("maze_currentUser");
-    if (user) {
-      currentUser = user;
-      loginStatus.textContent = `Welcome back, ${currentUser}!`;
-      updateLeaderboard();
-    }
-  }
+  document.getElementById("toggleBuildBtn").addEventListener("click", toggleBuildMode);
+  document.getElementById("deleteBtn").addEventListener("click", () => {
+    isDeleting = true;
+    [...document.querySelectorAll(".typeBtn")].forEach(btn => btn.classList.remove("active"));
+  });
+  [...document.querySelectorAll(".typeBtn")].forEach(btn =>
+    btn.addEventListener("click", () => setBuildType(btn.dataset.type))
+  );
+  [...document.querySelectorAll(".saveBtn")].forEach(btn =>
+    btn.addEventListener("click", () => saveMaze(btn.dataset.slot))
+  );
+  [...document.querySelectorAll(".loadBtn")].forEach(btn =>
+    btn.addEventListener("click", () => loadMaze(btn.dataset.slot))
+  );
+  document.getElementById("clearMazeBtn").addEventListener("click", clearMaze);
 
-  // Reset maze to new random on win or clear
+  window.addEventListener("keydown", handleKeyDown);
+  window.addEventListener("keyup", handleKeyUp);
+
   function resetMaze() {
     maze = generateRandomMaze();
   }
 
-  // Mobile movement buttons
-  const mobileControls = document.getElementById("mobileControls");
-  const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  if (isMobile) {
-    mobileControls.style.display = "flex";
+  function incrementWinStat() {
+    let stats = JSON.parse(localStorage.getItem(WIN_STATS_KEY) || "{}");
+    stats["wins"] = (stats["wins"] || 0) + 1;
+    localStorage.setItem(WIN_STATS_KEY, JSON.stringify(stats));
   }
 
-  mobileControls.querySelectorAll("button").forEach(btn => {
-    btn.addEventListener("touchstart", e => {
-      e.preventDefault();
-      const dir = btn.dataset.dir;
-      if (dir === "up") movePlayer(0,-1);
-      else if (dir === "down") movePlayer(0,1);
-      else if (dir === "left") movePlayer(-1,0);
-      else if (dir === "right") movePlayer(1,0);
-    });
-  });
-
-  // Keyboard input listeners
-  window.addEventListener("keydown", handleKeyDown);
-  window.addEventListener("keyup", handleKeyUp);
-
-  // Initialize
   maze = generateRandomMaze();
-  tryAutoLogin();
-  updateLeaderboard();
   gameLoop();
-
 })();
 </script>
 
