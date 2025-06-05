@@ -1,3 +1,4 @@
+// Your existing maze game variables and functions here
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -24,6 +25,7 @@ let player = { x: 1, y: 1 };
 let win = { x: cols - 2, y: rows - 2 };
 
 const usersList = document.getElementById("usersList");
+const globalUsersList = document.getElementById("globalUsersList");
 const loginMessage = document.getElementById("loginMessage");
 const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -34,7 +36,7 @@ const adminUsername = "admin";
 
 let currentUser = null;
 
-// Initialize default users and stats if not present
+// LocalStorage user & stats management
 if (!localStorage.getItem("users")) {
   const defaultUsers = {
     admin: "adminpass",
@@ -76,6 +78,7 @@ function updateLeaderboard() {
   });
 }
 
+// Maze generation & drawing functions (unchanged)
 function generateMaze() {
   maze = [];
   for (let x = 0; x < cols; x++) {
@@ -123,7 +126,6 @@ function draw() {
     }
   }
 
-  // Draw player and win separately to keep their colors even if maze changed
   ctx.fillStyle = blockTypes.player.color;
   ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
 
@@ -146,6 +148,13 @@ function checkWin() {
       let stats = getWinStats();
       stats[currentUser] = (stats[currentUser] || 0) + 1;
       saveWinStats(stats);
+
+      // Update global leaderboard in Firebase
+      db.ref('leaderboard/' + currentUser).transaction(currentWins => {
+        return (currentWins || 0) + 1;
+      }).then(() => {
+        loadGlobalLeaderboard();
+      });
     }
 
     generateMaze();
@@ -160,20 +169,15 @@ function handleMovement() {
     return;
   }
 
-  let dx = 0,
-    dy = 0;
+  let dx = 0, dy = 0;
 
-  // Check movement keys with priority - do not allow diagonal moves
   if ((keys["ArrowUp"] || keys["w"]) && !(keys["ArrowDown"] || keys["s"])) dy = -1;
   else if ((keys["ArrowDown"] || keys["s"]) && !(keys["ArrowUp"] || keys["w"])) dy = 1;
 
   if ((keys["ArrowLeft"] || keys["a"]) && !(keys["ArrowRight"] || keys["d"])) dx = -1;
   else if ((keys["ArrowRight"] || keys["d"]) && !(keys["ArrowLeft"] || keys["a"])) dx = 1;
 
-  // Prevent diagonal movement: if both dx and dy non-zero, ignore dx
-  if (dx !== 0 && dy !== 0) {
-    dx = 0; // prioritize vertical movement over horizontal
-  }
+  if (dx !== 0 && dy !== 0) dx = 0;
 
   if (dx !== 0 || dy !== 0) {
     let nx = player.x + dx;
@@ -192,22 +196,41 @@ function handleMovement() {
   }
 }
 
-// Keyboard event listeners
-document.addEventListener("keydown", (e) => {
-  keys[e.key] = true;
-});
+document.addEventListener("keydown", e => { keys[e.key] = true; });
+document.addEventListener("keyup", e => { keys[e.key] = false; });
 
-document.addEventListener("keyup", (e) => {
-  keys[e.key] = false;
-});
+// Firebase config — REPLACE with your own!
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "SENDER_ID",
+  appId: "APP_ID"
+};
 
-// Game loop
-function loop() {
-  handleMovement();
-  requestAnimationFrame(loop);
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+function loadGlobalLeaderboard() {
+  db.ref('leaderboard').orderByValue().limitToLast(10).once('value').then(snapshot => {
+    const data = snapshot.val();
+    if (!data) {
+      globalUsersList.textContent = "No global data yet.";
+      return;
+    }
+    const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]);
+    globalUsersList.innerHTML = "";
+    sorted.forEach(([user, wins]) => {
+      const div = document.createElement("div");
+      div.textContent = `${user} — Wins: ${wins}`;
+      if (user === adminUsername) div.classList.add("admin");
+      globalUsersList.appendChild(div);
+    });
+  });
 }
 
-// Login system
 function login(username, password) {
   const users = loadUsers();
   if (users[username] && users[username] === password) {
@@ -218,6 +241,7 @@ function login(username, password) {
     usernameInput.style.display = "none";
     passwordInput.style.display = "none";
     updateLeaderboard();
+    loadGlobalLeaderboard();
   } else {
     loginMessage.textContent = "Invalid username or password";
   }
@@ -231,24 +255,26 @@ function logout() {
   usernameInput.style.display = "inline-block";
   passwordInput.style.display = "inline-block";
   updateLeaderboard();
+  globalUsersList.textContent = "Login to see global leaderboard.";
 }
 
 loginBtn.addEventListener("click", () => {
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
-  if (username && password) {
-    login(username, password);
-  } else {
-    loginMessage.textContent = "Please enter username and password";
-  }
+  if (username && password) login(username, password);
+  else loginMessage.textContent = "Please enter username and password";
 });
 
-logoutBtn.addEventListener("click", () => {
-  logout();
-});
+logoutBtn.addEventListener("click", () => { logout(); });
 
-// Initialize game
+function loop() {
+  handleMovement();
+  requestAnimationFrame(loop);
+}
+
+// Init
 generateMaze();
 draw();
 updateLeaderboard();
+loadGlobalLeaderboard();
 loop();
