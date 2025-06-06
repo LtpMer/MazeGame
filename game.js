@@ -15,14 +15,6 @@
 
 <h2>Maze Game</h2>
 
-<div>
-  <input id="usernameInput" placeholder="Username" />
-  <input id="passwordInput" placeholder="Password" type="password" />
-  <button id="loginBtn">Login</button>
-  <button id="logoutBtn" style="display:none;">Logout</button>
-  <div id="loginMessage"></div>
-</div>
-
 <canvas id="gameCanvas" width="500" height="500"></canvas>
 
 <div>
@@ -51,19 +43,6 @@
   </div>
 </div>
 
-<h3>Local Leaderboard (Your Wins)</h3>
-<div id="usersList">Login to see leaderboard.</div>
-
-<h3>Global Leaderboard (Firebase)</h3>
-<div id="globalUsersList">Login to see global leaderboard.</div>
-
-<div id="adminPanel">
-  <h3>Admin Panel - All Users and Passwords</h3>
-  <pre id="allUsersPre"></pre>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 <script>
 (() => {
   const canvas = document.getElementById("gameCanvas");
@@ -81,23 +60,12 @@
     player: { color: "red", solid: false, movable: false },
     win: { color: "green", solid: false, movable: false },
     movableBlock: { color: "blue", solid: true, movable: true },
-    designBlock: { color: "gray", solid: false, movable: false },
+    stopmovableBlock: { color: "gray", solid: false, movable: false },
   };
 
   let maze = [];
   let player = { x: 1, y: 1 };
   let win = { x: cols - 2, y: rows - 2 };
-
-  const usersList = document.getElementById("usersList");
-  const globalUsersList = document.getElementById("globalUsersList");
-  const loginMessage = document.getElementById("loginMessage");
-  const loginBtn = document.getElementById("loginBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const usernameInput = document.getElementById("usernameInput");
-  const passwordInput = document.getElementById("passwordInput");
-  const clearBtn = document.getElementById("clearBtn");
-  const adminPanel = document.getElementById("adminPanel");
-  const allUsersPre = document.getElementById("allUsersPre");
 
   const adminUsername = "admin";
 
@@ -293,26 +261,6 @@
 
   document.addEventListener("keydown", e => { keys[e.key] = true; });
   document.addEventListener("keyup", e => { keys[e.key] = false; });
-
-  // Firebase config — REPLACE with your own!
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-    projectId: "YOUR_PROJECT",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "SENDER_ID",
-    appId: "APP_ID"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-
-  // Update local leaderboard UI from localStorage stats
-  function updateLeaderboard() {
-    if (!currentUser) {
-      usersList.textContent = "Please login to see leaderboard.";
-      return;
-    }
     const stats = loadWinStats();
     usersList.innerHTML = "";
 
