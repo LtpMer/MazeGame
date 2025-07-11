@@ -1308,6 +1308,7 @@
         async function stopLevelTimerAndSubmitScore() {
             if (!currentLevelId || !window.userId || !window.db) {
                 console.warn("Cannot submit score: Missing level ID, user ID, or database instance.");
+                messageBox.textContent = "Cannot submit score: Firebase not fully initialized or user not authenticated.";
                 return;
             }
 
@@ -1328,6 +1329,7 @@
                 messageBox.textContent += ` Your time: ${formatTime(timeTaken)}!`;
             } catch (e) {
                 console.error("Error submitting score:", e);
+                messageBox.textContent = `Error submitting score: ${e.message}. Check console for details.`;
             }
         }
 
@@ -1345,6 +1347,7 @@
         async function addBrick() {
             if (!window.userId || !window.db) {
                 console.warn("Cannot add brick: User ID or database not available.");
+                messageBox.textContent = "Cannot add brick: Firebase not fully initialized or user not authenticated.";
                 return;
             }
 
@@ -1364,6 +1367,7 @@
                 console.log(`Player ${currentPlayerName} now has ${playerBricks} bricks.`);
             } catch (e) {
                 console.error("Error adding brick:", e);
+                messageBox.textContent = `Error adding brick: ${e.message}. Check console for details.`;
             }
         }
 
@@ -1372,6 +1376,7 @@
             if (!window.userId || !window.db) {
                 playerBricks = 0; // Reset if no user/db
                 updateBricksDisplay();
+                console.warn("Cannot fetch player bricks: Firebase not fully initialized or user not authenticated.");
                 return;
             }
             try {
@@ -1387,6 +1392,7 @@
                 console.error("Error fetching player bricks:", e);
                 playerBricks = 0; // Default to 0 on error
                 updateBricksDisplay();
+                messageBox.textContent = `Error fetching bricks: ${e.message}. Check console for details.`;
             }
         }
 
@@ -1411,6 +1417,7 @@
                 console.log("Customization saved successfully!");
             } catch (e) {
                 console.error("Error saving customization:", e);
+                messageBox.textContent = `Error saving customization: ${e.message}. Check console for details.`;
             }
         }
 
@@ -1469,6 +1476,7 @@
                 updateBricksDisplay();
                 drawGame();
                 drawBuild();
+                messageBox.textContent = `Error loading profile: ${e.message}. Check console for details.`;
             }
         }
 
@@ -1685,6 +1693,19 @@
             const playerName = playerNameInput.value.trim();
             const password = passwordInput.value.trim(); // Password is not used for auth, just for input field
 
+            // Validation checks
+            if (playerName.length < 3) {
+                messageBox.textContent = "Player Name must be at least 3 characters long.";
+                setTimeout(() => messageBox.textContent = "", 3000);
+                return;
+            }
+
+            if (password.length < 6) {
+                messageBox.textContent = "Password must be at least 6 characters long.";
+                setTimeout(() => messageBox.textContent = "", 3000);
+                return;
+            }
+
             if (playerName) {
                 currentPlayerName = playerName;
                 loginButton.textContent = "Logout";
@@ -1702,11 +1723,12 @@
                         console.log("Player name saved to profile.");
                     } catch (e) {
                         console.error("Error saving player name to profile:", e);
+                        messageBox.textContent = `Error saving player name: ${e.message}. Check console for details.`;
                     }
                 }
 
             } else {
-                // Replaced alert with a custom message box or modal if available
+                // This else block might be redundant due to the new validation, but kept for safety.
                 messageBox.textContent = "Please enter a player name.";
                 setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
             }
@@ -1735,8 +1757,8 @@
 
         // --- Firebase Firestore Functions ---
         async function saveLevel() {
-            if (!window.userId) {
-                buildMessageBox.textContent = "Error: User not logged in to save level.";
+            if (!window.userId || !window.db) {
+                buildMessageBox.textContent = "Error: Firebase not fully initialized or user not authenticated to save level.";
                 return;
             }
             if (player.x === -1 || end.x === -1) {
@@ -1764,13 +1786,13 @@
                 loadMyLevels(); // Refresh the list of levels
             } catch (e) {
                 console.error("Error saving document: ", e);
-                buildMessageBox.textContent = "Error saving level. See console for details.";
+                buildMessageBox.textContent = `Error saving level: ${e.message}. See console for details.`;
             }
         }
 
         async function publishLevel() {
-            if (!window.userId) {
-                buildMessageBox.textContent = "Error: User not logged in to publish level.";
+            if (!window.userId || !window.db) {
+                buildMessageBox.textContent = "Error: Firebase not fully initialized or user not authenticated to publish level.";
                 return;
             }
             if (player.x === -1 || end.x === -1) {
@@ -1799,13 +1821,14 @@
                 buildMessageBox.textContent = `Level "${levelName}" published successfully!`;
             } catch (e) {
                 console.error("Error publishing document: ", e);
-                buildMessageBox.textContent = "Error publishing level. See console for details.";
+                buildMessageBox.textContent = `Error publishing level: ${e.message}. See console for details.`;
             }
         }
 
         async function loadMyLevels() {
-            if (!window.userId) {
+            if (!window.userId || !window.db) {
                 myLevelsList.innerHTML = "<div>Please log in to see your levels.</div>";
+                console.warn("Cannot load my levels: Firebase not fully initialized or user not authenticated.");
                 return;
             }
 
@@ -1864,7 +1887,7 @@
                             } catch (error) {
                                 console.error("Error deleting level:", error);
                                 // Replaced alert with a custom message box or modal if available
-                                messageBox.textContent = "Error deleting level. See console.";
+                                messageBox.textContent = `Error deleting level: ${error.message}. See console.`;
                                 setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                             }
                         }
@@ -1889,13 +1912,14 @@
 
             } catch (e) {
                 console.error("Error loading documents: ", e);
-                myLevelsList.innerHTML = "<div>Error loading levels.</div>";
+                myLevelsList.innerHTML = `<div>Error loading levels: ${e.message}.</div>`;
             }
         }
 
         async function loadCommunityLevels() {
-            if (!window.userId) {
+            if (!window.userId || !window.db) {
                 communityLevelsList.innerHTML = "<div>Please log in to see community levels.</div>";
+                console.warn("Cannot load community levels: Firebase not fully initialized or user not authenticated.");
                 return;
             }
 
@@ -1948,7 +1972,7 @@
 
             } catch (e) {
                 console.error("Error loading community documents: ", e);
-                communityLevelsList.innerHTML = "<div>Error loading community levels.</div>";
+                communityLevelsList.innerHTML = `<div>Error loading community levels: ${e.message}.</div>`;
             }
         }
 
@@ -1956,6 +1980,13 @@
             dailyLevelContainer.style.display = 'none'; // Hide by default
             dailyLevelName.textContent = 'Loading daily level...';
             playDailyLevelButton.onclick = null; // Clear previous handler
+
+            if (!window.db) {
+                dailyLevelName.textContent = "Firebase not initialized. Cannot fetch daily level.";
+                dailyLevelContainer.style.display = 'block';
+                console.warn("Cannot fetch daily level: Firebase database not available.");
+                return;
+            }
 
             try {
                 const publicLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/levels`);
@@ -1981,7 +2012,7 @@
                 }
             } catch (e) {
                 console.error("Error fetching daily level:", e);
-                dailyLevelName.textContent = "Error loading daily level.";
+                dailyLevelName.textContent = `Error loading daily level: ${e.message}.`;
                 dailyLevelContainer.style.display = 'block';
             }
         }
@@ -1991,6 +2022,11 @@
                 // Replaced confirm with a custom message box or modal if available
                 messageBox.textContent = "Only LtpMer can set daily levels.";
                 setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
+                return;
+            }
+            if (!window.db) {
+                messageBox.textContent = "Firebase not initialized. Cannot set daily level.";
+                setTimeout(() => messageBox.textContent = "", 3000);
                 return;
             }
 
@@ -2020,7 +2056,7 @@
             } catch (e) {
                 console.error("Error setting daily level:", e);
                 // Replaced alert with a custom message box or modal if available
-                messageBox.textContent = "Error setting daily level. See console for details.";
+                messageBox.textContent = `Error setting daily level: ${e.message}. See console for details.`;
                 setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
             }
         }
@@ -2030,6 +2066,11 @@
                 // Replaced confirm with a custom message box or modal if available
                 messageBox.textContent = "Only LtpMer can set official levels.";
                 setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
+                return;
+            }
+            if (!window.db) {
+                messageBox.textContent = "Firebase not initialized. Cannot set official level.";
+                setTimeout(() => messageBox.textContent = "", 3000);
                 return;
             }
 
@@ -2068,7 +2109,7 @@
             } catch (e) {
                 console.error("Error setting official level:", e);
                 // Replaced alert with a custom message box or modal if available
-                messageBox.textContent = "Error setting official level. See console for details.";
+                messageBox.textContent = `Error setting official level: ${e.message}. See console for details.`;
                 setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
             }
         }
@@ -2097,6 +2138,7 @@
             } catch (e) {
                 console.error("Error fetching official playable levels:", e);
                 officialPlayableLevels = []; // Clear on error
+                messageBox.textContent = `Error fetching official levels: ${e.message}. Check console for details.`;
             }
         }
 
@@ -2104,6 +2146,7 @@
         async function loadLeaderboard() {
             if (!window.db) {
                 leaderboardList.innerHTML = "<div>Leaderboard not available.</div>";
+                console.warn("Cannot load leaderboard: Firebase database not available.");
                 return;
             }
             leaderboardList.innerHTML = "<div>Loading leaderboard...</div>";
@@ -2133,9 +2176,10 @@
                     leaderboardList.appendChild(entryDiv);
                     rank++;
                 });
-            } catch (e) {
+            }
+            catch (e) {
                 console.error("Error loading leaderboard:", e);
-                leaderboardList.innerHTML = "<div>Error loading leaderboard.</div>";
+                leaderboardList.innerHTML = `<div>Error loading leaderboard: ${e.message}.</div>`;
             }
         }
 
