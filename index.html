@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LtpMer's Maze Game</title>
+    <title>Blocky Maze & Level Generator</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <!-- Firebase SDKs -->
     <script type="module">
@@ -1009,6 +1009,8 @@
         let currentDailyLevel = null;
 
         // Predefined Levels (only for reference/source for official levels, not directly played by "Play" button)
+        // These are now just templates for generating the initial grid if needed,
+        // but the 'Play' button will use levels from Firestore.
         const predefinedLevels = [
             { id: "predefined-1", name: "Level 1: Straight Shot", grid: [], playerStart: {}, winpadEnd: {} },
             { id: "predefined-2", name: "Level 2: The L-Bend", grid: [], playerStart: {}, winpadEnd: {} },
@@ -1127,9 +1129,8 @@
             }
         }
 
-        // Loads a predefined level into the mazeGrid
-        function loadPredefinedLevel(levelIndex) {
-            // This function is now used for officialPlayableLevels
+        // Loads a level into the mazeGrid from the officialPlayableLevels array
+        function loadOfficialLevel(levelIndex) {
             const level = officialPlayableLevels[levelIndex];
             mazeGrid = JSON.parse(level.grid); // Parse grid from string
             player = { ...level.playerStart };
@@ -1147,6 +1148,7 @@
                 randY = Math.floor(Math.random() * MAZE_HEIGHT);
 
                 if (currentGameType === GAME_MODES.MAZE) {
+                    // Ensure random positions are on paths in a generated maze
                     if (randX % 2 === 0) { randX = (randX === MAZE_WIDTH - 1) ? randX - 1 : randX + 1; }
                     if (randY % 2 === 0) { randY = (randY === MAZE_HEIGHT - 1) ? randY - 1 : randY + 1; }
                     randX = Math.min(Math.max(randX, 0), MAZE_WIDTH - 1);
@@ -1163,7 +1165,7 @@
         // Draws elements on the mazeCanvas (for game play)
         function drawGame() {
             if (!mazeGrid || mazeGrid.length === 0) {
-                initMazeGrid();
+                initMazeGrid(); // Ensure mazeGrid is initialized
             }
 
             mazeCtx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height);
@@ -1213,7 +1215,7 @@
         // Draws elements on the buildCanvas (for build mode)
         function drawBuild() {
             if (!buildGrid || buildGrid.length === 0) {
-                initBuildGrid();
+                initBuildGrid(); // Ensure buildGrid is initialized
             }
 
             buildCtx.clearRect(0, 0, buildCanvas.width, buildCanvas.height);
@@ -1439,7 +1441,7 @@
                     mazeCtx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height); // Clear canvas
                     return; // Don't start game if no levels
                 }
-                loadPredefinedLevel(currentLevelIndex); // Now loads from officialPlayableLevels
+                loadOfficialLevel(currentLevelIndex); // Now loads from officialPlayableLevels
             } else if (currentGameType === GAME_MODES.MAZE) {
                 generateMaze();
                 player = getRandomPathPosition();
