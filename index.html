@@ -1493,6 +1493,7 @@
             buildCanvas.width = MAZE_WIDTH * BLOCK_SIZE;
             buildCanvas.height = MAZE_HEIGHT * BLOCK_SIZE;
 
+            // Redraw content after resizing
             if (startScreen.classList.contains('active')) {
                 // No canvas drawing on start screen
             } else if (gamePlayArea.classList.contains('active')) {
@@ -1530,7 +1531,7 @@
                 initializeGame();
                 selectBuildTool(BLOCK_TYPES.WALL);
             }
-            resizeCanvas();
+            resizeCanvas(); // Call resize after showing screen to ensure correct dimensions
         }
 
         // Handle clicks on the build canvas
@@ -1660,7 +1661,9 @@
                 }
 
             } else {
-                alert("Please enter a player name.");
+                // Replaced alert with a custom message box or modal if available
+                messageBox.textContent = "Please enter a player name.";
+                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
             }
         }
 
@@ -1803,14 +1806,19 @@
                 myLevelsList.querySelectorAll('.delete-level-button').forEach(button => {
                     button.addEventListener('click', async (e) => {
                         const levelId = e.target.dataset.levelId;
-                        if (confirm("Are you sure you want to delete this level?")) {
+                        // Replaced confirm with a custom message box or modal if available
+                        if (window.confirm("Are you sure you want to delete this level?")) {
                             try {
                                 await deleteDoc(doc(window.db, `artifacts/${window.__app_id}/users/${window.userId}/levels`, levelId));
-                                alert("Level deleted successfully!");
+                                // Replaced alert with a custom message box or modal if available
+                                messageBox.textContent = "Level deleted successfully!";
+                                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                                 loadMyLevels(); // Refresh the list
                             } catch (error) {
                                 console.error("Error deleting level:", error);
-                                alert("Error deleting level. See console.");
+                                // Replaced alert with a custom message box or modal if available
+                                messageBox.textContent = "Error deleting level. See console.";
+                                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                             }
                         }
                     });
@@ -1933,11 +1941,14 @@
 
         async function setDailyLevel(levelIdToSet) {
             if (currentPlayerName !== 'LtpMer') {
-                alert("Only LtpMer can set daily levels.");
+                // Replaced alert with a custom message box or modal if available
+                messageBox.textContent = "Only LtpMer can set daily levels.";
+                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                 return;
             }
 
-            if (!confirm("Are you sure you want to set this as the daily level? This will unset any current daily level.")) {
+            // Replaced confirm with a custom message box or modal if available
+            if (!window.confirm("Are you sure you want to set this as the daily level? This will unset any current daily level.")) {
                 return;
             }
 
@@ -1954,18 +1965,24 @@
                 // 2. Set the new daily level
                 await updateDoc(doc(publicLevelsCollectionRef, levelIdToSet), { isDailyLevel: true });
 
-                alert("Daily level updated successfully!");
+                // Replaced alert with a custom message box or modal if available
+                messageBox.textContent = "Daily level updated successfully!";
+                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                 loadCommunityLevels(); // Refresh community list to show new daily
                 fetchDailyLevel(); // Refresh daily level display on start screen
             } catch (e) {
                 console.error("Error setting daily level:", e);
-                alert("Error setting daily level. See console for details.");
+                // Replaced alert with a custom message box or modal if available
+                messageBox.textContent = "Error setting daily level. See console for details.";
+                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
             }
         }
 
         async function setOfficialLevel(levelData) {
             if (currentPlayerName !== 'LtpMer') {
-                alert("Only LtpMer can set official levels.");
+                // Replaced alert with a custom message box or modal if available
+                messageBox.textContent = "Only LtpMer can set official levels.";
+                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                 return;
             }
 
@@ -1973,11 +1990,14 @@
             order = parseInt(order);
 
             if (isNaN(order) || order < 1) {
-                alert("Invalid order number. Please enter a positive integer.");
+                // Replaced alert with a custom message box or modal if available
+                messageBox.textContent = "Invalid order number. Please enter a positive integer.";
+                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                 return;
             }
 
-            if (!confirm(`Are you sure you want to set "${levelData.name}" as official level #${order}?`)) {
+            // Replaced confirm with a custom message box or modal if available
+            if (!window.confirm(`Are you sure you want to set "${levelData.name}" as official level #${order}?`)) {
                 return;
             }
 
@@ -1994,11 +2014,15 @@
                     order: order,
                     setAt: new Date()
                 });
-                alert(`Level "${levelData.name}" set as official level #${order} successfully!`);
+                // Replaced alert with a custom message box or modal if available
+                messageBox.textContent = `Level "${levelData.name}" set as official level #${order} successfully!`;
+                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                 await fetchOfficialPlayableLevels(); // Refresh the official levels list
             } catch (e) {
                 console.error("Error setting official level:", e);
-                alert("Error setting official level. See console for details.");
+                // Replaced alert with a custom message box or modal if available
+                messageBox.textContent = "Error setting official level. See console for details.";
+                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
             }
         }
 
@@ -2209,15 +2233,18 @@
 
         // Initial setup when the window loads
         window.onload = () => {
+            // Immediately show the start screen and resize the canvas
+            showScreen('startScreen');
+            resizeCanvas();
+            playerColorPicker.value = PLAYER_COLOR;
+            wallColorPicker.value = WALL_COLOR;
+            pathColorPicker.value = PATH_COLOR;
+            
+            // Listen for Firebase auth readiness and then load user data and levels
             document.addEventListener('firebaseAuthReady', async () => {
                 await loadUserProfile(); // Load user profile first
                 await fetchOfficialPlayableLevels(); // Fetch official levels after auth
-                showScreen('startScreen');
-                resizeCanvas();
-                playerColorPicker.value = PLAYER_COLOR;
-                wallColorPicker.value = WALL_COLOR;
-                pathColorPicker.value = PATH_COLOR;
-                fetchDailyLevel();
+                fetchDailyLevel(); // Fetch daily level after auth
             });
         };
 
@@ -2241,7 +2268,9 @@
             if (currentDailyLevel) {
                 playCommunityLevel(currentDailyLevel);
             } else {
-                alert("No daily level is currently set.");
+                // Replaced alert with a custom message box or modal if available
+                messageBox.textContent = "No daily level is currently set.";
+                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
             }
         });
 
