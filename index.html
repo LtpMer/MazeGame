@@ -946,7 +946,7 @@
 
         // Build Mode Tools
         const toolWall = document.getElementById('toolWall');
-        const toolPath = document.getElementById('toolPath'); // Fixed: Removed erroneous 'document = '
+        const toolPath = document.getElementById('toolPath'); 
         const toolPlayer = document.getElementById('toolPlayer');
         const toolWinpad = document.getElementById('toolWinpad');
         const toolTrigger = document.getElementById('toolTrigger');
@@ -1395,7 +1395,26 @@
             playerBricksDisplay.textContent = `Bricks: 🧱 ${playerBricks}`;
         }
 
-        // Load user profile (player name and bricks)
+        // Saves customization settings to Firestore
+        async function saveCustomization() {
+            if (!window.userId || !window.db) {
+                console.warn("Cannot save customization: User ID or database not available.");
+                return;
+            }
+            try {
+                const userProfileRef = doc(window.db, `artifacts/${window.__app_id}/users/${window.userId}/profile/data`);
+                await setDoc(userProfileRef, {
+                    playerColor: PLAYER_COLOR,
+                    wallColor: WALL_COLOR,
+                    pathColor: PATH_COLOR
+                }, { merge: true });
+                console.log("Customization saved successfully!");
+            } catch (e) {
+                console.error("Error saving customization:", e);
+            }
+        }
+
+        // Load user profile (player name, bricks, and customization)
         async function loadUserProfile() {
             if (!window.userId || !window.db) {
                 console.warn("Cannot load user profile: User ID or database not available.");
@@ -1408,6 +1427,15 @@
                     const data = docSnap.data();
                     currentPlayerName = data.playerName || "Anonymous";
                     playerBricks = data.bricks || 0;
+                    PLAYER_COLOR = data.playerColor || '#F44336';
+                    WALL_COLOR = data.wallColor || '#000000';
+                    PATH_COLOR = data.pathColor || '#f0f0f0';
+
+                    // Update color pickers to reflect loaded colors
+                    playerColorPicker.value = PLAYER_COLOR;
+                    wallColorPicker.value = WALL_COLOR;
+                    pathColorPicker.value = PATH_COLOR;
+
                     if (currentPlayerName !== "Anonymous") {
                         loginButton.textContent = "Logout";
                         loginButton.classList.add('logged-in');
@@ -1415,15 +1443,32 @@
                 } else {
                     currentPlayerName = "Anonymous";
                     playerBricks = 0;
+                    // Reset colors to default if no profile exists
+                    PLAYER_COLOR = '#F44336';
+                    WALL_COLOR = '#000000';
+                    PATH_COLOR = '#f0f0f0';
+                    playerColorPicker.value = PLAYER_COLOR;
+                    wallColorPicker.value = WALL_COLOR;
+                    pathColorPicker.value = PATH_COLOR;
                 }
                 updateUserIdDisplay();
                 updateBricksDisplay();
+                drawGame(); // Redraw game with loaded colors
+                drawBuild(); // Redraw build canvas with loaded colors
             } catch (e) {
                 console.error("Error loading user profile:", e);
                 currentPlayerName = "Anonymous";
                 playerBricks = 0;
+                PLAYER_COLOR = '#F44336'; // Fallback to default
+                WALL_COLOR = '#000000'; // Fallback to default
+                PATH_COLOR = '#f0f0f0'; // Fallback to default
+                playerColorPicker.value = PLAYER_COLOR;
+                wallColorPicker.value = WALL_COLOR;
+                pathColorPicker.value = PATH_COLOR;
                 updateUserIdDisplay();
                 updateBricksDisplay();
+                drawGame();
+                drawBuild();
             }
         }
 
@@ -1943,7 +1988,7 @@
 
         async function setDailyLevel(levelIdToSet) {
             if (currentPlayerName !== 'LtpMer') {
-                // Replaced alert with a custom message box or modal if available
+                // Replaced confirm with a custom message box or modal if available
                 messageBox.textContent = "Only LtpMer can set daily levels.";
                 setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                 return;
@@ -1982,7 +2027,7 @@
 
         async function setOfficialLevel(levelData) {
             if (currentPlayerName !== 'LtpMer') {
-                // Replaced alert with a custom message box or modal if available
+                // Replaced confirm with a custom message box or modal if available
                 messageBox.textContent = "Only LtpMer can set official levels.";
                 setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                 return;
@@ -1992,7 +2037,7 @@
             order = parseInt(order);
 
             if (isNaN(order) || order < 1) {
-                // Replaced alert with a custom message box or modal if available
+                // Replaced confirm with a custom message box or modal if available
                 messageBox.textContent = "Invalid order number. Please enter a positive integer.";
                 setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                 return;
@@ -2139,16 +2184,20 @@
         });
 
         customizationButtonStart.addEventListener('click', () => showModal(customizationModalOverlay));
-        closeCustomizationModalButton.addEventListener('click', () => hideModal(customizationModalOverlay));
+        closeCustomizationModalButton.addEventListener('click', () => {
+            hideModal(customizationModalOverlay);
+            saveCustomization(); // Save customization when closing the modal
+        });
         customizationModalOverlay.addEventListener('click', (e) => {
             if (e.target === customizationModalOverlay) {
                 hideModal(customizationModalOverlay);
+                saveCustomization(); // Save customization when clicking outside the modal
             }
         });
 
-        playerColorPicker.addEventListener('input', (e) => { PLAYER_COLOR = e.target.value; drawGame(); drawBuild(); });
-        wallColorPicker.addEventListener('input', (e) => { WALL_COLOR = e.target.value; drawGame(); drawBuild(); });
-        pathColorPicker.addEventListener('input', (e) => { PATH_COLOR = e.target.value; drawGame(); drawBuild(); });
+        playerColorPicker.addEventListener('input', (e) => { PLAYER_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
+        wallColorPicker.addEventListener('input', (e) => { WALL_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
+        pathColorPicker.addEventListener('input', (e) => { PATH_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
 
         menuButtonStart.addEventListener('click', () => {
             showModal(menuModalOverlay);
@@ -2238,13 +2287,13 @@
             // Immediately show the start screen and resize the canvas
             showScreen('startScreen');
             resizeCanvas();
-            playerColorPicker.value = PLAYER_COLOR;
-            wallColorPicker.value = WALL_COLOR;
-            pathColorPicker.value = PATH_COLOR;
+            // playerColorPicker.value = PLAYER_COLOR; // These are now set in loadUserProfile
+            // wallColorPicker.value = WALL_COLOR;
+            // pathColorPicker.value = PATH_COLOR;
             
             // Listen for Firebase auth readiness and then load user data and levels
             document.addEventListener('firebaseAuthReady', async () => {
-                await loadUserProfile(); // Load user profile first
+                await loadUserProfile(); // Load user profile and customization first
                 await fetchOfficialPlayableLevels(); // Fetch official levels after auth
                 fetchDailyLevel(); // Fetch daily level after auth
             });
