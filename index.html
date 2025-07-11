@@ -1,367 +1,2309 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LtpMer's Maze Game</title>
-  <style>
-    body {
-      margin: 0; padding: 0;
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      background: #222;
-      color: white;
-    }
-    #gameCanvas {
-      border: 2px solid #555;
-      margin-top: 10px;
-      touch-action: none;
-    }
-    @media (max-width: 700px) {
-      #gameCanvas {
-        width: 90vw;
-        height: 90vw;
-      }
-    }
-    #controls {
-      margin-top: 10px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-    }
-    button {
-      padding: 6px 12px;
-      font-size: 16px;
-      cursor: pointer;
-      border-radius: 5px;
-      border: none;
-      background: #444;
-      color: white;
-    }
-    button.active {
-      background: #4caf50;
-    }
-    #buildControls {
-      display: none;
-      flex-direction: column;
-      gap: 6px;
-      margin-top: 10px;
-      justify-content: center;
-      align-items: center;
-    }
-    #typeButtons {
-      display: none;
-      flex-wrap: wrap;
-      gap: 6px;
-      justify-content: center;
-      margin-top: 6px;
-    }
-    #deleteBtn.red {
-      background: #ff4444;
-    }
-    #saveLoadSection {
-      margin-top: 15px;
-      background: #333;
-      padding: 10px;
-      border-radius: 8px;
-      width: 320px;
-    }
-    input[type=text], input[type=password] {
-      font-size: 16px;
-      padding: 5px;
-      margin: 5px 0;
-      width: 100%;
-      box-sizing: border-box;
-      border-radius: 4px;
-      border: none;
-    }
-    #mobileControls {
-      margin-top: 10px;
-      display: none;
-      gap: 8px;
-    }
-    #mobileControls button {
-      width: 50px; height: 50px;
-      font-weight: bold;
-    }
-    .admin {
-      color: #ff5555;
-      font-weight: bold;
-    }
-    #usersList div {
-      margin-bottom: 3px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LtpMer's Maze Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Firebase (will be populated by the environment)
+        window.__app_id = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        window.__firebase_config = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        window.__initial_auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase
+        if (window.__firebase_config) {
+            window.firebaseApp = initializeApp(window.__firebase_config);
+            window.db = getFirestore(window.firebaseApp);
+            window.auth = getAuth(window.firebaseApp);
+
+            // Sign in anonymously or with custom token
+            if (window.__initial_auth_token) {
+                signInWithCustomToken(window.auth, window.__initial_auth_token)
+                    .then(() => {
+                        console.log("Firebase signed in with custom token.");
+                        window.userId = window.auth.currentUser?.uid || crypto.randomUUID();
+                        document.dispatchEvent(new Event('firebaseAuthReady'));
+                    })
+                    .catch((error) => {
+                        console.error("Error signing in with custom token:", error);
+                        signInAnonymously(window.auth)
+                            .then(() => {
+                                console.log("Firebase signed in anonymously.");
+                                window.userId = window.auth.currentUser?.uid || crypto.randomUUID();
+                                document.dispatchEvent(new Event('firebaseAuthReady'));
+                            })
+                            .catch((anonError) => {
+                                console.error("Error signing in anonymously:", anonError);
+                                window.userId = crypto.randomUUID(); // Fallback to random ID
+                                document.dispatchEvent(new Event('firebaseAuthReady'));
+                            });
+                    });
+            } else {
+                signInAnonymously(window.auth)
+                    .then(() => {
+                        console.log("Firebase signed in anonymously.");
+                        window.userId = window.auth.currentUser?.uid || crypto.randomUUID();
+                        document.dispatchEvent(new Event('firebaseAuthReady'));
+                    })
+                    .catch((error) => {
+                        console.error("Error signing in anonymously:", error);
+                        window.userId = crypto.randomUUID(); // Fallback to random ID
+                        document.dispatchEvent(new Event('firebaseAuthReady'));
+                    });
+            }
+
+            onAuthStateChanged(window.auth, (user) => {
+                if (user) {
+                    window.userId = user.uid;
+                    console.log("Auth state changed, user ID:", window.userId);
+                } else {
+                    console.log("Auth state changed, no user.");
+                    // If user logs out, userId might need to be re-evaluated or handled
+                }
+            });
+        } else {
+            console.warn("Firebase config not found. Running without Firebase features.");
+            window.userId = crypto.randomUUID(); // Generate a random ID if Firebase is not configured
+            document.dispatchEvent(new Event('firebaseAuthReady'));
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #1a202c; /* Dark background */
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            color: #e2e8f0; /* Light text */
+            position: relative; /* Needed for absolute positioning of info button */
+            /* Removed overflow: hidden; to allow scrolling */
+        }
+
+        .game-container {
+            background-color: #2d3748; /* Slightly lighter dark background for container */
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 90%;
+            width: 700px; /* Max width for larger screens */
+            gap: 20px;
+            position: relative; /* For z-index */
+        }
+
+        h1 {
+            color: #63b3ed; /* Blue title */
+            margin-bottom: 15px;
+            font-size: 2.5rem;
+            text-align: center;
+        }
+
+        canvas {
+            background-color: #f0f0f0; /* Light grey maze background for paths */
+            border: 5px solid #4a5568; /* Darker border for canvas */
+            border-radius: 10px;
+            display: block;
+            touch-action: none; /* Prevent default touch actions like scrolling/zooming */
+            max-width: 100%; /* Ensure canvas is responsive */
+            height: auto; /* Maintain aspect ratio */
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+            justify-content: center;
+            gap: 15px;
+            width: 100%;
+        }
+
+        button {
+            background-color: #48bb78; /* Green button */
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            flex-grow: 1; /* Allow buttons to grow */
+            max-width: 200px; /* Adjust max-width for better distribution */
+        }
+
+        button:hover {
+            background-color: #38a169; /* Darker green on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Specific button styles */
+        .start-screen-button { /* For Play, Customization, Menu on start screen */
+            background-color: #63b3ed; /* Blue for main buttons */
+            font-weight: bold;
+            font-size: 1.8rem; /* Larger font for main buttons */
+            padding: 20px 40px;
+            border-radius: 15px;
+            max-width: 300px;
+            min-width: 150px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+        }
+        .start-screen-button:hover {
+            background-color: #4299e1;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+        }
+        .start-screen-button:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #customizationButtonStart, #menuButtonStart, #leaderboardButton { /* Added leaderboard button */
+            background-color: #f6ad55; /* Orange for Customization */
+            font-size: 1.2rem; /* Smaller than Play, larger than game controls */
+            padding: 15px 30px;
+            max-width: 250px;
+        }
+        #customizationButtonStart:hover, #menuButtonStart:hover, #leaderboardButton:hover {
+            background-color: #ed8936;
+        }
+
+        #menuButtonStart {
+            background-color: #a0aec0; /* Grey for Menu */
+        }
+        #menuButtonStart:hover {
+            background-color: #718096;
+        }
+
+        /* Daily Level Display */
+        .daily-level-container {
+            background-color: #4a5568; /* Darker grey for daily level box */
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-top: 20px;
+            width: 80%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .daily-level-container h3 {
+            color: #63b3ed;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+        }
+        .daily-level-container p {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+        .daily-level-container button {
+            background-color: #4CAF50;
+            font-size: 1.1rem;
+            padding: 10px 20px;
+            max-width: 250px;
+        }
+        .daily-level-container button:hover {
+            background-color: #388E3C;
+        }
+
+
+        /* Touch controls for mobile */
+        .touch-controls {
+            display: none; /* Hidden by default, shown on smaller screens */
+            grid-template-areas:
+                ". up ."
+                "left . right"
+                ". down .";
+            gap: 10px;
+            margin-top: 20px;
+            width: 200px;
+            height: 200px;
+            justify-items: center;
+            align-items: center;
+        }
+
+        .touch-button {
+            background-color: #63b3ed; /* Blue for touch buttons */
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .touch-button:active {
+            background-color: #4299e1;
+            transform: scale(0.95);
+        }
+
+        .touch-button.up { grid-area: up; }
+        .touch-button.down { grid-area: down; }
+        .touch-button.left { grid-area: left; }
+        .touch-button.right { grid-area: right; }
+
+        /* Info and Login Buttons in corner */
+        .corner-buttons {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        .corner-buttons button {
+            background-color: #f6ad55; /* Orange color */
+            color: #2d3748;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            border: none;
+            min-width: unset;
+            text-align: center;
+            flex-grow: 0; /* Prevent them from growing */
+            max-width: unset; /* Remove max-width constraint */
+        }
+
+        .corner-buttons button:hover {
+            background-color: #ed8936;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+        .corner-buttons button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        #loginButton.logged-in {
+            background-color: #e53e3e; /* Red for logout */
+        }
+        #loginButton.logged-in:hover {
+            background-color: #c53030;
+        }
+
+
+        /* General Modal Styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100; /* Ensure it's on top of everything */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: #2d3748;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            transform: translateY(-20px);
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            color: #e2e8f0;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .modal-content h2 {
+            color: #63b3ed;
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+
+        .modal-content p {
+            line-height: 1.6;
+            margin-bottom: 25px;
+            font-size: 1.1rem;
+        }
+
+        .modal-content .close-button {
+            background-color: #e53e3e; /* Red close button */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            border: none;
+        }
+
+        .modal-content .close-button:hover {
+            background-color: #c53030;
+            transform: translateY(-1px);
+        }
+
+        /* Game State Specific Displays */
+        .start-screen, .game-play-area, .build-mode-area {
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .start-screen.active, .game-play-area.active, .build-mode-area.active {
+            display: flex; /* Shown when active */
+        }
+
+        /* Styles for buttons inside menu modal */
+        .menu-modal-buttons button {
+            background-color: #4CAF50; /* Green for menu options */
+            margin-bottom: 10px;
+            max-width: 300px;
+        }
+        .menu-modal-buttons button:hover {
+            background-color: #388E3C;
+        }
+        #clearBuildGridButton {
+            background-color: #e53e3e; /* Red for clear button */
+        }
+        #clearBuildGridButton:hover {
+            background-color: #c53030;
+        }
+
+        /* Build Mode Tool Buttons */
+        .build-tools {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+        .build-tools button {
+            background-color: #63b3ed; /* Blue for tools */
+            flex-grow: 0;
+            max-width: 120px;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+        }
+        .build-tools button.active-tool {
+            background-color: #4299e1;
+            box-shadow: 0 0 0 3px #4299e1, 0 0 0 6px #63b3ed; /* Highlight active tool */
+        }
+        #saveLevelButton, #publishLevelButton { /* Added publish button */
+            background-color: #4CAF50; /* Green for save */
+            font-weight: bold;
+            font-size: 1.1rem;
+            padding: 10px 20px;
+        }
+        #saveLevelButton:hover, #publishLevelButton:hover {
+            background-color: #388E3C;
+        }
+
+        /* Customization Modal Styles */
+        .customization-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .customization-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        .customization-option label {
+            flex-basis: 40%;
+            text-align: left;
+            font-size: 1.1rem;
+        }
+        .customization-option input[type="color"] {
+            flex-basis: 55%;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            padding: 0;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        .customization-option input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .customization-option input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 8px;
+        }
+        .customization-option input[type="color"]::-moz-color-swatch {
+            border: none;
+            border-radius: 8一層;
+        }
+
+        /* Level Lists (My Levels & Community Levels) */
+        .level-list-container {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 15px;
+            width: 100%;
+            text-align: left;
+        }
+        .level-list-container div {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed #4a5568;
+        }
+        .level-list-container div:last-child {
+            border-bottom: none;
+        }
+        .level-list-container button {
+            margin-left: 10px;
+            padding: 5px 10px;
+            font-size: 0.9rem;
+            max-width: 80px;
+            flex-shrink: 0;
+        }
+        .level-list-container .level-name {
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .level-list-container .play-level-button {
+            background-color: #68d391;
+        }
+        .level-list-container .play-level-button:hover {
+            background-color: #48bb78;
+        }
+        .level-list-container .delete-level-button {
+            background-color: #e53e3e;
+        }
+        .level-list-container .delete-level-button:hover {
+            background-color: #c53030;
+        }
+        .level-list-container .set-daily-button { /* New style for admin button */
+            background-color: #FFD700; /* Gold */
+            color: #2d3748;
+        }
+        .level-list-container .set-daily-button:hover {
+            background-color: #DAA520; /* Darker Gold */
+        }
+        /* New style for "Set as Official" button */
+        .level-list-container .set-official-button {
+            background-color: #805AD5; /* Purple */
+            color: white;
+        }
+        .level-list-container .set-official-button:hover {
+            background-color: #6B46C1;
+        }
+
+        /* Leaderboard Specific Styles */
+        .leaderboard-list-container {
+            max-height: 300px; /* Make it scrollable */
+            overflow-y: auto;
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 15px;
+            width: 100%;
+            text-align: left;
+        }
+        .leaderboard-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed #4a5568;
+        }
+        .leaderboard-entry:last-child {
+            border-bottom: none;
+        }
+        .leaderboard-entry .rank {
+            font-weight: bold;
+            color: #63b3ed;
+            width: 30px;
+            flex-shrink: 0;
+        }
+        .leaderboard-entry .player-name {
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 10px;
+        }
+        .leaderboard-entry .level-name-lb {
+            font-size: 0.9em;
+            color: #a0aec0;
+            margin-right: 10px;
+        }
+        .leaderboard-entry .time {
+            font-weight: bold;
+            color: #4CAF50;
+            flex-shrink: 0;
+        }
+
+        /* Login Modal specific styles */
+        .login-form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .login-form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #e2e8f0;
+        }
+        .login-form-group input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #4a5568;
+            background-color: #2d3748;
+            color: #e2e8f0;
+            font-size: 1rem;
+        }
+        .login-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .login-buttons button {
+            flex-grow: 1;
+            max-width: 150px;
+        }
+        .login-buttons #loginSubmitButton {
+            background-color: #63b3ed;
+        }
+        .login-buttons #loginSubmitButton:hover {
+            background-color: #4299e1;
+        }
+        .login-buttons #loginCancelButton {
+            background-color: #a0aec0;
+        }
+        .login-buttons #loginCancelButton:hover {
+            background-color: #718096;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            .game-container {
+                padding: 20px;
+                width: 100%;
+            }
+            .message-box {
+                font-size: 1rem;
+                padding: 10px 15px;
+            }
+            button {
+                padding: 10px 20px;
+                font-size: 1rem;
+            }
+            .touch-controls {
+                display: grid; /* Show touch controls on small screens */
+            }
+            .corner-buttons {
+                top: 10px;
+                right: 10px;
+                gap: 5px;
+            }
+            .corner-buttons button {
+                padding: 8px 15px;
+                font-size: 0.9rem;
+            }
+            .modal-content {
+                padding: 20px;
+            }
+            .modal-content h2 {
+                font-size: 1.7rem;
+            }
+            .modal-content p {
+                font-size: 1rem;
+            }
+            .button-row {
+                flex-direction: column; /* Stack buttons vertically on small screens */
+            }
+            button {
+                max-width: 100%; /* Full width for stacked buttons */
+            }
+            .start-screen-button {
+                font-size: 1.5rem;
+                padding: 15px 30px;
+            }
+            #customizationButtonStart, #menuButtonStart, #leaderboardButton {
+                font-size: 1.1rem;
+                padding: 12px 25px;
+            }
+        }
+    </style>
 </head>
 <body>
+    <div class="game-container">
+        <!-- Start Screen -->
+        <div id="startScreen" class="start-screen">
+            <h1>Maze Explorer</h1>
+            <button id="playButton" class="start-screen-button">Play</button>
+            <button id="customizationButtonStart" class="start-screen-button">Customization</button>
+            <button id="menuButtonStart" class="start-screen-button">Menu</button>
+            <button id="leaderboardButton" class="start-screen-button">Leaderboard</button> <!-- New Leaderboard Button -->
 
-<h1>LtpMer's Maze Game</h1>
+            <div id="dailyLevelContainer" class="daily-level-container" style="display: none;">
+                <h3>Daily Level</h3>
+                <p id="dailyLevelName">Loading daily level...</p>
+                <button id="playDailyLevelButton">Play Daily Level</button>
+            </div>
+        </div>
 
-<div id="saveLoadSection">
-  <h3>Save / Load Maze Slots</h3>
-  <button data-slot="1" class="saveBtn">Save Slot 1</button>
-  <button data-slot="2" class="saveBtn">Save Slot 2</button>
-  <button data-slot="3" class="saveBtn">Save Slot 3</button>
-  <button data-slot="1" class="loadBtn">Load Slot 1</button>
-  <button data-slot="2" class="loadBtn">Load Slot 2</button>
-  <button data-slot="3" class="loadBtn">Load Slot 3</button>
-  <button id="clearMazeBtn" style="background:#ff5555;">Clear Maze</button>
-  <div id="saveStatus"></div>
-</div>
+        <!-- Game Play Area (for levels, random maze, random blocks) -->
+        <div id="gamePlayArea" class="game-play-area">
+            <canvas id="mazeCanvas"></canvas>
+            <div class="message-box" id="messageBox">Use arrow keys or WASD to move!</div>
+            <div class="controls">
+                <div class="button-row">
+                    <button id="nextLevelButton" style="display: none;">Next Level</button> <!-- Only for Level Mode -->
+                    <button id="backToMainMenuButtonGame">Back to Main Menu</button>
+                </div>
+                <div class="touch-controls">
+                    <button class="touch-button up" data-direction="up">&#9650;</button>
+                    <button class="touch-button left" data-direction="left">&#9664;</button>
+                    <button class="touch-button right" data-direction="right">&#9654;</button>
+                    <button class="touch-button down" data-direction="down">&#9660;</button>
+                </div>
+            </div>
+        </div>
 
-<div id="controls">
-  <button id="toggleBuildBtn">Toggle Build Mode</button>
-</div>
+        <!-- Build Mode Area -->
+        <div id="buildModeArea" class="build-mode-area">
+            <h1>Build Mode</h1>
+            <canvas id="buildCanvas"></canvas>
+            <div class="message-box" id="buildMessageBox">Click to place/remove blocks!</div>
+            <div class="controls">
+                <div class="build-tools">
+                    <button id="toolWall" class="active-tool">Wall</button>
+                    <button id="toolPath">Path</button>
+                    <button id="toolPlayer">Player</button>
+                    <button id="toolWinpad">Win Pad</button>
+                    <button id="toolTrigger">Trigger</button>
+                    <button id="toolMovingBlock">Moving</button>
+                    <button id="toolPushBlock">Push</button>
+                </div>
+                <div class="button-row">
+                    <button id="clearBuildGridButton">Clear Grid</button>
+                    <button id="saveLevelButton">Save Level</button>
+                    <button id="publishLevelButton">Publish Level</button> <!-- New Publish Button -->
+                    <button id="backToMainMenuButtonBuild">Back to Main Menu</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<div id="buildControls">
-  <div style="display: flex; gap: 6px;">
-    <button id="typesBtn">Types</button>
-    <button id="deleteBtn" style="display: none;">Delete</button>
-  </div>
-  <div id="typeButtons">
-    <button data-type="wall" class="typeBtn active">Wall (Black)</button>
-    <button data-type="design" class="typeBtn">Stop Movable (Gray)</button>
-    <button data-type="movable" class="typeBtn">Movable (Blue)</button>
-    <button data-type="player" class="typeBtn">Player (Red)</button>
-    <button data-type="win" class="typeBtn">Win (Green)</button>
-  </div>
-</div>
+    <!-- Info and Login Buttons in corner -->
+    <div class="corner-buttons">
+        <button id="loginButton">Login</button>
+        <button id="infoButton">Info</button>
+    </div>
 
-<canvas id="gameCanvas" width="600" height="600" tabindex="0"></canvas>
+    <!-- Info Modal -->
+    <div id="infoModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Welcome to Maze Explorer!</h2>
+            <p>
+                Navigate the red player block to the green winpad.
+                Use **Arrow Keys** or **WASD** to move.
+                <br><br>
+                **Play:** Jump straight into predefined levels.
+                <br>
+                **Customization:** Change game visuals.
+                <br>
+                **Menu:** Access other game modes like random generation, build mode, or saved levels.
+            </p>
+            <button class="close-button" id="closeInfoModalButton">Close</button>
+        </div>
+    </div>
 
-<div id="mobileControls">
-  <button data-dir="up">↑</button><br />
-  <button data-dir="left">←</button>
-  <button data-dir="down">↓</button>
-  <button data-dir="right">→</button>
-</div>
+    <!-- Customization Modal -->
+    <div id="customizationModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Customization</h2>
+            <div class="customization-options">
+                <div class="customization-option">
+                    <label for="playerColorPicker">Player Color:</label>
+                    <input type="color" id="playerColorPicker">
+                </div>
+                <div class="customization-option">
+                    <label for="wallColorPicker">Wall Color:</label>
+                    <input type="color" id="wallColorPicker">
+                </div>
+                <div class="customization-option">
+                    <label for="pathColorPicker">Path Color:</label>
+                    <input type="color" id="pathColorPicker">
+                </div>
+            </div>
+            <button class="close-button" id="closeCustomizationModalButton">Close</button>
+        </div>
+    </div>
 
-<script>
-(() => {
-  const canvas = document.getElementById("gameCanvas");
-  const ctx = canvas.getContext("2d");
-  const cols = 25, rows = 25;
-  const cellSize = canvas.width / cols;
+    <!-- Menu Modal -->
+    <div id="menuModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Menu</h2>
+            <p id="userIdDisplay">User ID: Loading...</p>
+            <p id="playerBricksDisplay">Bricks: 🧱 0</p> <!-- New Bricks Display -->
+            <p>Choose your game mode:</p>
+            <div class="button-row menu-modal-buttons">
+                <button id="startRandomMazeButton">Start Random Maze</button>
+                <button id="startRandomBlocksButton">Start Random Blocks</button>
+                <button id="buildModeButton">Build Mode</button>
+            </div>
+            <h3>My Levels</h3>
+            <div id="myLevelsList" class="level-list-container">
+                <!-- Levels will be loaded here -->
+                Loading levels...
+            </div>
+            <button id="refreshMyLevelsButton">Refresh My Levels</button>
+            <h3>Community Levels</h3>
+            <p>Search and play levels created by others!</p>
+            <div class="button-row menu-modal-buttons">
+                <button id="searchLevelsButton">Search Levels</button>
+            </div>
+            <button class="close-button" id="closeMenuModalButton">Close</button>
+        </div>
+    </div>
 
-  const BLOCK_TYPES = { empty: 0, wall: 1, design: 2, movable: 3 };
-  const BLOCK_COLORS = {
-    [BLOCK_TYPES.empty]: "white",
-    [BLOCK_TYPES.wall]: "black",
-    [BLOCK_TYPES.design]: "gray",
-    [BLOCK_TYPES.movable]: "blue"
-  };
+    <!-- Login Modal -->
+    <div id="loginModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Simulated Login</h2>
+            <p>
+                This is a **simulated login** for demonstration purposes.
+                It does not connect to a real authentication server or store your password securely.
+                Your entered Player Name will be displayed in the Menu.
+            </p>
+            <div class="login-form-group">
+                <label for="playerNameInput">Player Name:</label>
+                <input type="text" id="playerNameInput" placeholder="Enter your player name" autocomplete="username">
+            </div>
+            <div class="login-form-group">
+                <label for="passwordInput">Password:</label>
+                <input type="password" id="passwordInput" placeholder="Enter a password (not saved)" autocomplete="current-password">
+            </div>
+            <div class="login-buttons">
+                <button id="loginSubmitButton">Login</button>
+                <button id="loginCancelButton">Cancel</button>
+            </div>
+        </div>
+    </div>
 
-  let maze = [];
-  let player = { x: 1, y: 1 };
-  let win = { x: cols - 2, y: rows - 2 };
-  let buildMode = false;
-  let currentType = "wall";
-  let isDeleting = false;
-  let keys = {}, moveDelay = 6, moveCounter = 0;
+    <!-- Community Levels Modal -->
+    <div id="communityLevelsModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Community Levels</h2>
+            <div id="communityLevelsList" class="level-list-container">
+                Loading community levels...
+            </div>
+            <button id="refreshCommunityLevelsButton">Refresh Community Levels</button>
+            <button class="close-button" id="closeCommunityLevelsModalButton">Close</button>
+        </div>
+    </div>
 
-  const SAVE_PREFIX = "maze_save_";
-  const WIN_STATS_KEY = "maze_winStats";
+    <!-- Leaderboard Modal -->
+    <div id="leaderboardModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Leaderboard</h2>
+            <div id="leaderboardList" class="leaderboard-list-container">
+                Loading leaderboard...
+            </div>
+            <button id="refreshLeaderboardButton">Refresh Leaderboard</button>
+            <button class="close-button" id="closeLeaderboardModalButton">Close</button>
+        </div>
+    </div>
 
-  function generateEmptyMaze() {
-    return Array.from({ length: cols }, () => Array(rows).fill(BLOCK_TYPES.empty));
-  }
+    <script type="module">
+        // Import Firestore functions
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  function isBorder(x, y) {
-    return x === 0 || y === 0 || x === cols - 1 || y === rows - 1;
-  }
+        // Get main UI elements
+        const startScreen = document.getElementById('startScreen');
+        const gamePlayArea = document.getElementById('gamePlayArea');
+        const buildModeArea = document.getElementById('buildModeArea');
+        const infoButton = document.getElementById('infoButton');
+        const loginButton = document.getElementById('loginButton');
 
-  function randomEmptyCell(m) {
-    for (let tries = 0; tries < 10000; tries++) {
-      const x = Math.floor(Math.random() * cols);
-      const y = Math.floor(Math.random() * rows);
-      if (m[x][y] === BLOCK_TYPES.empty) return { x, y };
-    }
-    return { x: 1, y: 1 };
-  }
+        // Get start screen buttons
+        const playButton = document.getElementById('playButton');
+        const customizationButtonStart = document.getElementById('customizationButtonStart');
+        const menuButtonStart = document.getElementById('menuButtonStart');
+        const leaderboardButton = document.getElementById('leaderboardButton');
+        const dailyLevelContainer = document.getElementById('dailyLevelContainer');
+        const dailyLevelName = document.getElementById('dailyLevelName');
+        const playDailyLevelButton = document.getElementById('playDailyLevelButton');
 
-  function generateRandomMaze() {
-    const m = generateEmptyMaze();
-    for (let x = 0; x < cols; x++) {
-      for (let y = 0; y < rows; y++) {
-        if (Math.random() < 0.3 && !isBorder(x, y)) m[x][y] = BLOCK_TYPES.wall;
-        else if (Math.random() < 0.05 && !isBorder(x, y)) m[x][y] = BLOCK_TYPES.design;
-        else if (Math.random() < 0.05 && !isBorder(x, y)) m[x][y] = BLOCK_TYPES.movable;
-      }
-    }
-    player = randomEmptyCell(m);
-    win = randomEmptyCell(m);
-    return m;
-  }
+        // Get game play area elements
+        const mazeCanvas = document.getElementById('mazeCanvas');
+        const mazeCtx = mazeCanvas.getContext('2d');
+        const messageBox = document.getElementById('messageBox');
+        const nextLevelButton = document.getElementById('nextLevelButton');
+        const backToMainMenuButtonGame = document.getElementById('backToMainMenuButtonGame');
+        const touchControls = document.querySelector('.touch-controls');
 
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (let x = 0; x < cols; x++) {
-      for (let y = 0; y < rows; y++) {
-        ctx.fillStyle = BLOCK_COLORS[maze[x][y]] || "white";
-        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-      }
-    }
-    ctx.fillStyle = "green";
-    ctx.fillRect(win.x * cellSize, win.y * cellSize, cellSize, cellSize);
-    ctx.fillStyle = "red";
-    ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
-  }
+        // Get build mode area elements
+        const buildCanvas = document.getElementById('buildCanvas');
+        const buildCtx = buildCanvas.getContext('2d');
+        const buildMessageBox = document.getElementById('buildMessageBox');
+        const clearBuildGridButton = document.getElementById('clearBuildGridButton');
+        const saveLevelButton = document.getElementById('saveLevelButton');
+        const publishLevelButton = document.getElementById('publishLevelButton');
+        const backToMainMenuButtonBuild = document.getElementById('backToMainMenuButtonBuild');
 
-  function isBlocked(x, y) {
-    return x < 0 || y < 0 || x >= cols || y >= rows ||
-      maze[x][y] === BLOCK_TYPES.wall || maze[x][y] === BLOCK_TYPES.movable;
-  }
+        // Modals
+        const infoModalOverlay = document.getElementById('infoModalOverlay');
+        const closeInfoModalButton = document.getElementById('closeInfoModalButton');
+        const customizationModalOverlay = document.getElementById('customizationModalOverlay');
+        const closeCustomizationModalButton = document.getElementById('closeCustomizationModalButton');
+        const menuModalOverlay = document.getElementById('menuModalOverlay');
+        const closeMenuModalButton = document.getElementById('closeMenuModalButton');
+        const loginModalOverlay = document.getElementById('loginModalOverlay');
+        const playerNameInput = document.getElementById('playerNameInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginSubmitButton = document.getElementById('loginSubmitButton');
+        const loginCancelButton = document.getElementById('loginCancelButton');
+        const communityLevelsModalOverlay = document.getElementById('communityLevelsModalOverlay');
+        const communityLevelsList = document.getElementById('communityLevelsList');
+        const refreshCommunityLevelsButton = document.getElementById('refreshCommunityLevelsButton');
+        const closeCommunityLevelsModalButton = document.getElementById('closeCommunityLevelsModalButton');
+        const leaderboardModalOverlay = document.getElementById('leaderboardModalOverlay');
+        const leaderboardList = document.getElementById('leaderboardList');
+        const refreshLeaderboardButton = document.getElementById('refreshLeaderboardButton');
+        const closeLeaderboardModalButton = document.getElementById('closeLeaderboardModalButton');
 
-  function movePlayer(dx, dy) {
-    if (buildMode) return;
-    const newX = player.x + dx;
-    const newY = player.y + dy;
-    if (isBlocked(newX, newY)) {
-      if (maze[newX][newY] === BLOCK_TYPES.movable) {
-        const pushX = newX + dx;
-        const pushY = newY + dy;
-        if (!isBlocked(pushX, pushY) && maze[pushX][pushY] === BLOCK_TYPES.empty) {
-          maze[pushX][pushY] = BLOCK_TYPES.movable;
-          maze[newX][newY] = BLOCK_TYPES.empty;
-          player = { x: newX, y: newY };
+        // Buttons inside Menu Modal
+        const startRandomMazeButton = document.getElementById('startRandomMazeButton');
+        const startRandomBlocksButton = document.getElementById('startRandomBlocksButton');
+        const buildModeButton = document.getElementById('buildModeButton');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const playerBricksDisplay = document.getElementById('playerBricksDisplay');
+        const myLevelsList = document.getElementById('myLevelsList');
+        const refreshMyLevelsButton = document.getElementById('refreshMyLevelsButton');
+        const searchLevelsButton = document.getElementById('searchLevelsButton');
+
+        // Customization elements
+        const playerColorPicker = document.getElementById('playerColorPicker');
+        const wallColorPicker = document.getElementById('wallColorPicker');
+        const pathColorPicker = document.getElementById('pathColorPicker');
+
+        // Build Mode Tools
+        const toolWall = document.getElementById('toolWall');
+        const toolPath = document.getElementById('toolPath');
+        const toolPlayer = document.getElementById('toolPlayer');
+        const toolWinpad = document.getElementById('toolWinpad');
+        const toolTrigger = document.getElementById('toolTrigger');
+        const toolMovingBlock = document.getElementById('toolMovingBlock');
+        const toolPushBlock = document.getElementById('toolPushBlock');
+        let currentBuildTool = null;
+
+        // Maze dimensions
+        const MAZE_WIDTH = 31;
+        const MAZE_HEIGHT = 31;
+        let BLOCK_SIZE = 15;
+
+        // Colors
+        let PLAYER_COLOR = '#F44336';
+        let WALL_COLOR = '#000000';
+        let PATH_COLOR = '#f0f0f0';
+        const END_COLOR = '#4CAF50';
+        const TRIGGER_COLOR = '#8A2BE2';
+        const MOVING_BLOCK_COLOR = '#4682B4';
+        const PUSH_BLOCK_COLOR = '#FFD700';
+
+        // Block Types
+        const BLOCK_TYPES = {
+            PATH: 0,
+            WALL: 1,
+            PLAYER_START: 2,
+            WINPAD: 3,
+            TRIGGER: 4,
+            MOVING_BLOCK: 5,
+            PUSH_BLOCK: 6
+        };
+
+        // Game state variables
+        let mazeGrid = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL));
+        let buildGrid = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.PATH));
+        
+        let player = { x: 0, y: 0 };
+        let end = { x: MAZE_WIDTH - 1, y: MAZE_HEIGHT - 1 };
+        let gameWon = false;
+        let gameStartTime = 0;
+        let currentLevelId = null; // ID of the level currently being played (for leaderboard)
+        let currentLevelName = ''; // Name of the level currently being played (for leaderboard)
+
+        let currentPlayerName = "Anonymous";
+        let playerBricks = 0;
+
+        // Game Modes
+        const GAME_MODES = {
+            LEVEL: 'level', // Now refers to official levels loaded from Firestore
+            MAZE: 'maze',
+            BLOCKS: 'blocks',
+            BUILD: 'build',
+            SAVED_LEVEL: 'saved_level',
+            COMMUNITY_LEVEL: 'community_level'
+        };
+        let currentGameType = GAME_MODES.LEVEL;
+        let currentLevelIndex = 0; // Index within the `officialPlayableLevels` array
+
+        let officialPlayableLevels = []; // New: Array to hold levels fetched from Firestore for the "Play" button
+        let currentDailyLevel = null;
+
+        // Predefined Levels (only for reference/source for official levels, not directly played by "Play" button)
+        const predefinedLevels = [
+            { id: "predefined-1", name: "Level 1: Straight Shot", grid: [], playerStart: {}, winpadEnd: {} },
+            { id: "predefined-2", name: "Level 2: The L-Bend", grid: [], playerStart: {}, winpadEnd: {} },
+            { id: "predefined-3", name: "Level 3: Cross Path", grid: [], playerStart: {}, winpadEnd: {} },
+            { id: "predefined-4", name: "Level 4: Zigzag", grid: [], playerStart: {}, winpadEnd: {} },
+            { id: "predefined-5", name: "Level 5: Frame Maze", grid: [], playerStart: {}, winpadEnd: {} },
+            { id: "predefined-6", name: "Level 6: Scattered Islands", grid: [], playerStart: {}, winpadEnd: {} },
+            { id: "predefined-7", name: "Level 7: Spiral In", grid: [], playerStart: {}, winpadEnd: {} },
+            { id: "predefined-8", name: "Level 8: Double Spiral", grid: [], playerStart: {}, winpadEnd: {} },
+            { id: "predefined-9", name: "Level 9: Dense Grid Maze", grid: [], playerStart: {}, winpadEnd: {} },
+            { id: "predefined-10", name: "Level 10: Almost Full", grid: [], playerStart: {}, winpadEnd: {} }
+        ];
+        // Populate predefinedLevels grids (simplified for brevity, actual logic remains the same as before)
+        predefinedLevels[0].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); for (let x = 1; x < MAZE_WIDTH - 1; x++) { g[1][x] = BLOCK_TYPES.PATH; } for (let y = 1; y < MAZE_HEIGHT - 1; y++) { g[y][MAZE_WIDTH - 2] = BLOCK_TYPES.PATH; } g[1][MAZE_WIDTH - 2] = BLOCK_TYPES.PATH; g[MAZE_HEIGHT - 2][1] = BLOCK_TYPES.PATH; return g; })();
+        predefinedLevels[0].playerStart = { x: 1, y: 1 };
+        predefinedLevels[0].winpadEnd = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
+
+        predefinedLevels[1].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); const midX = Math.floor(MAZE_WIDTH / 2); const midY = Math.floor(MAZE_HEIGHT / 2); for (let x = 1; x <= midX; x++) { g[1][x] = BLOCK_TYPES.PATH; } for (let y = 1; y <= midY; y++) { g[y][midX] = BLOCK_TYPES.PATH; } g[1][1] = BLOCK_TYPES.PATH; g[midY][midX] = BLOCK_TYPES.PATH; return g; })();
+        predefinedLevels[1].playerStart = { x: 1, y: 1 };
+        predefinedLevels[1].winpadEnd = { x: Math.floor(MAZE_WIDTH / 2), y: Math.floor(MAZE_HEIGHT / 2) };
+
+        predefinedLevels[2].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); const midX = Math.floor(MAZE_WIDTH / 2); const midY = Math.floor(MAZE_HEIGHT / 2); for (let x = 1; x < MAZE_WIDTH - 1; x++) { g[midY][x] = BLOCK_TYPES.PATH; } for (let y = 1; y < MAZE_HEIGHT - 1; y++) { g[y][midX] = BLOCK_TYPES.PATH; } g[1][midX] = BLOCK_TYPES.PATH; g[MAZE_HEIGHT - 2][midX] = BLOCK_TYPES.PATH; g[midY][1] = BLOCK_TYPES.PATH; g[midY][MAZE_WIDTH - 2] = BLOCK_TYPES.PATH; g[midY][midX] = BLOCK_TYPES.PATH; return g; })();
+        predefinedLevels[2].playerStart = { x: Math.floor(MAZE_WIDTH / 2), y: 1 };
+        predefinedLevels[2].winpadEnd = { x: Math.floor(MAZE_WIDTH / 2), y: MAZE_HEIGHT - 2 };
+
+        predefinedLevels[3].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); let x = 1; let y = 1; g[y][x] = BLOCK_TYPES.PATH; while (y < MAZE_HEIGHT - 2 || x < MAZE_WIDTH - 2) { if (x < MAZE_WIDTH - 2 && (y % 4 === 1 || y % 4 === 2)) { x++; } else if (y < MAZE_HEIGHT - 2) { y++; } g[y][x] = BLOCK_TYPES.PATH; } return g; })();
+        predefinedLevels[3].playerStart = { x: 1, y: 1 };
+        predefinedLevels[3].winpadEnd = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
+
+        predefinedLevels[4].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); for (let x = 1; x < MAZE_WIDTH - 1; x++) { g[1][x] = BLOCK_TYPES.PATH; g[MAZE_HEIGHT - 2][x] = BLOCK_TYPES.PATH; } for (let y = 1; y < MAZE_HEIGHT - 1; y++) { g[y][1] = BLOCK_TYPES.PATH; g[y][MAZE_WIDTH - 2] = BLOCK_TYPES.PATH; } for (let i = 5; i < MAZE_WIDTH - 5; i++) { g[5][i] = BLOCK_TYPES.WALL; g[MAZE_HEIGHT - 6][i] = BLOCK_TYPES.WALL; } for (let i = 5; i < MAZE_HEIGHT - 5; i++) { g[i][5] = BLOCK_TYPES.WALL; g[i][MAZE_WIDTH - 6] = BLOCK_TYPES.WALL; } g[5][6] = BLOCK_TYPES.PATH; g[MAZE_HEIGHT - 6][MAZE_WIDTH - 7] = BLOCK_TYPES.PATH; g[6][5] = BLOCK_TYPES.PATH; g[MAZE_HEIGHT - 7][MAZE_WIDTH - 6] = BLOCK_TYPES.PATH; return g; })();
+        predefinedLevels[4].playerStart = { x: 1, y: 1 };
+        predefinedLevels[4].winpadEnd = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
+
+        predefinedLevels[5].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); for (let y = 0; y < MAZE_HEIGHT; y++) { for (let x = 0; x < MAZE_WIDTH; x++) { g[y][x] = BLOCK_TYPES.PATH; } } for (let i = 0; i < 150; i++) { const rx = Math.floor(Math.random() * MAZE_WIDTH); const ry = Math.floor(Math.random() * MAZE_HEIGHT); g[ry][rx] = BLOCK_TYPES.WALL; } return g; })();
+        predefinedLevels[5].playerStart = { x: 1, y: 1 };
+        predefinedLevels[5].winpadEnd = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
+
+        predefinedLevels[6].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); let x = 0; let y = 0; let dx = 1; let dy = 0; let segmentLength = MAZE_WIDTH; let segmentPassed = 0; let turns = 0; for (let i = 0; i < MAZE_WIDTH * MAZE_HEIGHT; i++) { if (x >= 0 && x < MAZE_WIDTH && y >= 0 && y < MAZE_HEIGHT) { g[y][x] = BLOCK_TYPES.PATH; } else { break; } x += dx; y += dy; segmentPassed++; if (segmentPassed === segmentLength) { segmentPassed = 0; turns++; [dx, dy] = [-dy, dx]; if (turns % 2 === 0) { segmentLength--; } } } return g; })();
+        predefinedLevels[6].playerStart = { x: 0, y: 0 };
+        predefinedLevels[6].winpadEnd = { x: Math.floor(MAZE_WIDTH / 2), y: Math.floor(MAZE_HEIGHT / 2) };
+
+        predefinedLevels[7].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); const carveSpiral = (startX, startY, width, height, reverse = false) => { let x = startX; let y = startY; let dx = 1; let dy = 0; let segmentLength = width; let segmentPassed = 0; let turns = 0; for (let i = 0; i < width * height * 2; i++) { if (x >= startX && x < startX + width && y >= startY && y < startY + height) { g[y][x] = BLOCK_TYPES.PATH; } else { break; } x += dx; y += dy; segmentPassed++; if (segmentPassed === segmentLength) { segmentPassed = 0; turns++; if (reverse) { [dx, dy] = [dy, -dx]; } else { [dx, dy] = [-dy, dx]; } if (turns % 2 === 0) { segmentLength--; } } } }; carveSpiral(0, 0, MAZE_WIDTH, MAZE_HEIGHT, false); carveSpiral(MAZE_WIDTH - 1, MAZE_HEIGHT - 1, MAZE_WIDTH, MAZE_HEIGHT, true); for (let y = 1; y < MAZE_HEIGHT - 1; y++) { for (let x = 1; x < MAZE_WIDTH - 1; x++) { if (g[y][x] === BLOCK_TYPES.WALL && g[y-1][x] === BLOCK_TYPES.PATH && g[y+1][x] === BLOCK_TYPES.PATH && g[y][x-1] === BLOCK_TYPES.PATH && g[y][x+1] === BLOCK_TYPES.PATH) { g[y][x] = BLOCK_TYPES.PATH; } } } return g; })();
+        predefinedLevels[7].playerStart = { x: 0, y: 0 };
+        predefinedLevels[7].winpadEnd = { x: MAZE_WIDTH - 1, y: MAZE_HEIGHT - 1 };
+
+        predefinedLevels[8].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); const visited = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(false)); const stack = []; function carve(x, y) { g[y][x] = BLOCK_TYPES.PATH; visited[y][x] = true; const directions = [ { dx: 0, dy: -2, wx: 0, wy: -1 }, { dx: 0, dy: 2, wx: 0, wy: 1 }, { dx: -2, dy: 0, wx: -1, wy: 0 }, { dx: 2, dy: 0, wx: 1, wy: 0 } ]; for (let i = directions.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [directions[i], directions[j]] = [directions[j], directions[i]]; } for (const dir of directions) { const nx = x + dir.dx; const ny = y + dir.dy; const wx = x + dir.wx; const wy = y + dir.wy; if (nx > 0 && nx < MAZE_WIDTH - 1 && ny > 0 && ny < MAZE_HEIGHT - 1 && !visited[ny][nx]) { g[wy][wx] = BLOCK_TYPES.PATH; carve(nx, ny); } } } carve(1, 1); return g; })();
+        predefinedLevels[8].playerStart = { x: 1, y: 1 };
+        predefinedLevels[8].winpadEnd = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
+
+        predefinedLevels[9].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); let x = 1; let y = 1; g[y][x] = BLOCK_TYPES.PATH; const path = [ { dx: 1, dy: 0, steps: 5 }, { dx: 0, dy: 1, steps: 3 }, { dx: 1, dy: 0, steps: 7 }, { dx: 0, dy: 1, steps: 5 }, { dx: -1, dy: 0, steps: 4 }, { dx: 0, dy: 1, steps: 2 }, { dx: 1, dy: 0, steps: 10 }, { dx: 0, dy: 1, steps: 8 }, { dx: -1, dy: 0, steps: 15 }, { dx: 0, dy: 1, steps: 3 }, { dx: 1, dy: 0, steps: 5 }, { dx: 0, dy: -1, steps: 2 }, { dx: 1, dy: 0, steps: 3 }, { dx: 0, dy: 1, steps: 7 }, { dx: -1, dy: 0, steps: 10 }, { dx: 0, dy: 1, steps: 5 }, { dx: 1, dy: 0, steps: 20 }, { dx: 0, dy: 1, steps: 5 }, ]; for (const segment of path) { for (let i = 0; i < segment.steps; i++) { x += segment.dx; y += segment.dy; if (x >= 0 && x < MAZE_WIDTH && y >= 0 && y < MAZE_HEIGHT) { g[y][x] = BLOCK_TYPES.PATH; } else { break; } } } g[MAZE_HEIGHT - 2][MAZE_WIDTH - 2] = BLOCK_TYPES.PATH; return g; })();
+        predefinedLevels[9].playerStart = { x: 1, y: 1 };
+        predefinedLevels[9].winpadEnd = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
+        // End of predefinedLevels grids
+        
+
+        // Initializes the `mazeGrid` with all blocks set to `WALL`
+        function initMazeGrid() {
+            mazeGrid = [];
+            for (let y = 0; y < MAZE_HEIGHT; y++) {
+                const row = [];
+                for (let x = 0; x < MAZE_WIDTH; x++) {
+                    row.push(BLOCK_TYPES.WALL); // Initialize all as walls
+                }
+                mazeGrid.push(row);
+            }
         }
-      }
-      return;
-    }
-    player = { x: newX, y: newY };
-    if (player.x === win.x && player.y === win.y) {
-      alert("You Win!");
-      incrementWinStat();
-      resetMaze();
-    }
-  }
 
-  function handleKeyDown(e) { keys[e.key.toLowerCase()] = true; }
-  function handleKeyUp(e) { keys[e.key.toLowerCase()] = false; }
+        // Initializes the `buildGrid` with all blocks set to `PATH` for a clear canvas
+        function initBuildGrid() {
+            buildGrid = [];
+            for (let y = 0; y < MAZE_HEIGHT; y++) {
+                const row = [];
+                for (let x = 0; x < MAZE_WIDTH; x++) {
+                    row.push(BLOCK_TYPES.PATH); // Initialize all as paths for building
+                }
+                buildGrid.push(row);
+            }
+            // Set default player and winpad for new build levels
+            player = { x: 1, y: 1 };
+            end = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
+            buildGrid[player.y][player.x] = BLOCK_TYPES.PLAYER_START;
+            buildGrid[end.y][end.x] = BLOCK_TYPES.WINPAD;
+        }
 
-  function gameLoop() {
-    if (!buildMode) {
-      moveCounter++;
-      if (moveCounter >= moveDelay) {
-        moveCounter = 0;
-        if (keys["arrowup"] || keys["w"]) movePlayer(0, -1);
-        else if (keys["arrowdown"] || keys["s"]) movePlayer(0, 1);
-        else if (keys["arrowleft"] || keys["a"]) movePlayer(-1, 0);
-        else if (keys["arrowright"] || keys["d"]) movePlayer(1, 0);
-      }
-    }
-    draw();
-    requestAnimationFrame(gameLoop);
-  }
+        // Binary Tree Algorithm for Maze Generation
+        function generateMaze() {
+            initMazeGrid(); // Start with a grid full of walls
 
-  function saveMaze(slot) {
-    const data = { maze, player, win };
-    localStorage.setItem(SAVE_PREFIX + slot, JSON.stringify(data));
-    document.getElementById("saveStatus").innerText = `Saved to Slot ${slot}`;
-  }
+            for (let y = 1; y < MAZE_HEIGHT - 1; y += 2) {
+                for (let x = 1; x < MAZE_WIDTH - 1; x += 2) {
+                    mazeGrid[y][x] = BLOCK_TYPES.PATH;
 
-  function loadMaze(slot) {
-    const data = JSON.parse(localStorage.getItem(SAVE_PREFIX + slot));
-    if (data) {
-      maze = data.maze;
-      player = data.player;
-      win = data.win;
-      document.getElementById("saveStatus").innerText = `Loaded Slot ${slot}`;
-    } else {
-      document.getElementById("saveStatus").innerText = `No data in Slot ${slot}`;
-    }
-  }
+                    const neighbors = [];
+                    if (y > 1) { neighbors.push({ nx: x, ny: y - 2, wx: x, wy: y - 1 }); }
+                    if (x > 1) { neighbors.push({ nx: x - 2, ny: y, wx: x - 1, wy: y }); }
 
-  function clearMaze() {
-    maze = generateEmptyMaze();
-    player = { x: 1, y: 1 };
-    win = { x: cols - 2, y: rows - 2 };
-    draw();
-  }
+                    if (neighbors.length > 0) {
+                        const chosen = neighbors[Math.floor(Math.random() * neighbors.length)];
+                        mazeGrid[chosen.wy][chosen.wx] = BLOCK_TYPES.PATH;
+                    }
+                }
+            }
+        }
 
-  function toggleBuildMode() {
-    buildMode = !buildMode;
-    const buildControls = document.getElementById("buildControls");
-    const typeButtons = document.getElementById("typeButtons");
-    const deleteBtn = document.getElementById("deleteBtn");
-    buildControls.style.display = buildMode ? "flex" : "none";
-    typeButtons.style.display = "none";
-    deleteBtn.style.display = "none";
-    document.getElementById("toggleBuildBtn").classList.toggle("active", buildMode);
-    isDeleting = false;
-    deleteBtn.classList.remove("red");
-  }
+        // Generates a random block pattern
+        function generateBlocks() {
+            initMazeGrid(); // Start with a grid full of walls
 
-  document.getElementById("typesBtn").addEventListener("click", () => {
-    if (!buildMode) return;
-    const typeButtons = document.getElementById("typeButtons");
-    const deleteBtn = document.getElementById("deleteBtn");
-    const showing = typeButtons.style.display === "flex";
-    typeButtons.style.display = showing ? "none" : "flex";
-    deleteBtn.style.display = showing ? "none" : "inline-block";
-  });
+            const pathPercentage = 0.6;
+            for (let y = 0; y < MAZE_HEIGHT; y++) {
+                for (let x = 0; x < MAZE_WIDTH; x++) {
+                    if (Math.random() < pathPercentage) {
+                        mazeGrid[y][x] = BLOCK_TYPES.PATH;
+                    }
+                }
+            }
+        }
 
-  document.getElementById("deleteBtn").addEventListener("click", () => {
-    isDeleting = !isDeleting;
-    const btn = document.getElementById("deleteBtn");
-    btn.classList.toggle("red", isDeleting);
-    [...document.querySelectorAll(".typeBtn")].forEach(btn => btn.classList.remove("active"));
-  });
+        // Loads a predefined level into the mazeGrid
+        function loadPredefinedLevel(levelIndex) {
+            // This function is now used for officialPlayableLevels
+            const level = officialPlayableLevels[levelIndex];
+            mazeGrid = JSON.parse(level.grid); // Parse grid from string
+            player = { ...level.playerStart };
+            end = { ...level.winpadEnd };
+            currentLevelId = level.id;
+            currentLevelName = level.name;
+        }
 
-  function setBuildType(type) {
-    currentType = type;
-    isDeleting = false;
-    document.getElementById("deleteBtn").classList.remove("red");
-    [...document.querySelectorAll(".typeBtn")].forEach(btn => btn.classList.remove("active"));
-    document.querySelector(`.typeBtn[data-type=${type}]`).classList.add("active");
-  }
+        // Helper function to get a random valid path position
+        function getRandomPathPosition() {
+            let randX, randY;
+            let foundValidPosition = false;
+            while (!foundValidPosition) {
+                randX = Math.floor(Math.random() * MAZE_WIDTH);
+                randY = Math.floor(Math.random() * MAZE_HEIGHT);
 
-  canvas.addEventListener("click", e => {
-    if (!buildMode) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / cellSize);
-    const y = Math.floor((e.clientY - rect.top) / cellSize);
-    if (isDeleting) {
-      maze[x][y] = BLOCK_TYPES.empty;
-    } else if (currentType === "player") {
-      player = { x, y };
-    } else if (currentType === "win") {
-      win = { x, y };
-    } else {
-      maze[x][y] = BLOCK_TYPES[currentType];
-    }
-  });
+                if (currentGameType === GAME_MODES.MAZE) {
+                    if (randX % 2 === 0) { randX = (randX === MAZE_WIDTH - 1) ? randX - 1 : randX + 1; }
+                    if (randY % 2 === 0) { randY = (randY === MAZE_HEIGHT - 1) ? randY - 1 : randY + 1; }
+                    randX = Math.min(Math.max(randX, 0), MAZE_WIDTH - 1);
+                    randY = Math.min(Math.max(randY, 0), MAZE_HEIGHT - 1);
+                }
+                
+                if (mazeGrid[randY] && mazeGrid[randY][randX] === BLOCK_TYPES.PATH) { // Check if it's a path
+                    foundValidPosition = true;
+                }
+            }
+            return { x: randX, y: randY };
+        }
 
-  document.getElementById("toggleBuildBtn").addEventListener("click", toggleBuildMode);
-  [...document.querySelectorAll(".typeBtn")].forEach(btn =>
-    btn.addEventListener("click", () => setBuildType(btn.dataset.type))
-  );
-  [...document.querySelectorAll(".saveBtn")].forEach(btn =>
-    btn.addEventListener("click", () => saveMaze(btn.dataset.slot))
-  );
-  [...document.querySelectorAll(".loadBtn")].forEach(btn =>
-    btn.addEventListener("click", () => loadMaze(btn.dataset.slot))
-  );
-  document.getElementById("clearMazeBtn").addEventListener("click", clearMaze);
-  window.addEventListener("keydown", handleKeyDown);
-  window.addEventListener("keyup", handleKeyUp);
+        // Draws elements on the mazeCanvas (for game play)
+        function drawGame() {
+            if (!mazeGrid || mazeGrid.length === 0) {
+                initMazeGrid();
+            }
 
-  function resetMaze() {
-    maze = generateRandomMaze();
-  }
-  function incrementWinStat() {
-    let stats = JSON.parse(localStorage.getItem(WIN_STATS_KEY) || "{}");
-    stats["wins"] = (stats["wins"] || 0) + 1;
-    localStorage.setItem(WIN_STATS_KEY, JSON.stringify(stats));
-  }
+            mazeCtx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height);
+            mazeCtx.fillStyle = PATH_COLOR;
+            mazeCtx.fillRect(0, 0, mazeCanvas.width, mazeCanvas.height);
 
-  maze = generateRandomMaze();
-  gameLoop();
-})();
-</script>
+            for (let y = 0; y < MAZE_HEIGHT; y++) {
+                for (let x = 0; x < MAZE_WIDTH; x++) {
+                    const blockType = mazeGrid[y] ? mazeGrid[y][x] : BLOCK_TYPES.WALL; // Default to wall if undefined
+                    let color = PATH_COLOR;
 
+                    switch (blockType) {
+                        case BLOCK_TYPES.WALL:
+                            color = WALL_COLOR;
+                            break;
+                        case BLOCK_TYPES.PLAYER_START:
+                            color = PLAYER_COLOR;
+                            break;
+                        case BLOCK_TYPES.WINPAD:
+                            color = END_COLOR;
+                            break;
+                        case BLOCK_TYPES.TRIGGER:
+                            color = TRIGGER_COLOR;
+                            break;
+                        case BLOCK_TYPES.MOVING_BLOCK:
+                            color = MOVING_BLOCK_COLOR;
+                            break;
+                        case BLOCK_TYPES.PUSH_BLOCK:
+                            color = PUSH_BLOCK_COLOR;
+                            break;
+                        case BLOCK_TYPES.PATH:
+                        default:
+                            color = PATH_COLOR;
+                            break;
+                    }
+                    mazeCtx.fillStyle = color;
+                    mazeCtx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                }
+            }
+            // Redraw player and end on top to ensure they are visible
+            mazeCtx.fillStyle = PLAYER_COLOR;
+            mazeCtx.fillRect(player.x * BLOCK_SIZE, player.y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            mazeCtx.fillStyle = END_COLOR;
+            mazeCtx.fillRect(end.x * BLOCK_SIZE, end.y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+        }
+
+        // Draws elements on the buildCanvas (for build mode)
+        function drawBuild() {
+            if (!buildGrid || buildGrid.length === 0) {
+                initBuildGrid();
+            }
+
+            buildCtx.clearRect(0, 0, buildCanvas.width, buildCanvas.height);
+            buildCtx.fillStyle = PATH_COLOR;
+            buildCtx.fillRect(0, 0, buildCanvas.width, buildCanvas.height);
+
+            for (let y = 0; y < MAZE_HEIGHT; y++) {
+                for (let x = 0; x < MAZE_WIDTH; x++) {
+                    const blockType = buildGrid[y] ? buildGrid[y][x] : BLOCK_TYPES.PATH; // Default to path for build
+                    let color = PATH_COLOR;
+
+                    switch (blockType) {
+                        case BLOCK_TYPES.WALL:
+                            color = WALL_COLOR;
+                            break;
+                        case BLOCK_TYPES.PLAYER_START:
+                            color = PLAYER_COLOR;
+                            break;
+                        case BLOCK_TYPES.WINPAD:
+                            color = END_COLOR;
+                            break;
+                        case BLOCK_TYPES.TRIGGER:
+                            color = TRIGGER_COLOR;
+                            break;
+                        case BLOCK_TYPES.MOVING_BLOCK:
+                            color = MOVING_BLOCK_COLOR;
+                            break;
+                        case BLOCK_TYPES.PUSH_BLOCK:
+                            color = PUSH_BLOCK_COLOR;
+                            break;
+                        case BLOCK_TYPES.PATH:
+                        default:
+                            color = PATH_COLOR;
+                            break;
+                    }
+                    buildCtx.fillStyle = color;
+                    buildCtx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                }
+            }
+        }
+
+        // Handles player movement based on arrow keys or touch controls
+        function movePlayer(dx, dy) {
+            if (gameWon) return;
+
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+
+            if (newX >= 0 && newX < MAZE_WIDTH &&
+                newY >= 0 && newY < MAZE_HEIGHT &&
+                mazeGrid[newY][newX] !== BLOCK_TYPES.WALL) { // Cannot move onto a wall
+                player.x = newX;
+                player.y = newY;
+                drawGame();
+                checkWinCondition();
+            }
+        }
+
+        // Checks if the player has reached the end point
+        function checkWinCondition() {
+            if (player.x === end.x && player.y === end.y) {
+                gameWon = true;
+                messageBox.textContent = "Congratulations! You reached the end!";
+                stopLevelTimerAndSubmitScore(); // New: Submit score on win
+                addBrick(); // New: Give player a brick
+            } else {
+                const modeName = currentGameType.charAt(0).toUpperCase() + currentGameType.slice(1).replace('_', ' ');
+                let displayLevelName = currentLevelName;
+                if (currentGameType === GAME_MODES.LEVEL && officialPlayableLevels.length > 0) {
+                    displayLevelName = officialPlayableLevels[currentLevelIndex].name;
+                } else if (currentGameType === GAME_MODES.MAZE) {
+                    displayLevelName = "Random Maze";
+                } else if (currentGameType === GAME_MODES.BLOCKS) {
+                    displayLevelName = "Random Blocks";
+                } else if (currentGameType === GAME_MODES.SAVED_LEVEL) {
+                    displayLevelName = `Your Level: ${currentLevelName}`;
+                } else if (currentGameType === GAME_MODES.COMMUNITY_LEVEL) {
+                    displayLevelName = `Community Level: ${currentLevelName}`;
+                }
+                messageBox.textContent = `Mode: ${modeName} (${displayLevelName}) | Reach the green pad!`;
+            }
+        }
+
+        // Starts the timer for level completion
+        function startLevelTimer() {
+            gameStartTime = Date.now();
+        }
+
+        // Stops the timer and submits the score to the leaderboard
+        async function stopLevelTimerAndSubmitScore() {
+            if (!currentLevelId || !window.userId || !window.db) {
+                console.warn("Cannot submit score: Missing level ID, user ID, or database instance.");
+                return;
+            }
+
+            const timeTaken = Date.now() - gameStartTime; // Time in milliseconds
+
+            try {
+                const leaderboardRef = collection(window.db, `artifacts/${window.__app_id}/public/data/leaderboard`);
+                
+                await addDoc(leaderboardRef, {
+                    levelId: currentLevelId,
+                    levelName: currentLevelName, // Use currentLevelName set during level load
+                    playerName: currentPlayerName,
+                    userId: window.userId,
+                    timeTaken: timeTaken, // Store in milliseconds
+                    timestamp: new Date()
+                });
+                console.log(`Score submitted: ${timeTaken}ms for level ${currentLevelName}`);
+                messageBox.textContent += ` Your time: ${formatTime(timeTaken)}!`;
+            } catch (e) {
+                console.error("Error submitting score:", e);
+            }
+        }
+
+        // Formats milliseconds into a readable time string
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            const milliseconds = ms % 1000;
+
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+        }
+
+        // Adds a brick to the player's count
+        async function addBrick() {
+            if (!window.userId || !window.db) {
+                console.warn("Cannot add brick: User ID or database not available.");
+                return;
+            }
+
+            try {
+                const userProfileRef = doc(window.db, `artifacts/${window.__app_id}/users/${window.userId}/profile/data`);
+                const docSnap = await getDoc(userProfileRef);
+
+                if (docSnap.exists()) {
+                    playerBricks = docSnap.data().bricks || 0;
+                } else {
+                    playerBricks = 0;
+                }
+                playerBricks++; // Increment brick count
+                await setDoc(userProfileRef, { bricks: playerBricks }, { merge: true });
+                updateBricksDisplay();
+                messageBox.textContent += " You earned a 🧱!";
+                console.log(`Player ${currentPlayerName} now has ${playerBricks} bricks.`);
+            } catch (e) {
+                console.error("Error adding brick:", e);
+            }
+        }
+
+        // Fetches player's bricks from Firestore
+        async function fetchPlayerBricks() {
+            if (!window.userId || !window.db) {
+                playerBricks = 0; // Reset if no user/db
+                updateBricksDisplay();
+                return;
+            }
+            try {
+                const userProfileRef = doc(window.db, `artifacts/${window.__app_id}/users/${window.userId}/profile/data`);
+                const docSnap = await getDoc(userProfileRef);
+                if (docSnap.exists()) {
+                    playerBricks = docSnap.data().bricks || 0;
+                } else {
+                    playerBricks = 0;
+                }
+                updateBricksDisplay();
+            } catch (e) {
+                console.error("Error fetching player bricks:", e);
+                playerBricks = 0; // Default to 0 on error
+                updateBricksDisplay();
+            }
+        }
+
+        // Updates the bricks display in the UI
+        function updateBricksDisplay() {
+            playerBricksDisplay.textContent = `Bricks: 🧱 ${playerBricks}`;
+        }
+
+        // Load user profile (player name and bricks)
+        async function loadUserProfile() {
+            if (!window.userId || !window.db) {
+                console.warn("Cannot load user profile: User ID or database not available.");
+                return;
+            }
+            try {
+                const userProfileRef = doc(window.db, `artifacts/${window.__app_id}/users/${window.userId}/profile/data`);
+                const docSnap = await getDoc(userProfileRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    currentPlayerName = data.playerName || "Anonymous";
+                    playerBricks = data.bricks || 0;
+                    if (currentPlayerName !== "Anonymous") {
+                        loginButton.textContent = "Logout";
+                        loginButton.classList.add('logged-in');
+                    }
+                } else {
+                    currentPlayerName = "Anonymous";
+                    playerBricks = 0;
+                }
+                updateUserIdDisplay();
+                updateBricksDisplay();
+            } catch (e) {
+                console.error("Error loading user profile:", e);
+                currentPlayerName = "Anonymous";
+                playerBricks = 0;
+                updateUserIdDisplay();
+                updateBricksDisplay();
+            }
+        }
+
+
+        // Initializes the game state based on the current mode
+        function initializeGame() {
+            gameWon = false;
+            currentLevelId = null;
+            currentLevelName = '';
+            
+            if (currentGameType === GAME_MODES.LEVEL) {
+                if (officialPlayableLevels.length === 0) {
+                    messageBox.textContent = "No official levels set yet! Try building and publishing one.";
+                    nextLevelButton.style.display = 'none';
+                    mazeCtx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height); // Clear canvas
+                    return; // Don't start game if no levels
+                }
+                loadPredefinedLevel(currentLevelIndex); // Now loads from officialPlayableLevels
+            } else if (currentGameType === GAME_MODES.MAZE) {
+                generateMaze();
+                player = getRandomPathPosition();
+                do {
+                    end = getRandomPathPosition();
+                } while (player.x === end.x && player.y === end.y);
+                currentLevelId = `random-maze-${Date.now()}`;
+                currentLevelName = "Random Maze";
+            } else if (currentGameType === GAME_MODES.BLOCKS) {
+                generateBlocks();
+                player = getRandomPathPosition();
+                do {
+                    end = getRandomPathPosition();
+                } while (player.x === end.x && player.y === end.y);
+                currentLevelId = `random-blocks-${Date.now()}`;
+                currentLevelName = "Random Blocks";
+            } else if (currentGameType === GAME_MODES.BUILD) {
+                if (!buildGrid || buildGrid.length === 0 || buildGrid[0].length === 0) {
+                    initBuildGrid();
+                }
+                buildMessageBox.textContent = "Click to place/remove blocks!";
+                updatePlayerAndEndFromBuildGrid();
+            } else if (currentGameType === GAME_MODES.SAVED_LEVEL || currentGameType === GAME_MODES.COMMUNITY_LEVEL) {
+                // mazeGrid, player, end, currentLevelId, currentLevelName are already set by playSavedLevel/playCommunityLevel
+            }
+            
+            nextLevelButton.style.display = (currentGameType === GAME_MODES.LEVEL && officialPlayableLevels.length > 0) ? 'block' : 'none';
+
+            if (currentGameType !== GAME_MODES.BUILD) {
+                startLevelTimer(); // Start timer for playable levels
+                checkWinCondition();
+                drawGame();
+            } else {
+                drawBuild();
+            }
+        }
+
+        // Adjusts canvas size and block size based on container width and window height
+        function resizeCanvas() {
+            const container = document.querySelector('.game-container');
+            const containerWidth = container.clientWidth - 60;
+
+            BLOCK_SIZE = Math.floor(Math.min(containerWidth / MAZE_WIDTH, (window.innerHeight * 0.6) / MAZE_HEIGHT));
+            BLOCK_SIZE = Math.max(BLOCK_SIZE, 8);
+            BLOCK_SIZE = Math.min(BLOCK_SIZE, 15);
+
+            mazeCanvas.width = MAZE_WIDTH * BLOCK_SIZE;
+            mazeCanvas.height = MAZE_HEIGHT * BLOCK_SIZE;
+            buildCanvas.width = MAZE_WIDTH * BLOCK_SIZE;
+            buildCanvas.height = MAZE_HEIGHT * BLOCK_SIZE;
+
+            if (startScreen.classList.contains('active')) {
+                // No canvas drawing on start screen
+            } else if (gamePlayArea.classList.contains('active')) {
+                drawGame();
+            } else if (buildModeArea.classList.contains('active')) {
+                drawBuild();
+            }
+        }
+
+        // Function to switch between different main screens
+        let currentActiveScreen = 'startScreen';
+        function showScreen(screenId) {
+            startScreen.classList.remove('active');
+            gamePlayArea.classList.remove('active');
+            buildModeArea.classList.remove('active');
+            infoButton.style.display = 'none';
+            loginButton.style.display = 'none';
+
+            currentActiveScreen = screenId;
+
+            if (screenId === 'startScreen') {
+                startScreen.classList.add('active');
+                infoButton.style.display = 'block';
+                loginButton.style.display = 'block';
+                fetchDailyLevel();
+            } else if (screenId === 'gamePlayArea') {
+                gamePlayArea.classList.add('active');
+                infoButton.style.display = 'block';
+                loginButton.style.display = 'block';
+                initializeGame();
+            } else if (screenId === 'buildModeArea') {
+                buildModeArea.classList.add('active');
+                infoButton.style.display = 'block';
+                loginButton.style.display = 'block';
+                initializeGame();
+                selectBuildTool(BLOCK_TYPES.WALL);
+            }
+            resizeCanvas();
+        }
+
+        // Handle clicks on the build canvas
+        function handleBuildCanvasClick(event) {
+            const rect = buildCanvas.getBoundingClientRect();
+            const scaleX = buildCanvas.width / rect.width;
+            const scaleY = buildCanvas.height / rect.height;
+
+            const x = Math.floor((event.clientX - rect.left) * scaleX / BLOCK_SIZE);
+            const y = Math.floor((event.clientY - rect.top) * scaleY / BLOCK_SIZE);
+
+            if (x >= 0 && x < MAZE_WIDTH && y >= 0 && y < MAZE_HEIGHT) {
+                if (currentBuildTool === BLOCK_TYPES.PLAYER_START) {
+                    for (let row = 0; row < MAZE_HEIGHT; row++) {
+                        for (let col = 0; col < MAZE_WIDTH; col++) {
+                            if (buildGrid[row][col] === BLOCK_TYPES.PLAYER_START) {
+                                buildGrid[row][col] = BLOCK_TYPES.PATH;
+                            }
+                        }
+                    }
+                    player = { x, y };
+                    buildGrid[y][x] = BLOCK_TYPES.PLAYER_START;
+                } else if (currentBuildTool === BLOCK_TYPES.WINPAD) {
+                    for (let row = 0; row < MAZE_HEIGHT; row++) {
+                        for (let col = 0; col < MAZE_WIDTH; col++) {
+                            if (buildGrid[row][col] === BLOCK_TYPES.WINPAD) {
+                                buildGrid[row][col] = BLOCK_TYPES.PATH;
+                            }
+                        }
+                    }
+                    end = { x, y };
+                    buildGrid[y][x] = BLOCK_TYPES.WINPAD;
+                } else {
+                    buildGrid[y][x] = (buildGrid[y][x] === currentBuildTool) ? BLOCK_TYPES.PATH : currentBuildTool;
+                    if (buildGrid[y][x] === BLOCK_TYPES.PATH) {
+                        if (player.x === x && player.y === y) {
+                            player = { x: -1, y: -1 };
+                        }
+                        if (end.x === x && end.y === y) {
+                            end = { x: -1, y: -1 };
+                        }
+                    }
+                }
+                drawBuild();
+            }
+        }
+
+        // Function to update player and end positions based on buildGrid (e.g., after loading)
+        function updatePlayerAndEndFromBuildGrid() {
+            let foundPlayer = false;
+            let foundEnd = false;
+            for (let y = 0; y < MAZE_HEIGHT; y++) {
+                for (let x = 0; x < MAZE_WIDTH; x++) {
+                    if (buildGrid[y][x] === BLOCK_TYPES.PLAYER_START) {
+                        player = { x, y };
+                        foundPlayer = true;
+                    } else if (buildGrid[y][x] === BLOCK_TYPES.WINPAD) {
+                        end = { x, y };
+                        foundEnd = true;
+                    }
+                }
+            }
+            if (!foundPlayer) player = { x: -1, y: -1 };
+            if (!foundEnd) end = { x: -1, y: -1 };
+        }
+
+        // Function to set the active build tool
+        function selectBuildTool(toolType) {
+            currentBuildTool = toolType;
+            document.querySelectorAll('.build-tools button').forEach(btn => {
+                btn.classList.remove('active-tool');
+            });
+            switch (toolType) {
+                case BLOCK_TYPES.WALL: toolWall.classList.add('active-tool'); break;
+                case BLOCK_TYPES.PATH: toolPath.classList.add('active-tool'); break;
+                case BLOCK_TYPES.PLAYER_START: toolPlayer.classList.add('active-tool'); break;
+                case BLOCK_TYPES.WINPAD: toolWinpad.classList.add('active-tool'); break;
+                case BLOCK_TYPES.TRIGGER: toolTrigger.classList.add('active-tool'); break;
+                case BLOCK_TYPES.MOVING_BLOCK: toolMovingBlock.classList.add('active-tool'); break;
+                case BLOCK_TYPES.PUSH_BLOCK: toolPushBlock.classList.add('active-tool'); break;
+            }
+            buildMessageBox.textContent = `Tool: ${Object.keys(BLOCK_TYPES).find(key => BLOCK_TYPES[key] === toolType).replace('_', ' ')}`;
+        }
+
+
+        // Functions to show/hide modals
+        function showModal(modalOverlay) {
+            modalOverlay.classList.add('show');
+        }
+
+        function hideModal(modalOverlay) {
+            modalOverlay.classList.remove('show');
+        }
+
+        function hideAllModals() {
+            hideModal(infoModalOverlay);
+            hideModal(customizationModalOverlay);
+            hideModal(menuModalOverlay);
+            hideModal(loginModalOverlay);
+            hideModal(communityLevelsModalOverlay);
+            hideModal(leaderboardModalOverlay);
+        }
+
+        // --- Simulated Login Functions ---
+        async function handleLogin() {
+            const playerName = playerNameInput.value.trim();
+            const password = passwordInput.value.trim(); // Password is not used for auth, just for input field
+
+            if (playerName) {
+                currentPlayerName = playerName;
+                loginButton.textContent = "Logout";
+                loginButton.classList.add('logged-in');
+                updateUserIdDisplay();
+                hideModal(loginModalOverlay);
+                loadMyLevels(); // Refresh levels for the "logged in" user
+                fetchPlayerBricks(); // Fetch bricks on login
+
+                // Save player name to Firestore profile
+                if (window.userId && window.db) {
+                    try {
+                        const userProfileRef = doc(window.db, `artifacts/${window.__app_id}/users/${window.userId}/profile/data`);
+                        await setDoc(userProfileRef, { playerName: currentPlayerName }, { merge: true });
+                        console.log("Player name saved to profile.");
+                    } catch (e) {
+                        console.error("Error saving player name to profile:", e);
+                    }
+                }
+
+            } else {
+                alert("Please enter a player name.");
+            }
+        }
+
+        function handleLogout() {
+            currentPlayerName = "Anonymous";
+            loginButton.textContent = "Login";
+            loginButton.classList.remove('logged-in');
+            updateUserIdDisplay();
+            myLevelsList.innerHTML = "<div>No levels loaded.</div>"; // Clear levels on logout
+            playerBricks = 0; // Reset bricks on logout
+            updateBricksDisplay();
+        }
+
+        function updateUserIdDisplay() {
+            if (currentPlayerName !== "Anonymous") {
+                userIdDisplay.textContent = `Player: ${currentPlayerName} (ID: ${window.userId})`;
+            } else {
+                userIdDisplay.textContent = `User ID: ${window.userId} (Anonymous)`;
+            }
+        }
+
+
+        // --- Firebase Firestore Functions ---
+        async function saveLevel() {
+            if (!window.userId) {
+                buildMessageBox.textContent = "Error: User not logged in to save level.";
+                return;
+            }
+            if (player.x === -1 || end.x === -1) {
+                buildMessageBox.textContent = "Please place both Player Start and Win Pad before saving!";
+                return;
+            }
+
+            const levelName = prompt("Enter a name for your level:");
+            if (!levelName) {
+                buildMessageBox.textContent = "Level save cancelled.";
+                return;
+            }
+
+            try {
+                const levelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/users/${window.userId}/levels`);
+                await addDoc(levelsCollectionRef, {
+                    name: levelName,
+                    grid: JSON.stringify(buildGrid), // Convert grid to string for storage
+                    playerStart: player,
+                    winpadEnd: end,
+                    createdAt: new Date(),
+                    creatorName: currentPlayerName // Save creator's simulated name
+                });
+                buildMessageBox.textContent = `Level "${levelName}" saved successfully!`;
+                loadMyLevels(); // Refresh the list of levels
+            } catch (e) {
+                console.error("Error saving document: ", e);
+                buildMessageBox.textContent = "Error saving level. See console for details.";
+            }
+        }
+
+        async function publishLevel() {
+            if (!window.userId) {
+                buildMessageBox.textContent = "Error: User not logged in to publish level.";
+                return;
+            }
+            if (player.x === -1 || end.x === -1) {
+                buildMessageBox.textContent = "Please place both Player Start and Win Pad before publishing!";
+                return;
+            }
+
+            const levelName = prompt("Enter a name for your public level:");
+            if (!levelName) {
+                buildMessageBox.textContent = "Level publish cancelled.";
+                return;
+            }
+
+            try {
+                const publicLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/levels`);
+                await addDoc(publicLevelsCollectionRef, {
+                    name: levelName,
+                    grid: JSON.stringify(buildGrid),
+                    playerStart: player,
+                    winpadEnd: end,
+                    createdAt: new Date(),
+                    creatorName: currentPlayerName,
+                    creatorId: window.userId,
+                    isDailyLevel: false // Default to not a daily level
+                });
+                buildMessageBox.textContent = `Level "${levelName}" published successfully!`;
+            } catch (e) {
+                console.error("Error publishing document: ", e);
+                buildMessageBox.textContent = "Error publishing level. See console for details.";
+            }
+        }
+
+        async function loadMyLevels() {
+            if (!window.userId) {
+                myLevelsList.innerHTML = "<div>Please log in to see your levels.</div>";
+                return;
+            }
+
+            myLevelsList.innerHTML = "<div>Loading levels...</div>";
+            try {
+                const levelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/users/${window.userId}/levels`);
+                const q = query(levelsCollectionRef);
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    myLevelsList.innerHTML = "<div>No levels saved yet.</div>";
+                    return;
+                }
+
+                myLevelsList.innerHTML = ''; // Clear previous list
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const levelId = doc.id;
+                    const levelDiv = document.createElement('div');
+                    levelDiv.innerHTML = `
+                        <span class="level-name">${data.name} by ${data.creatorName || 'Anonymous'}</span>
+                        <div>
+                            <button class="play-level-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}'>Play</button>
+                            <button class="delete-level-button" data-level-id="${levelId}">Delete</button>
+                            ${currentPlayerName === 'LtpMer' ? `<button class="set-official-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-creator-name="${data.creatorName}" data-creator-id="${data.creatorId}">Set as Official</button>` : ''}
+                        </div>
+                    `;
+                    myLevelsList.appendChild(levelDiv);
+                });
+
+                // Add event listeners to the dynamically created buttons
+                myLevelsList.querySelectorAll('.play-level-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const levelData = {
+                            id: e.target.dataset.levelId,
+                            name: e.target.dataset.levelName,
+                            grid: JSON.parse(e.target.dataset.levelGrid),
+                            playerStart: JSON.parse(e.target.dataset.playerStart),
+                            winpadEnd: JSON.parse(e.target.dataset.winpadEnd)
+                        };
+                        playSavedLevel(levelData);
+                    });
+                });
+
+                myLevelsList.querySelectorAll('.delete-level-button').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const levelId = e.target.dataset.levelId;
+                        if (confirm("Are you sure you want to delete this level?")) {
+                            try {
+                                await deleteDoc(doc(window.db, `artifacts/${window.__app_id}/users/${window.userId}/levels`, levelId));
+                                alert("Level deleted successfully!");
+                                loadMyLevels(); // Refresh the list
+                            } catch (error) {
+                                console.error("Error deleting level:", error);
+                                alert("Error deleting level. See console.");
+                            }
+                        }
+                    });
+                });
+
+                // New: Add event listener for "Set as Official" button
+                myLevelsList.querySelectorAll('.set-official-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const levelData = {
+                            id: e.target.dataset.levelId,
+                            name: e.target.dataset.levelName,
+                            grid: e.target.dataset.levelGrid, // Keep as string for direct storage
+                            playerStart: JSON.parse(e.target.dataset.playerStart),
+                            winpadEnd: JSON.parse(e.target.dataset.winpadEnd),
+                            creatorName: e.target.dataset.creatorName,
+                            creatorId: e.target.dataset.creatorId
+                        };
+                        setOfficialLevel(levelData);
+                    });
+                });
+
+            } catch (e) {
+                console.error("Error loading documents: ", e);
+                myLevelsList.innerHTML = "<div>Error loading levels.</div>";
+            }
+        }
+
+        async function loadCommunityLevels() {
+            if (!window.userId) {
+                communityLevelsList.innerHTML = "<div>Please log in to see community levels.</div>";
+                return;
+            }
+
+            communityLevelsList.innerHTML = "<div>Loading community levels...</div>";
+            try {
+                const publicLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/levels`);
+                const q = query(publicLevelsCollectionRef);
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    communityLevelsList.innerHTML = "<div>No community levels found. Be the first to publish one!</div>";
+                    return;
+                }
+
+                communityLevelsList.innerHTML = ''; // Clear previous list
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const levelId = doc.id;
+                    const levelDiv = document.createElement('div');
+                    levelDiv.innerHTML = `
+                        <span class="level-name">${data.name} by ${data.creatorName || 'Anonymous'}</span>
+                        <div>
+                            <button class="play-level-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}'>Play</button>
+                            ${currentPlayerName === 'LtpMer' ? `<button class="set-daily-button" data-level-id="${levelId}">Set as Daily</button>` : ''}
+                        </div>
+                    `;
+                    communityLevelsList.appendChild(levelDiv);
+                });
+
+                // Add event listeners to the dynamically created buttons
+                communityLevelsList.querySelectorAll('.play-level-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const levelData = {
+                            id: e.target.dataset.levelId,
+                            name: e.target.dataset.levelName,
+                            grid: JSON.parse(e.target.dataset.levelGrid),
+                            playerStart: JSON.parse(e.target.dataset.playerStart),
+                            winpadEnd: JSON.parse(e.target.dataset.winpadEnd)
+                        };
+                        playCommunityLevel(levelData);
+                    });
+                });
+
+                communityLevelsList.querySelectorAll('.set-daily-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const levelId = e.target.dataset.levelId;
+                        setDailyLevel(levelId);
+                    });
+                });
+
+            } catch (e) {
+                console.error("Error loading community documents: ", e);
+                communityLevelsList.innerHTML = "<div>Error loading community levels.</div>";
+            }
+        }
+
+        async function fetchDailyLevel() {
+            dailyLevelContainer.style.display = 'none'; // Hide by default
+            dailyLevelName.textContent = 'Loading daily level...';
+            playDailyLevelButton.onclick = null; // Clear previous handler
+
+            try {
+                const publicLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/levels`);
+                const q = query(publicLevelsCollectionRef, where("isDailyLevel", "==", true));
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    const dailyDoc = querySnapshot.docs[0];
+                    const data = dailyDoc.data();
+                    currentDailyLevel = {
+                        id: dailyDoc.id,
+                        name: data.name,
+                        grid: JSON.parse(data.grid),
+                        playerStart: data.playerStart,
+                        winpadEnd: data.winpadEnd
+                    };
+                    dailyLevelName.textContent = `${currentDailyLevel.name} by ${data.creatorName || 'Anonymous'}`;
+                    playDailyLevelButton.onclick = () => playCommunityLevel(currentDailyLevel);
+                    dailyLevelContainer.style.display = 'block';
+                } else {
+                    dailyLevelName.textContent = "No daily level set yet.";
+                    dailyLevelContainer.style.display = 'block';
+                }
+            } catch (e) {
+                console.error("Error fetching daily level:", e);
+                dailyLevelName.textContent = "Error loading daily level.";
+                dailyLevelContainer.style.display = 'block';
+            }
+        }
+
+        async function setDailyLevel(levelIdToSet) {
+            if (currentPlayerName !== 'LtpMer') {
+                alert("Only LtpMer can set daily levels.");
+                return;
+            }
+
+            if (!confirm("Are you sure you want to set this as the daily level? This will unset any current daily level.")) {
+                return;
+            }
+
+            try {
+                const publicLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/levels`);
+
+                // 1. Unset current daily level (if any)
+                const currentDailyQuery = query(publicLevelsCollectionRef, where("isDailyLevel", "==", true));
+                const currentDailySnapshot = await getDocs(currentDailyQuery);
+                currentDailySnapshot.forEach(async (docToUnset) => {
+                    await updateDoc(doc(publicLevelsCollectionRef, docToUnset.id), { isDailyLevel: false });
+                });
+
+                // 2. Set the new daily level
+                await updateDoc(doc(publicLevelsCollectionRef, levelIdToSet), { isDailyLevel: true });
+
+                alert("Daily level updated successfully!");
+                loadCommunityLevels(); // Refresh community list to show new daily
+                fetchDailyLevel(); // Refresh daily level display on start screen
+            } catch (e) {
+                console.error("Error setting daily level:", e);
+                alert("Error setting daily level. See console for details.");
+            }
+        }
+
+        async function setOfficialLevel(levelData) {
+            if (currentPlayerName !== 'LtpMer') {
+                alert("Only LtpMer can set official levels.");
+                return;
+            }
+
+            let order = prompt(`Enter an order number for "${levelData.name}" (e.g., 1, 2, 3...). Existing levels with this order will be overwritten.`);
+            order = parseInt(order);
+
+            if (isNaN(order) || order < 1) {
+                alert("Invalid order number. Please enter a positive integer.");
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to set "${levelData.name}" as official level #${order}?`)) {
+                return;
+            }
+
+            try {
+                const officialLevelsRef = doc(window.db, `artifacts/${window.__app_id}/public/data/official_levels`, `level-${order}`);
+                await setDoc(officialLevelsRef, {
+                    id: levelData.id, // Original level ID
+                    name: levelData.name,
+                    grid: levelData.grid, // Already stringified
+                    playerStart: levelData.playerStart,
+                    winpadEnd: levelData.winpadEnd,
+                    creatorName: levelData.creatorName,
+                    creatorId: levelData.creatorId,
+                    order: order,
+                    setAt: new Date()
+                });
+                alert(`Level "${levelData.name}" set as official level #${order} successfully!`);
+                await fetchOfficialPlayableLevels(); // Refresh the official levels list
+            } catch (e) {
+                console.error("Error setting official level:", e);
+                alert("Error setting official level. See console for details.");
+            }
+        }
+
+        async function fetchOfficialPlayableLevels() {
+            if (!window.db) {
+                officialPlayableLevels = [];
+                console.warn("Firestore not available, cannot fetch official levels.");
+                return;
+            }
+            try {
+                const officialLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/official_levels`);
+                const q = query(officialLevelsCollectionRef, orderBy("order"));
+                const querySnapshot = await getDocs(q);
+
+                officialPlayableLevels = [];
+                if (!querySnapshot.empty) {
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        officialPlayableLevels.push(data);
+                    });
+                    console.log("Official playable levels loaded:", officialPlayableLevels);
+                } else {
+                    console.log("No official playable levels found in Firestore.");
+                }
+            } catch (e) {
+                console.error("Error fetching official playable levels:", e);
+                officialPlayableLevels = []; // Clear on error
+            }
+        }
+
+
+        async function loadLeaderboard() {
+            if (!window.db) {
+                leaderboardList.innerHTML = "<div>Leaderboard not available.</div>";
+                return;
+            }
+            leaderboardList.innerHTML = "<div>Loading leaderboard...</div>";
+            try {
+                const leaderboardCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/leaderboard`);
+                // Order by timeTaken ascending, limit to top 10
+                const q = query(leaderboardCollectionRef, orderBy("timeTaken"), limit(10));
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    leaderboardList.innerHTML = "<div>No scores yet. Be the first to set one!</div>";
+                    return;
+                }
+
+                leaderboardList.innerHTML = ''; // Clear previous list
+                let rank = 1;
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const entryDiv = document.createElement('div');
+                    entryDiv.classList.add('leaderboard-entry');
+                    entryDiv.innerHTML = `
+                        <span class="rank">${rank}.</span>
+                        <span class="player-name">${data.playerName || 'Anonymous'}</span>
+                        <span class="level-name-lb">(${data.levelName || 'N/A'})</span>
+                        <span class="time">${formatTime(data.timeTaken)}</span>
+                    `;
+                    leaderboardList.appendChild(entryDiv);
+                    rank++;
+                });
+            } catch (e) {
+                console.error("Error loading leaderboard:", e);
+                leaderboardList.innerHTML = "<div>Error loading leaderboard.</div>";
+            }
+        }
+
+
+        function playSavedLevel(levelData) {
+            mazeGrid = levelData.grid;
+            player = levelData.playerStart;
+            end = levelData.winpadEnd;
+            currentGameType = GAME_MODES.SAVED_LEVEL;
+            currentLevelId = levelData.id;
+            currentLevelName = levelData.name;
+            hideAllModals();
+            showScreen('gamePlayArea');
+        }
+
+        function playCommunityLevel(levelData) {
+            mazeGrid = levelData.grid;
+            player = levelData.playerStart;
+            end = levelData.winpadEnd;
+            currentGameType = GAME_MODES.COMMUNITY_LEVEL;
+            currentLevelId = levelData.id;
+            currentLevelName = levelData.name;
+            hideAllModals();
+            showScreen('gamePlayArea');
+        }
+
+        // --- Event Listeners ---
+
+        playButton.addEventListener('click', () => {
+            currentGameType = GAME_MODES.LEVEL;
+            currentLevelIndex = 0;
+            showScreen('gamePlayArea');
+        });
+
+        nextLevelButton.addEventListener('click', () => {
+            currentLevelIndex = (currentLevelIndex + 1) % officialPlayableLevels.length;
+            initializeGame();
+        });
+
+        infoButton.addEventListener('click', () => showModal(infoModalOverlay));
+        closeInfoModalButton.addEventListener('click', () => hideModal(infoModalOverlay));
+        infoModalOverlay.addEventListener('click', (e) => {
+            if (e.target === infoModalOverlay) {
+                hideModal(infoModalOverlay);
+            }
+        });
+
+        customizationButtonStart.addEventListener('click', () => showModal(customizationModalOverlay));
+        closeCustomizationModalButton.addEventListener('click', () => hideModal(customizationModalOverlay));
+        customizationModalOverlay.addEventListener('click', (e) => {
+            if (e.target === customizationModalOverlay) {
+                hideModal(customizationModalOverlay);
+            }
+        });
+
+        playerColorPicker.addEventListener('input', (e) => { PLAYER_COLOR = e.target.value; drawGame(); drawBuild(); });
+        wallColorPicker.addEventListener('input', (e) => { WALL_COLOR = e.target.value; drawGame(); drawBuild(); });
+        pathColorPicker.addEventListener('input', (e) => { PATH_COLOR = e.target.value; drawGame(); drawBuild(); });
+
+        menuButtonStart.addEventListener('click', () => {
+            showModal(menuModalOverlay);
+            loadMyLevels();
+            updateUserIdDisplay();
+            fetchPlayerBricks();
+        });
+        closeMenuModalButton.addEventListener('click', () => hideModal(menuModalOverlay));
+        menuModalOverlay.addEventListener('click', (e) => {
+            if (e.target === menuModalOverlay) {
+                hideModal(menuModalOverlay);
+            }
+        });
+
+        startRandomMazeButton.addEventListener('click', () => {
+            currentGameType = GAME_MODES.MAZE;
+            hideAllModals();
+            showScreen('gamePlayArea');
+        });
+
+        startRandomBlocksButton.addEventListener('click', () => {
+            currentGameType = GAME_MODES.BLOCKS;
+            hideAllModals();
+            showScreen('gamePlayArea');
+        });
+
+        buildModeButton.addEventListener('click', () => {
+            currentGameType = GAME_MODES.BUILD;
+            hideAllModals();
+            showScreen('buildModeArea');
+        });
+
+        refreshMyLevelsButton.addEventListener('click', loadMyLevels);
+
+        // Community Levels button in Menu
+        searchLevelsButton.addEventListener('click', () => {
+            showModal(communityLevelsModalOverlay);
+            loadCommunityLevels();
+        });
+        refreshCommunityLevelsButton.addEventListener('click', loadCommunityLevels);
+        closeCommunityLevelsModalButton.addEventListener('click', () => hideModal(communityLevelsModalOverlay));
+        communityLevelsModalOverlay.addEventListener('click', (e) => {
+            if (e.target === communityLevelsModalOverlay) {
+                hideModal(communityLevelsModalOverlay);
+            }
+        });
+
+        // Leaderboard event listeners
+        leaderboardButton.addEventListener('click', () => {
+            showModal(leaderboardModalOverlay);
+            loadLeaderboard();
+        });
+        refreshLeaderboardButton.addEventListener('click', loadLeaderboard);
+        closeLeaderboardModalButton.addEventListener('click', () => hideModal(leaderboardModalOverlay));
+        leaderboardModalOverlay.addEventListener('click', (e) => {
+            if (e.target === leaderboardModalOverlay) {
+                hideModal(leaderboardModalOverlay);
+            }
+        });
+
+
+        // Build Mode specific buttons and tools
+        clearBuildGridButton.addEventListener('click', () => {
+            initBuildGrid();
+            drawBuild();
+            buildMessageBox.textContent = "Grid cleared! Start building!";
+        });
+
+        saveLevelButton.addEventListener('click', saveLevel);
+        publishLevelButton.addEventListener('click', publishLevel);
+
+        toolWall.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WALL));
+        toolPath.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PATH));
+        toolPlayer.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PLAYER_START));
+        toolWinpad.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WINPAD));
+        toolTrigger.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.TRIGGER));
+        toolMovingBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.MOVING_BLOCK));
+        toolPushBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PUSH_BLOCK));
+
+        backToMainMenuButtonGame.addEventListener('click', () => showScreen('startScreen'));
+        backToMainMenuButtonBuild.addEventListener('click', () => showScreen('startScreen'));
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // Initial setup when the window loads
+        window.onload = () => {
+            document.addEventListener('firebaseAuthReady', async () => {
+                await loadUserProfile(); // Load user profile first
+                await fetchOfficialPlayableLevels(); // Fetch official levels after auth
+                showScreen('startScreen');
+                resizeCanvas();
+                playerColorPicker.value = PLAYER_COLOR;
+                wallColorPicker.value = WALL_COLOR;
+                pathColorPicker.value = PATH_COLOR;
+                fetchDailyLevel();
+            });
+        };
+
+        loginButton.addEventListener('click', () => {
+            if (loginButton.classList.contains('logged-in')) {
+                handleLogout();
+            } else {
+                showModal(loginModalOverlay);
+            }
+        });
+        loginSubmitButton.addEventListener('click', handleLogin);
+        loginCancelButton.addEventListener('click', () => hideModal(loginModalOverlay));
+        loginModalOverlay.addEventListener('click', (e) => {
+            if (e.target === loginModalOverlay) {
+                hideModal(loginModalOverlay);
+            }
+        });
+
+        // Event listener for daily level play button
+        playDailyLevelButton.addEventListener('click', () => {
+            if (currentDailyLevel) {
+                playCommunityLevel(currentDailyLevel);
+            } else {
+                alert("No daily level is currently set.");
+            }
+        });
+
+        // Handle clicks on the build canvas
+        buildCanvas.addEventListener('click', handleBuildCanvasClick);
+
+        // Keyboard controls for player movement
+        window.addEventListener('keydown', (e) => {
+            if (currentActiveScreen === 'gamePlayArea') {
+                switch (e.key) {
+                    case 'ArrowUp':
+                    case 'w':
+                    case 'W':
+                        movePlayer(0, -1);
+                        break;
+                    case 'ArrowDown':
+                    case 's':
+                    case 'S':
+                        movePlayer(0, 1);
+                        break;
+                    case 'ArrowLeft':
+                    case 'a':
+                    case 'A':
+                        movePlayer(-1, 0);
+                        break;
+                    case 'ArrowRight':
+                    case 'd':
+                    case 'D':
+                        movePlayer(1, 0);
+                        break;
+                    case 'Escape':
+                        hideAllModals();
+                        break;
+                }
+            } else {
+                if (e.key === 'Escape') {
+                    hideAllModals();
+                }
+            }
+        });
+
+        // Touch controls for player movement
+        touchControls.addEventListener('click', (e) => {
+            if (currentActiveScreen !== 'gamePlayArea') return;
+
+            const button = e.target.closest('.touch-button');
+            if (!button) return;
+
+            const direction = button.dataset.direction;
+            switch (direction) {
+                case 'up':
+                    movePlayer(0, -1);
+                    break;
+                case 'down':
+                    movePlayer(0, 1);
+                    break;
+                case 'left':
+                    movePlayer(-1, 0);
+                    break;
+                case 'right':
+                    movePlayer(1, 0);
+                    break;
+            }
+        });
+    </script>
 </body>
 </html>
