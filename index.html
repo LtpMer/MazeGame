@@ -11,13 +11,36 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables for Firebase (will be populated by the environment)
-        window.__app_id = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        window.__firebase_config = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        // --- IMPORTANT: FOR EXTERNAL HOSTING, REPLACE THIS WITH YOUR ACTUAL FIREBASE CONFIG ---
+        // You MUST uncomment the 'const myFirebaseConfig = { ... };' block below
+        // and replace the placeholder values with your OWN Firebase project's configuration.
+        // This configuration can be found in your Firebase project settings (web app section).
+        // The 'projectId' field is crucial for connecting to your Firestore database.
+        
+        const myFirebaseConfig = {
+          apiKey: "AIzaSyAB3UcTTArjYHrhcDFo780HsK2gIYVGXjQ", // Your actual API Key
+          authDomain: "mazegame-27b3f.firebaseapp.com", // Your actual Auth Domain
+          projectId: "mazegame-27b3f", // Your actual Project ID  <--- THIS IS REQUIRED!
+          storageBucket: "mazegame-27b3f.appspot.com", // Your actual Storage Bucket
+          messagingSenderId: "632041065509", // Your actual Messaging Sender ID
+          appId: "1:632041065509:web:659ed37bf4475df8da83cc" // Your actual App ID
+        };
+        
+        // Ensure window.__firebase_config is set before any Firebase initialization attempts
+        window.__firebase_config = myFirebaseConfig;
+        
+        // --------------------------------------------------------------------------------------
+
+        // Global variables for Firebase (will be populated by the environment or manually)
+        // If running outside Canvas, __app_id and __initial_auth_token will be undefined.
+        // You MUST provide window.__firebase_config manually as described above.
+        window.__app_id = typeof __app_id !== 'undefined' ? __app_id : (window.__firebase_config ? window.__firebase_config.appId : 'default-app-id');
         window.__initial_auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
+        console.log("Firebase config before init:", window.__firebase_config); // Added for debugging
+
         // Initialize Firebase
-        if (window.__firebase_config) {
+        if (window.__firebase_config && window.__firebase_config.projectId) { // Added check for projectId
             window.firebaseApp = initializeApp(window.__firebase_config);
             window.db = getFirestore(window.firebaseApp);
             window.auth = getAuth(window.firebaseApp);
@@ -68,7 +91,7 @@
                 }
             });
         } else {
-            console.warn("Firebase config not found. Running without Firebase features.");
+            console.warn("Firebase config not found or projectId missing. Running without Firebase features.");
             window.userId = crypto.randomUUID(); // Generate a random ID if Firebase is not configured
             document.dispatchEvent(new Event('firebaseAuthReady'));
         }
@@ -1571,7 +1594,7 @@
                 startScreen.classList.add('active');
                 infoButton.style.display = 'block';
                 loginButton.style.display = 'block';
-                fetchDailyLevel();
+                // fetchDailyLevel(); // Removed this call here
             } else if (screenId === 'gamePlayArea') {
                 gamePlayArea.classList.add('active');
                 infoButton.style.display = 'block';
@@ -2331,9 +2354,6 @@
             // Immediately show the start screen and resize the canvas
             showScreen('startScreen');
             resizeCanvas();
-            // playerColorPicker.value = PLAYER_COLOR; // These are now set in loadUserProfile
-            // wallColorPicker.value = WALL_COLOR;
-            // pathColorPicker.value = PATH_COLOR;
             
             // Listen for Firebase auth readiness and then load user data and levels
             document.addEventListener('firebaseAuthReady', async () => {
