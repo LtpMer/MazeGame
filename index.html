@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blocky Maze & Level Generator</title>
+    <title>LtpMer's Maze Game</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <!-- Firebase SDKs -->
     <script type="module">
@@ -694,7 +694,7 @@
     <div class="game-container">
         <!-- Start Screen -->
         <div id="startScreen" class="start-screen">
-            <h1>Maze Explorer</h1>
+            <h1>LtpMer's Maze Game</h1>
             <button id="playButton" class="start-screen-button">Play</button>
             <button id="customizationButtonStart" class="start-screen-button">Customization</button>
             <button id="menuButtonStart" class="start-screen-button">Menu</button>
@@ -946,7 +946,7 @@
 
         // Build Mode Tools
         const toolWall = document.getElementById('toolWall');
-        const toolPath = document.getElementById('toolPath');
+        const toolPath = document.getElementById('toolPath'); // Fixed: Removed erroneous 'document = '
         const toolPlayer = document.getElementById('toolPlayer');
         const toolWinpad = document.getElementById('toolWinpad');
         const toolTrigger = document.getElementById('toolTrigger');
@@ -1678,10 +1678,12 @@
         }
 
         function updateUserIdDisplay() {
-            if (currentPlayerName !== "Anonymous") {
-                userIdDisplay.textContent = `Player: ${currentPlayerName} (ID: ${window.userId})`;
-            } else {
-                userIdDisplay.textContent = `User ID: ${window.userId} (Anonymous)`;
+            if (userIdDisplay) { // Added null check
+                if (currentPlayerName !== "Anonymous") {
+                    userIdDisplay.textContent = `Player: ${currentPlayerName} (ID: ${window.userId})`;
+                } else {
+                    userIdDisplay.textContent = `User ID: ${window.userId} (Anonymous)`;
+                }
             }
         }
 
