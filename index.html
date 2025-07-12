@@ -674,6 +674,14 @@
             background-color: #718096;
         }
 
+        /* Specific style for the Eraser button */
+        #toolEraser {
+            background-color: #e53e3e; /* Red color for eraser */
+        }
+        #toolEraser:hover {
+            background-color: #c53030; /* Darker red on hover */
+        }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 2rem;
@@ -752,6 +760,7 @@
             <div class="controls">
                 <div class="button-row">
                     <button id="nextLevelButton" style="display: none;">Next Level</button> <!-- Only for Level Mode -->
+                    <button id="saveCurrentLevelButton">Save Current Level</button> <!-- New Save Current Level Button -->
                     <button id="backToMainMenuButtonGame">Back to Main Menu</button>
                 </div>
                 <div class="touch-controls">
@@ -769,15 +778,21 @@
             <canvas id="buildCanvas"></canvas>
             <div class="message-box" id="buildMessageBox">Click to place/remove blocks!</div>
             <div class="controls">
-                <div class="build-tools">
-                    <button id="toolWall" class="active-tool">Wall</button>
+                <div class="build-tools" id="drawingTools">
                     <button id="toolEraser">Eraser</button> <!-- New Eraser Tool -->
+                    <button id="toolWall" class="active-tool">Wall</button>
                     <button id="toolPath">Path</button>
                     <button id="toolPlayer">Player</button>
                     <button id="toolWinpad">Win Pad</button>
                     <button id="toolTrigger">Trigger</button>
                     <button id="toolMovingBlock">Moving</button>
                     <button id="toolPushBlock">Push</button>
+                    <button id="toolSelection">Selection</button> <!-- New Selection Tool -->
+                </div>
+                <div class="button-row" id="selectionActions" style="display: none;">
+                    <button id="fillSelectionButton">Fill Selected (Current Tool)</button>
+                    <button id="clearSelectionButton">Clear Selected (Path)</button>
+                    <button id="exitSelectionButton">Exit Selection</button> <!-- New Exit Selection Button -->
                 </div>
                 <div class="button-row">
                     <button id="clearBuildGridButton">Clear Grid</button>
@@ -912,6 +927,8 @@
 
     <script type="module">
         // Import Firestore functions
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Get main UI elements
@@ -935,6 +952,7 @@
         const mazeCtx = mazeCanvas.getContext('2d');
         const messageBox = document.getElementById('messageBox');
         const nextLevelButton = document.getElementById('nextLevelButton');
+        const saveCurrentLevelButton = document.getElementById('saveCurrentLevelButton'); // New button
         const backToMainMenuButtonGame = document.getElementById('backToMainMenuButtonGame');
         const touchControls = document.querySelector('.touch-controls');
 
@@ -983,18 +1001,6 @@
         const wallColorPicker = document.getElementById('wallColorPicker');
         const pathColorPicker = document.getElementById('pathColorPicker');
 
-        // Build Mode Tools
-        const toolWall = document.getElementById('toolWall');
-        const toolEraser = document.getElementById('toolEraser'); // New Eraser Tool
-        const toolPath = document.getElementById('toolPath'); 
-        const toolPlayer = document.getElementById('toolPlayer');
-        const toolWinpad = document.getElementById('toolWinpad');
-        const toolTrigger = document.getElementById('toolTrigger');
-        const toolMovingBlock = document.getElementById('toolMovingBlock');
-        const toolPushBlock = document.getElementById('toolPushBlock');
-        let currentBuildTool = null;
-        let isDrawing = false; // New flag for hold-click drawing
-
         // Maze dimensions
         const MAZE_WIDTH = 31;
         const MAZE_HEIGHT = 31;
@@ -1017,9 +1023,36 @@
             WINPAD: 3,
             TRIGGER: 4,
             MOVING_BLOCK: 5,
-            PUSH_BLOCK: 6,
-            ERASER: 99 // New type for eraser tool
+            PUSH_BLOCK: 6
+            // ERASER is handled by setting currentBuildTool to PATH
+            // SELECTION is handled by setting currentBuildTool to 'selection' string
         };
+
+        // Build Mode Tools
+        const drawingToolsContainer = document.getElementById('drawingTools'); // New container for drawing tools
+        const selectionActionsContainer = document.getElementById('selectionActions'); // New container for selection actions
+
+        const toolWall = document.getElementById('toolWall');
+        const toolEraser = document.getElementById('toolEraser'); 
+        const toolPath = document.getElementById('toolPath'); 
+        const toolPlayer = document.getElementById('toolPlayer');
+        const toolWinpad = document.getElementById('toolWinpad');
+        const toolTrigger = document.getElementById('toolTrigger');
+        const toolMovingBlock = document.getElementById('toolMovingBlock');
+        const toolPushBlock = document.getElementById('toolPushBlock');
+        const toolSelection = document.getElementById('toolSelection'); // New Selection Tool
+        const fillSelectionButton = document.getElementById('fillSelectionButton'); // New Fill Selection Button
+        const clearSelectionButton = document.getElementById('clearSelectionButton'); // New Clear Selection Button
+        const exitSelectionButton = document.getElementById('exitSelectionButton'); // New Exit Selection Button
+
+        let currentBuildTool = BLOCK_TYPES.WALL; // The currently active tool for drawing/selection
+        let lastSelectedDrawingTool = BLOCK_TYPES.WALL; // Stores the last non-selection tool chosen
+
+        let isDrawing = false; // Flag for hold-click drawing
+        let selectionStartPoint = null; // {x, y} for the first click in selection mode
+        let selectionEndPoint = null;   // {x, y} for the current/last mouse position in selection mode
+        let currentSelectionRect = null; // {x1, y1, x2, y2} normalized selection rectangle
+
 
         // Game state variables
         let mazeGrid = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL));
@@ -1246,6 +1279,20 @@
                     buildCtx.fillStyle = color;
                     buildCtx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
                 }
+            }
+            // Draw selection rectangle if it exists
+            drawSelectionRect();
+        }
+
+        // Draws the current selection rectangle on the buildCanvas
+        function drawSelectionRect() {
+            if (currentSelectionRect) {
+                const { x1, y1, x2, y2 } = currentSelectionRect;
+                buildCtx.strokeStyle = '#FFFFFF'; // White border for selection
+                buildCtx.lineWidth = 2;
+                buildCtx.setLineDash([5, 5]); // Dashed line
+                buildCtx.strokeRect(x1 * BLOCK_SIZE, y1 * BLOCK_SIZE, (x2 - x1 + 1) * BLOCK_SIZE, (y2 - y1 + 1) * BLOCK_SIZE);
+                buildCtx.setLineDash([]); // Reset line dash
             }
         }
 
@@ -1566,10 +1613,12 @@
                 if (officialPlayableLevels.length === 0) {
                     messageBox.textContent = "No official levels found. Play a random maze or build your own!";
                     nextLevelButton.style.display = 'none';
+                    saveCurrentLevelButton.style.display = 'none'; // Hide save button for official levels
                     mazeCtx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height); // Clear canvas
                     return; // Don't start game if no levels
                 }
                 loadOfficialLevel(currentLevelIndex); // Now loads from officialPlayableLevels
+                saveCurrentLevelButton.style.display = 'none'; // Hide save button for official levels
             } else if (currentGameType === GAME_MODES.MAZE) {
                 generateMaze();
                 player = getRandomPathPosition();
@@ -1578,6 +1627,7 @@
                 } while (player.x === end.x && player.y === end.y);
                 currentLevelId = `random-maze-${Date.now()}`;
                 currentLevelName = "Random Maze";
+                saveCurrentLevelButton.style.display = 'block'; // Show save button for random modes
             } else if (currentGameType === GAME_MODES.BLOCKS) {
                 generateBlocks();
                 player = getRandomPathPosition();
@@ -1586,14 +1636,17 @@
                 } while (player.x === end.x && player.y === end.y);
                 currentLevelId = `random-blocks-${Date.now()}`;
                 currentLevelName = "Random Blocks";
+                saveCurrentLevelButton.style.display = 'block'; // Show save button for random modes
             } else if (currentGameType === GAME_MODES.BUILD) {
                 if (!buildGrid || buildGrid.length === 0 || buildGrid[0].length === 0) {
                     initBuildGrid();
                 }
                 buildMessageBox.textContent = "Click to place/remove blocks!";
                 updatePlayerAndEndFromBuildGrid();
+                saveCurrentLevelButton.style.display = 'none'; // Hide save button in build mode
             } else if (currentGameType === GAME_MODES.SAVED_LEVEL || currentGameType === GAME_MODES.COMMUNITY_LEVEL) {
                 // mazeGrid, player, end, currentLevelId, currentLevelName are already set by playSavedLevel/playCommunityLevel
+                saveCurrentLevelButton.style.display = 'none'; // Hide save button for saved/community levels
             }
             
             nextLevelButton.style.display = (currentGameType === GAME_MODES.LEVEL && officialPlayableLevels.length > 0) ? 'block' : 'none';
@@ -1656,19 +1709,13 @@
                 infoButton.style.display = 'block';
                 loginButton.style.display = 'block';
                 initializeGame();
-                selectBuildTool(BLOCK_TYPES.WALL);
+                selectBuildTool(BLOCK_TYPES.WALL); // Default to Wall tool
             }
             resizeCanvas(); // Call resize after showing screen to ensure correct dimensions
         }
 
         // Handle clicks on the build canvas
         function handleBuildCanvasInteraction(event) {
-            // Only proceed if mouse button is down for drawing, or if it's a single click for player/winpad
-            if (event.buttons !== 1 && event.type === 'mousemove' && currentBuildTool !== BLOCK_TYPES.ERASER) return; // Not dragging with left click
-            if (event.type === 'mousedown') isDrawing = true;
-            if (event.type === 'mouseup') isDrawing = false;
-            if (event.type === 'mousemove' && !isDrawing) return;
-
             const rect = buildCanvas.getBoundingClientRect();
             const scaleX = buildCanvas.width / rect.width;
             const scaleY = buildCanvas.height / rect.height;
@@ -1676,14 +1723,50 @@
             const x = Math.floor((event.clientX - rect.left) * scaleX / BLOCK_SIZE);
             const y = Math.floor((event.clientY - rect.top) * scaleY / BLOCK_SIZE);
 
-            if (x >= 0 && x < MAZE_WIDTH && y >= 0 && y < MAZE_HEIGHT) {
-                // Get the current block at the clicked position
+            if (x < 0 || x >= MAZE_WIDTH || y < 0 || y >= MAZE_HEIGHT) {
+                return; // Out of bounds
+            }
+
+            if (currentBuildTool === 'selection') {
+                if (event.type === 'mousedown') {
+                    isDrawing = true;
+                    selectionStartPoint = { x, y };
+                    selectionEndPoint = { x, y };
+                    currentSelectionRect = { x1: x, y1: y, x2: x, y2: y };
+                } else if (event.type === 'mousemove' && isDrawing) {
+                    selectionEndPoint = { x, y };
+                    // Normalize selection rectangle coordinates
+                    currentSelectionRect = {
+                        x1: Math.min(selectionStartPoint.x, selectionEndPoint.x),
+                        y1: Math.min(selectionStartPoint.y, selectionEndPoint.y),
+                        x2: Math.max(selectionStartPoint.x, selectionEndPoint.x),
+                        y2: Math.max(selectionStartPoint.y, selectionEndPoint.y)
+                    };
+                    drawBuild(); // Redraw with live selection
+                } else if (event.type === 'mouseup') {
+                    isDrawing = false;
+                    selectionEndPoint = { x, y };
+                    currentSelectionRect = {
+                        x1: Math.min(selectionStartPoint.x, selectionEndPoint.x),
+                        y1: Math.min(selectionStartPoint.y, selectionEndPoint.y),
+                        x2: Math.max(selectionStartPoint.x, selectionEndPoint.x),
+                        y2: Math.max(selectionStartPoint.y, selectionEndPoint.y)
+                    };
+                    drawBuild(); // Final redraw with selection
+                    buildMessageBox.textContent = `Selected area from (${currentSelectionRect.x1},${currentSelectionRect.y1}) to (${currentSelectionRect.x2},${currentSelectionRect.y2}).`;
+                }
+            } else { // Handle drawing tools
+                // Only proceed if mouse button is down for drawing, or if it's a single click for player/winpad
+                if (event.buttons !== 1 && event.type === 'mousemove') return; // Not dragging with left click
+                if (event.type === 'mousedown') isDrawing = true;
+                if (event.type === 'mouseup') isDrawing = false;
+                if (event.type === 'mousemove' && !isDrawing) return;
+
                 let currentBlock = buildGrid[y][x];
                 let currentBlockType = typeof currentBlock === 'object' ? currentBlock.type : currentBlock;
 
                 if (currentBuildTool === BLOCK_TYPES.PLAYER_START) {
-                    // Only place player start on mousedown, not drag
-                    if (event.type === 'mousedown') {
+                    if (event.type === 'mousedown') { // Only place player start on mousedown
                         for (let row = 0; row < MAZE_HEIGHT; row++) {
                             for (let col = 0; col < MAZE_WIDTH; col++) {
                                 const block = buildGrid[row][col];
@@ -1699,8 +1782,7 @@
                         drawBuild();
                     }
                 } else if (currentBuildTool === BLOCK_TYPES.WINPAD) {
-                    // Only place winpad on mousedown, not drag
-                    if (event.type === 'mousedown') {
+                    if (event.type === 'mousedown') { // Only place winpad on mousedown
                         for (let row = 0; row < MAZE_HEIGHT; row++) {
                             for (let col = 0; col < MAZE_WIDTH; col++) {
                                 const block = buildGrid[row][col];
@@ -1716,50 +1798,31 @@
                         drawBuild();
                     }
                 } else if (currentBuildTool === BLOCK_TYPES.TRIGGER) {
-                    // For trigger, prompt for target coordinates only on mousedown
-                    if (event.type === 'mousedown') {
+                    if (event.type === 'mousedown') { // For trigger, prompt for target coordinates only on mousedown
                         let targetX = parseInt(prompt("Enter target X for trigger (0-" + (MAZE_WIDTH - 1) + "):"));
                         let targetY = parseInt(prompt("Enter target Y for trigger (0-" + (MAZE_HEIGHT - 1) + "):"));
                         if (!isNaN(targetX) && !isNaN(targetY) && targetX >= 0 && targetX < MAZE_WIDTH && targetY >= 0 && targetY < MAZE_HEIGHT) {
                             buildGrid[y][x] = { type: BLOCK_TYPES.TRIGGER, targetX: targetX, targetY: targetY, targetType: BLOCK_TYPES.PATH };
-                            buildMessageBox.textContent = `Trigger at (${x},${y}) set to affect (${targetX},${targetY}).`;
+                            buildMessageBox.textContent = `Trigger at (${x},${y}) set to affect (${targetX},${ty}).`;
                             drawBuild();
                         } else {
                             buildMessageBox.textContent = "Invalid target coordinates for trigger.";
                         }
                     }
-                } else if (currentBuildTool === BLOCK_TYPES.ERASER) {
-                    // Eraser tool always turns the block into a PATH
-                    if (currentBlockType !== BLOCK_TYPES.PATH) { // Only change if it's not already a path
-                        buildGrid[y][x] = BLOCK_TYPES.PATH;
-                        // If player or end was on this spot and it's now PATH, reset their positions
-                        if (player.x === x && player.y === y) {
-                            player = { x: -1, y: -1 }; // Invalidate player position
-                            buildMessageBox.textContent = "Player Start removed! Place a new one.";
-                        }
-                        if (end.x === x && end.y === y) {
-                            end = { x: -1, y: -1 }; // Invalidate end position
-                            buildMessageBox.textContent = "Win Pad removed! Place a new one.";
-                        }
-                        drawBuild();
-                    }
-                }
-                else {
-                    // For other blocks (Wall, Path, Moving, Push), toggle between current tool and PATH on drag or click
-                    if (currentBlockType === currentBuildTool) {
-                        buildGrid[y][x] = BLOCK_TYPES.PATH;
-                    } else {
-                        // Store simple block types as just their number, complex ones as objects
-                        buildGrid[y][x] = currentBuildTool;
-                    }
+                } else {
+                    // For other blocks (Wall, Path, Moving, Push), and Eraser (which sets to PATH)
+                    const targetTool = (currentBuildTool === 'eraser') ? BLOCK_TYPES.PATH : currentBuildTool;
 
+                    // Only change the block if the current block type is different from the target tool
+                    if (currentBlockType !== targetTool) {
+                        buildGrid[y][x] = targetTool; // Set to current tool
+                    }
                     // If player or end was on this spot and it's now PATH, reset their positions
-                    // This logic is important for when you draw over player/winpad with another tool
-                    if (player.x === x && player.y === y && buildGrid[y][x] === BLOCK_TYPES.PATH) {
+                    if (player.x === x && player.y === y && (buildGrid[y][x] === BLOCK_TYPES.PATH || (typeof buildGrid[y][x] === 'object' && buildGrid[y][x].type === BLOCK_TYPES.PATH))) {
                         player = { x: -1, y: -1 }; // Invalidate player position
                         buildMessageBox.textContent = "Player Start removed! Place a new one.";
                     }
-                    if (end.x === x && end.y === y && buildGrid[y][x] === BLOCK_TYPES.PATH) {
+                    if (end.x === x && end.y === y && (buildGrid[y][x] === BLOCK_TYPES.PATH || (typeof buildGrid[y][x] === 'object' && buildGrid[y][x].type === BLOCK_TYPES.PATH))) {
                         end = { x: -1, y: -1 }; // Invalidate end position
                         buildMessageBox.textContent = "Win Pad removed! Place a new one.";
                     }
@@ -1792,21 +1855,77 @@
 
         // Function to set the active build tool
         function selectBuildTool(toolType) {
-            currentBuildTool = toolType;
+            // Remove active-tool class from all buttons
             document.querySelectorAll('.build-tools button').forEach(btn => {
                 btn.classList.remove('active-tool');
             });
-            switch (toolType) {
+
+            // Update currentBuildTool and lastSelectedDrawingTool
+            if (toolType === 'selection') { // Special case for selection mode
+                currentBuildTool = 'selection'; // Use a string to represent selection mode
+                buildMessageBox.textContent = "Tool: Selection. Click and drag to select an area.";
+                // Show selection action buttons, hide drawing tools
+                selectionActionsContainer.style.display = 'flex';
+                drawingToolsContainer.style.display = 'none';
+                clearSelection(); // Clear any existing selection when entering selection mode
+            } else { // It's a drawing block type
+                currentBuildTool = toolType;
+                lastSelectedDrawingTool = toolType; // Store the actual block type
+                buildMessageBox.textContent = `Tool: ${Object.keys(BLOCK_TYPES).find(key => BLOCK_TYPES[key] === toolType).replace('_', ' ')}`;
+                // Hide selection action buttons, show drawing tools
+                selectionActionsContainer.style.display = 'none';
+                drawingToolsContainer.style.display = 'flex';
+                clearSelection(); // Clear any existing selection when switching to drawing mode
+            }
+
+            // Highlight the active tool button
+            switch (currentBuildTool) {
                 case BLOCK_TYPES.WALL: toolWall.classList.add('active-tool'); break;
-                case BLOCK_TYPES.ERASER: toolEraser.classList.add('active-tool'); break; // Highlight eraser
+                case 'eraser': toolEraser.classList.add('active-tool'); break; // Highlight eraser
                 case BLOCK_TYPES.PATH: toolPath.classList.add('active-tool'); break;
                 case BLOCK_TYPES.PLAYER_START: toolPlayer.classList.add('active-tool'); break;
                 case BLOCK_TYPES.WINPAD: toolWinpad.classList.add('active-tool'); break;
                 case BLOCK_TYPES.TRIGGER: toolTrigger.classList.add('active-tool'); break;
                 case BLOCK_TYPES.MOVING_BLOCK: toolMovingBlock.classList.add('active-tool'); break;
                 case BLOCK_TYPES.PUSH_BLOCK: toolPushBlock.classList.add('active-tool'); break;
+                case 'selection': toolSelection.classList.add('active-tool'); break; // Highlight selection button
             }
-            buildMessageBox.textContent = `Tool: ${Object.keys(BLOCK_TYPES).find(key => BLOCK_TYPES[key] === toolType).replace('_', ' ')}`;
+        }
+
+        // Fills the current selection with a specified block type
+        function fillSelection(fillType) {
+            if (!currentSelectionRect) {
+                buildMessageBox.textContent = "No area selected to fill.";
+                return;
+            }
+
+            const { x1, y1, x2, y2 } = currentSelectionRect;
+            for (let y = y1; y <= y2; y++) {
+                for (let x = x1; x <= x2; x++) {
+                    // Handle player/winpad replacement
+                    if (player.x === x && player.y === y && fillType !== BLOCK_TYPES.PLAYER_START) {
+                        player = { x: -1, y: -1 }; // Invalidate player position
+                        buildMessageBox.textContent = "Player Start removed! Place a new one.";
+                    }
+                    if (end.x === x && end.y === y && fillType !== BLOCK_TYPES.WINPAD) {
+                        end = { x: -1, y: -1 }; // Invalidate end position
+                        buildMessageBox.textContent = "Win Pad removed! Place a new one.";
+                    }
+                    buildGrid[y][x] = fillType;
+                }
+            }
+            drawBuild();
+            buildMessageBox.textContent = `Selected area filled with ${Object.keys(BLOCK_TYPES).find(key => BLOCK_TYPES[key] === fillType).replace('_', ' ')}.`;
+            clearSelection(); // Clear selection after filling
+        }
+
+        // Clears the current selection (fills with PATH)
+        function clearSelection() {
+            selectionStartPoint = null;
+            selectionEndPoint = null;
+            currentSelectionRect = null;
+            drawBuild(); // Redraw to remove selection rectangle
+            buildMessageBox.textContent = "Selection cleared.";
         }
 
 
@@ -2399,6 +2518,27 @@
             showScreen('gamePlayArea');
         }
 
+        // New function to transfer current maze to build grid and switch to build mode
+        function saveCurrentLevel() {
+            // Copy mazeGrid to buildGrid
+            buildGrid = mazeGrid.map(row => row.map(block => {
+                // Ensure block objects are copied by value, not reference
+                return typeof block === 'object' ? { ...block } : block;
+            }));
+
+            // Update player and end in buildGrid as objects
+            if (player.x !== -1 && player.y !== -1) {
+                buildGrid[player.y][player.x] = { type: BLOCK_TYPES.PLAYER_START };
+            }
+            if (end.x !== -1 && end.y !== -1) {
+                buildGrid[end.y][end.x] = { type: BLOCK_TYPES.WINPAD };
+            }
+
+            hideAllModals();
+            showScreen('buildModeArea');
+            buildMessageBox.textContent = "Current level loaded into Build Mode. You can now save or modify it!";
+        }
+
         // --- Event Listeners ---
 
         playButton.addEventListener('click', () => {
@@ -2411,6 +2551,8 @@
             currentLevelIndex = (currentLevelIndex + 1) % officialPlayableLevels.length;
             initializeGame();
         });
+
+        saveCurrentLevelButton.addEventListener('click', saveCurrentLevel); // Event listener for new button
 
         infoButton.addEventListener('click', () => showModal(infoModalOverlay));
         closeInfoModalButton.addEventListener('click', () => hideModal(infoModalOverlay));
@@ -2506,14 +2648,27 @@
         saveLevelButton.addEventListener('click', saveLevel);
         publishLevelButton.addEventListener('click', publishLevel);
 
+        // Tool selection event listeners
+        toolEraser.addEventListener('click', () => selectBuildTool('eraser')); // Eraser tool sets currentBuildTool to 'eraser' string
         toolWall.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WALL));
-        toolEraser.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.ERASER)); // Event listener for new Eraser tool
         toolPath.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PATH));
         toolPlayer.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PLAYER_START));
         toolWinpad.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WINPAD));
         toolTrigger.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.TRIGGER));
         toolMovingBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.MOVING_BLOCK));
         toolPushBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PUSH_BLOCK));
+        toolSelection.addEventListener('click', () => selectBuildTool('selection')); // Selection tool sets currentBuildTool to 'selection' string
+
+        // Selection action buttons
+        fillSelectionButton.addEventListener('click', () => {
+            if (lastSelectedDrawingTool !== 'selection') { // Ensure it's a valid block type
+                fillSelection(lastSelectedDrawingTool);
+            } else {
+                buildMessageBox.textContent = "Please select a drawing tool first (e.g., Wall, Player) to fill the selection.";
+            }
+        });
+        clearSelectionButton.addEventListener('click', () => fillSelection(BLOCK_TYPES.PATH)); // Clear selection always fills with PATH
+        exitSelectionButton.addEventListener('click', () => selectBuildTool(lastSelectedDrawingTool)); // New: Exit selection and go back to last drawing tool
 
         backToMainMenuButtonGame.addEventListener('click', () => showScreen('startScreen'));
         backToMainMenuButtonBuild.addEventListener('click', () => showScreen('startScreen'));
