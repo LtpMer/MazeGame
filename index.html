@@ -771,6 +771,7 @@
             <div class="controls">
                 <div class="build-tools">
                     <button id="toolWall" class="active-tool">Wall</button>
+                    <button id="toolEraser">Eraser</button> <!-- New Eraser Tool -->
                     <button id="toolPath">Path</button>
                     <button id="toolPlayer">Player</button>
                     <button id="toolWinpad">Win Pad</button>
@@ -984,6 +985,7 @@
 
         // Build Mode Tools
         const toolWall = document.getElementById('toolWall');
+        const toolEraser = document.getElementById('toolEraser'); // New Eraser Tool
         const toolPath = document.getElementById('toolPath'); 
         const toolPlayer = document.getElementById('toolPlayer');
         const toolWinpad = document.getElementById('toolWinpad');
@@ -991,6 +993,7 @@
         const toolMovingBlock = document.getElementById('toolMovingBlock');
         const toolPushBlock = document.getElementById('toolPushBlock');
         let currentBuildTool = null;
+        let isDrawing = false; // New flag for hold-click drawing
 
         // Maze dimensions
         const MAZE_WIDTH = 31;
@@ -998,7 +1001,7 @@
         let BLOCK_SIZE = 15;
 
         // Colors
-        let PLAYER_COLOR = '#F44336';
+        let PLAYER_COLOR = '#0000FF'; // Blue
         let WALL_COLOR = '#000000';
         let PATH_COLOR = '#f0f0f0';
         const END_COLOR = '#4CAF50';
@@ -1014,7 +1017,8 @@
             WINPAD: 3,
             TRIGGER: 4,
             MOVING_BLOCK: 5,
-            PUSH_BLOCK: 6
+            PUSH_BLOCK: 6,
+            ERASER: 99 // New type for eraser tool
         };
 
         // Game state variables
@@ -1043,67 +1047,9 @@
         let currentGameType = GAME_MODES.LEVEL;
         let currentLevelIndex = 0; // Index within the `officialPlayableLevels` array
 
-        let officialPlayableLevels = []; // New: Array to hold levels fetched from Firestore for the "Play" button
+        let officialPlayableLevels = []; // Array to hold levels fetched from Firestore for the "Play" button
         let currentDailyLevel = null;
-
-        // Predefined Levels (only for reference/source for official levels, not directly played by "Play" button)
-        // These are now just templates for generating the initial grid if needed,
-        // but the 'Play' button will use levels from Firestore.
-        const predefinedLevels = [
-            { id: "predefined-1", name: "Level 1: Straight Shot", grid: [], playerStart: {}, winpadEnd: {} },
-            { id: "predefined-2", name: "Level 2: The L-Bend", grid: [], playerStart: {}, winpadEnd: {} },
-            { id: "predefined-3", name: "Level 3: Cross Path", grid: [], playerStart: {}, winpadEnd: {} },
-            { id: "predefined-4", name: "Level 4: Zigzag", grid: [], playerStart: {}, winpadEnd: {} },
-            { id: "predefined-5", name: "Level 5: Frame Maze", grid: [], playerStart: {}, winpadEnd: {} },
-            { id: "predefined-6", name: "Level 6: Scattered Islands", grid: [], playerStart: {}, winpadEnd: {} },
-            { id: "predefined-7", name: "Level 7: Spiral In", grid: [], playerStart: {}, winpadEnd: {} },
-            { id: "predefined-8", name: "Level 8: Double Spiral", grid: [], playerStart: {}, winpadEnd: {} },
-            { id: "predefined-9", name: "Level 9: Dense Grid Maze", grid: [], playerStart: {}, winpadEnd: {} },
-            { id: "predefined-10", name: "Level 10: Almost Full", grid: [], playerStart: {}, winpadEnd: {} }
-        ];
-        // Populate predefinedLevels grids (simplified for brevity, actual logic remains the same as before)
-        predefinedLevels[0].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); for (let x = 1; x < MAZE_WIDTH - 1; x++) { g[1][x] = BLOCK_TYPES.PATH; } for (let y = 1; y < MAZE_HEIGHT - 1; y++) { g[y][MAZE_WIDTH - 2] = BLOCK_TYPES.PATH; } g[1][MAZE_WIDTH - 2] = BLOCK_TYPES.PATH; g[MAZE_HEIGHT - 2][1] = BLOCK_TYPES.PATH; return g; })();
-        predefinedLevels[0].playerStart = { x: 1, y: 1 };
-        predefinedLevels[0].winpadEnd = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
-
-        predefinedLevels[1].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); const midX = Math.floor(MAZE_WIDTH / 2); const midY = Math.floor(MAZE_HEIGHT / 2); for (let x = 1; x <= midX; x++) { g[1][x] = BLOCK_TYPES.PATH; } for (let y = 1; y <= midY; y++) { g[y][midX] = BLOCK_TYPES.PATH; } g[1][1] = BLOCK_TYPES.PATH; g[midY][midX] = BLOCK_TYPES.PATH; return g; })();
-        predefinedLevels[1].playerStart = { x: 1, y: 1 };
-        predefinedLevels[1].winpadEnd = { x: Math.floor(MAZE_WIDTH / 2), y: Math.floor(MAZE_HEIGHT / 2) };
-
-        predefinedLevels[2].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); const midX = Math.floor(MAZE_WIDTH / 2); const midY = Math.floor(MAZE_HEIGHT / 2); for (let x = 1; x < MAZE_WIDTH - 1; x++) { g[midY][x] = BLOCK_TYPES.PATH; } for (let y = 1; y < MAZE_HEIGHT - 1; y++) { g[y][midX] = BLOCK_TYPES.PATH; } g[1][midX] = BLOCK_TYPES.PATH; g[MAZE_HEIGHT - 2][midX] = BLOCK_TYPES.PATH; g[midY][1] = BLOCK_TYPES.PATH; g[midY][MAZE_WIDTH - 2] = BLOCK_TYPES.PATH; g[midY][midX] = BLOCK_TYPES.PATH; return g; })();
-        predefinedLevels[2].playerStart = { x: Math.floor(MAZE_WIDTH / 2), y: 1 };
-        predefinedLevels[2].winpadEnd = { x: Math.floor(MAZE_WIDTH / 2), y: MAZE_HEIGHT - 2 };
-
-        predefinedLevels[3].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); let x = 1; let y = 1; g[y][x] = BLOCK_TYPES.PATH; while (y < MAZE_HEIGHT - 2 || x < MAZE_WIDTH - 2) { if (x < MAZE_WIDTH - 2 && (y % 4 === 1 || y % 4 === 2)) { x++; } else if (y < MAZE_HEIGHT - 2) { y++; } g[y][x] = BLOCK_TYPES.PATH; } return g; })();
-        predefinedLevels[3].playerStart = { x: 1, y: 1 };
-        predefinedLevels[3].winpadEnd = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
-
-        predefinedLevels[4].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); for (let x = 1; x < MAZE_WIDTH - 1; x++) { g[1][x] = BLOCK_TYPES.PATH; g[MAZE_HEIGHT - 2][x] = BLOCK_TYPES.PATH; } for (let y = 1; y < MAZE_HEIGHT - 1; y++) { g[y][1] = BLOCK_TYPES.PATH; g[y][MAZE_WIDTH - 2] = BLOCK_TYPES.PATH; } for (let i = 5; i < MAZE_WIDTH - 5; i++) { g[5][i] = BLOCK_TYPES.WALL; g[MAZE_HEIGHT - 6][i] = BLOCK_TYPES.WALL; } for (let i = 5; i < MAZE_HEIGHT - 5; i++) { g[i][5] = BLOCK_TYPES.WALL; g[i][MAZE_WIDTH - 6] = BLOCK_TYPES.WALL; } g[5][6] = BLOCK_TYPES.PATH; g[MAZE_HEIGHT - 6][MAZE_WIDTH - 7] = BLOCK_TYPES.PATH; g[6][5] = BLOCK_TYPES.PATH; g[MAZE_HEIGHT - 7][MAZE_WIDTH - 6] = BLOCK_TYPES.PATH; return g; })();
-        predefinedLevels[4].playerStart = { x: 1, y: 1 };
-        predefinedLevels[4].winpadEnd = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
-
-        predefinedLevels[5].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); for (let y = 0; y < MAZE_HEIGHT; y++) { for (let x = 0; x < MAZE_WIDTH; x++) { g[y][x] = BLOCK_TYPES.PATH; } } for (let i = 0; i < 150; i++) { const rx = Math.floor(Math.random() * MAZE_WIDTH); const ry = Math.floor(Math.random() * MAZE_HEIGHT); g[ry][rx] = BLOCK_TYPES.WALL; } return g; })();
-        predefinedLevels[5].playerStart = { x: 1, y: 1 };
-        predefinedLevels[5].winpadEnd = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
-
-        predefinedLevels[6].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); let x = 0; let y = 0; let dx = 1; let dy = 0; let segmentLength = MAZE_WIDTH; let segmentPassed = 0; let turns = 0; for (let i = 0; i < MAZE_WIDTH * MAZE_HEIGHT; i++) { if (x >= 0 && x < MAZE_WIDTH && y >= 0 && y < MAZE_HEIGHT) { g[y][x] = BLOCK_TYPES.PATH; } else { break; } x += dx; y += dy; segmentPassed++; if (segmentPassed === segmentLength) { segmentPassed = 0; turns++; [dx, dy] = [-dy, dx]; if (turns % 2 === 0) { segmentLength--; } } } return g; })();
-        predefinedLevels[6].playerStart = { x: 0, y: 0 };
-        predefinedLevels[6].winpadEnd = { x: Math.floor(MAZE_WIDTH / 2), y: Math.floor(MAZE_HEIGHT / 2) };
-
-        predefinedLevels[7].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); const carveSpiral = (startX, startY, width, height, reverse = false) => { let x = startX; let y = startY; let dx = 1; let dy = 0; let segmentLength = width; let segmentPassed = 0; let turns = 0; for (let i = 0; i < width * height * 2; i++) { if (x >= startX && x < startX + width && y >= startY && y < startY + height) { g[y][x] = BLOCK_TYPES.PATH; } else { break; } x += dx; y += dy; segmentPassed++; if (segmentPassed === segmentLength) { segmentPassed = 0; turns++; if (reverse) { [dx, dy] = [dy, -dx]; } else { [dx, dy] = [-dy, dx]; } if (turns % 2 === 0) { segmentLength--; } } } }; carveSpiral(0, 0, MAZE_WIDTH, MAZE_HEIGHT, false); carveSpiral(MAZE_WIDTH - 1, MAZE_HEIGHT - 1, MAZE_WIDTH, MAZE_HEIGHT, true); for (let y = 1; y < MAZE_HEIGHT - 1; y++) { for (let x = 1; x < MAZE_WIDTH - 1; x++) { if (g[y][x] === BLOCK_TYPES.WALL && g[y-1][x] === BLOCK_TYPES.PATH && g[y+1][x] === BLOCK_TYPES.PATH && g[y][x-1] === BLOCK_TYPES.PATH && g[y][x+1] === BLOCK_TYPES.PATH) { g[y][x] = BLOCK_TYPES.PATH; } } } return g; })();
-        predefinedLevels[7].playerStart = { x: 0, y: 0 };
-        predefinedLevels[7].winpadEnd = { x: MAZE_WIDTH - 1, y: MAZE_HEIGHT - 1 };
-
-        predefinedLevels[8].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); const visited = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(false)); const stack = []; function carve(x, y) { g[y][x] = BLOCK_TYPES.PATH; visited[y][x] = true; const directions = [ { dx: 0, dy: -2, wx: 0, wy: -1 }, { dx: 0, dy: 2, wx: 0, wy: 1 }, { dx: -2, dy: 0, wx: -1, wy: 0 }, { dx: 2, dy: 0, wx: 1, wy: 0 } ]; for (let i = directions.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [directions[i], directions[j]] = [directions[j], directions[i]]; } for (const dir of directions) { const nx = x + dir.dx; const ny = y + dir.dy; const wx = x + dir.wx; const wy = y + dir.wy; if (nx > 0 && nx < MAZE_WIDTH - 1 && ny > 0 && ny < MAZE_HEIGHT - 1 && !visited[ny][nx]) { g[wy][wx] = BLOCK_TYPES.PATH; carve(nx, ny); } } } carve(1, 1); return g; })();
-        predefinedLevels[8].playerStart = { x: 1, y: 1 };
-        predefinedLevels[8].winpadEnd = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
-
-        predefinedLevels[9].grid = (() => { const g = Array(MAZE_HEIGHT).fill(0).map(() => Array(MAZE_WIDTH).fill(BLOCK_TYPES.WALL)); let x = 1; let y = 1; g[y][x] = BLOCK_TYPES.PATH; const path = [ { dx: 1, dy: 0, steps: 5 }, { dx: 0, dy: 1, steps: 3 }, { dx: 1, dy: 0, steps: 7 }, { dx: 0, dy: 1, steps: 5 }, { dx: -1, dy: 0, steps: 4 }, { dx: 0, dy: 1, steps: 2 }, { dx: 1, dy: 0, steps: 10 }, { dx: 0, dy: 1, steps: 8 }, { dx: -1, dy: 0, steps: 15 }, { dx: 0, dy: 1, steps: 3 }, { dx: 1, dy: 0, steps: 5 }, { dx: 0, dy: -1, steps: 2 }, { dx: 1, dy: 0, steps: 3 }, { dx: 0, dy: 1, steps: 7 }, { dx: -1, dy: 0, steps: 10 }, { dx: 0, dy: 1, steps: 5 }, { dx: 1, dy: 0, steps: 20 }, { dx: 0, dy: 1, steps: 5 }, ]; for (const segment of path) { for (let i = 0; i < segment.steps; i++) { x += segment.dx; y += segment.dy; if (x >= 0 && x < MAZE_WIDTH && y >= 0 && y < MAZE_HEIGHT) { g[y][x] = BLOCK_TYPES.PATH; } else { break; } } } g[MAZE_HEIGHT - 2][MAZE_WIDTH - 2] = BLOCK_TYPES.PATH; return g; })();
-        predefinedLevels[9].playerStart = { x: 1, y: 1 };
-        predefinedLevels[9].winpadEnd = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
-        // End of predefinedLevels grids
         
-
         // Initializes the `mazeGrid` with all blocks set to `WALL`
         function initMazeGrid() {
             mazeGrid = [];
@@ -1129,8 +1075,8 @@
             // Set default player and winpad for new build levels
             player = { x: 1, y: 1 };
             end = { x: MAZE_WIDTH - 2, y: MAZE_HEIGHT - 2 };
-            buildGrid[player.y][player.x] = BLOCK_TYPES.PLAYER_START;
-            buildGrid[end.y][end.x] = BLOCK_TYPES.WINPAD;
+            buildGrid[player.y][player.x] = { type: BLOCK_TYPES.PLAYER_START }; // Store as object
+            buildGrid[end.y][end.x] = { type: BLOCK_TYPES.WINPAD }; // Store as object
         }
 
         // Binary Tree Algorithm for Maze Generation
@@ -1170,8 +1116,9 @@
         // Loads a level into the mazeGrid from the officialPlayableLevels array
         function loadOfficialLevel(levelIndex) {
             const level = officialPlayableLevels[levelIndex];
-            mazeGrid = JSON.parse(level.grid); // Parse grid from string
-            player = { ...level.playerStart };
+            // Ensure grid data is handled correctly, it could be a string or array
+            mazeGrid = typeof level.grid === 'string' ? JSON.parse(level.grid) : level.grid;
+            player = { ...level.playerStart }; // Reset player position
             end = { ...level.winpadEnd };
             currentLevelId = level.id;
             currentLevelName = level.name;
@@ -1193,7 +1140,11 @@
                     randY = Math.min(Math.max(randY, 0), MAZE_HEIGHT - 1);
                 }
                 
-                if (mazeGrid[randY] && mazeGrid[randY][randX] === BLOCK_TYPES.PATH) { // Check if it's a path
+                // Check if it's a path, considering complex block objects
+                const block = mazeGrid[randY] ? mazeGrid[randY][randX] : BLOCK_TYPES.WALL;
+                const blockType = typeof block === 'object' ? block.type : block;
+
+                if (blockType === BLOCK_TYPES.PATH) { 
                     foundValidPosition = true;
                 }
             }
@@ -1212,7 +1163,8 @@
 
             for (let y = 0; y < MAZE_HEIGHT; y++) {
                 for (let x = 0; x < MAZE_WIDTH; x++) {
-                    const blockType = mazeGrid[y] ? mazeGrid[y][x] : BLOCK_TYPES.WALL; // Default to wall if undefined
+                    const block = mazeGrid[y] ? mazeGrid[y][x] : BLOCK_TYPES.WALL; // Default to wall if undefined
+                    const blockType = typeof block === 'object' ? block.type : block;
                     let color = PATH_COLOR;
 
                     switch (blockType) {
@@ -1220,7 +1172,7 @@
                             color = WALL_COLOR;
                             break;
                         case BLOCK_TYPES.PLAYER_START:
-                            color = PLAYER_COLOR;
+                            color = PLAYER_COLOR; // Player start point is player color
                             break;
                         case BLOCK_TYPES.WINPAD:
                             color = END_COLOR;
@@ -1243,9 +1195,10 @@
                     mazeCtx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
                 }
             }
-            // Redraw player and end on top to ensure they are visible
+            // Redraw player on top to ensure it is visible
             mazeCtx.fillStyle = PLAYER_COLOR;
             mazeCtx.fillRect(player.x * BLOCK_SIZE, player.y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            // Redraw end on top to ensure it is visible
             mazeCtx.fillStyle = END_COLOR;
             mazeCtx.fillRect(end.x * BLOCK_SIZE, end.y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
         }
@@ -1262,7 +1215,8 @@
 
             for (let y = 0; y < MAZE_HEIGHT; y++) {
                 for (let x = 0; x < MAZE_WIDTH; x++) {
-                    const blockType = buildGrid[y] ? buildGrid[y][x] : BLOCK_TYPES.PATH; // Default to path for build
+                    const block = buildGrid[y] ? buildGrid[y][x] : BLOCK_TYPES.PATH; // Default to path for build
+                    const blockType = typeof block === 'object' ? block.type : block;
                     let color = PATH_COLOR;
 
                     switch (blockType) {
@@ -1302,13 +1256,69 @@
             const newX = player.x + dx;
             const newY = player.y + dy;
 
-            if (newX >= 0 && newX < MAZE_WIDTH &&
-                newY >= 0 && newY < MAZE_HEIGHT &&
-                mazeGrid[newY][newX] !== BLOCK_TYPES.WALL) { // Cannot move onto a wall
-                player.x = newX;
-                player.y = newY;
-                drawGame();
-                checkWinCondition();
+            // Check boundaries
+            if (newX < 0 || newX >= MAZE_WIDTH || newY < 0 || newY >= MAZE_HEIGHT) {
+                return; // Out of bounds
+            }
+
+            const targetBlock = mazeGrid[newY][newX];
+            const targetBlockType = typeof targetBlock === 'object' ? targetBlock.type : targetBlock;
+
+            // Handle Push Block
+            if (targetBlockType === BLOCK_TYPES.PUSH_BLOCK) {
+                const pushToX = newX + dx;
+                const pushToY = newY + dy;
+
+                // Check if the spot to push to is within bounds and is a PATH
+                if (pushToX >= 0 && pushToX < MAZE_WIDTH &&
+                    pushToY >= 0 && pushToY < MAZE_HEIGHT &&
+                    (mazeGrid[pushToY][pushToX] === BLOCK_TYPES.PATH || (typeof mazeGrid[pushToY][pushToX] === 'object' && mazeGrid[pushToY][pushToX].type === BLOCK_TYPES.PATH))) {
+                    
+                    // Move the push block
+                    mazeGrid[pushToY][pushToX] = { type: BLOCK_TYPES.PUSH_BLOCK }; // Ensure it's stored as an object
+                    mazeGrid[newY][newX] = BLOCK_TYPES.PATH; // Clear old push block position
+                    
+                    // Move player
+                    player.x = newX;
+                    player.y = newY;
+                    drawGame();
+                    checkWinCondition();
+                    return; // Movement handled
+                } else {
+                    // Cannot push, treat as a wall for player movement
+                    return;
+                }
+            }
+
+            // Cannot move onto a wall
+            if (targetBlockType === BLOCK_TYPES.WALL) {
+                return;
+            }
+
+            // Move player
+            player.x = newX;
+            player.y = newY;
+            drawGame();
+            checkWinCondition();
+
+            // Handle Trigger block after player moves onto it
+            if (targetBlockType === BLOCK_TYPES.TRIGGER) {
+                if (typeof targetBlock === 'object' && targetBlock.targetX !== undefined && targetBlock.targetY !== undefined) {
+                    const tx = targetBlock.targetX;
+                    const ty = targetBlock.targetY;
+                    const targetChangeType = targetBlock.targetType || BLOCK_TYPES.PATH; // Default to path if not specified
+
+                    if (mazeGrid[ty] && mazeGrid[ty][tx] !== undefined) {
+                        mazeGrid[ty][tx] = targetChangeType; // Change the target block
+                        drawGame(); // Redraw to show the change
+                        messageBox.textContent = `Trigger activated! Block at (${tx},${ty}) changed.`;
+                        setTimeout(() => checkWinCondition(), 1000); // Re-check win condition after message
+                    } else {
+                        console.warn(`Trigger target invalid: (${tx},${ty})`);
+                    }
+                } else {
+                    console.warn("Trigger block missing target properties.");
+                }
             }
         }
 
@@ -1463,6 +1473,17 @@
         async function loadUserProfile() {
             if (!window.userId || !window.db) {
                 console.warn("Cannot load user profile: User ID or database not available.");
+                // Attempt to load player name from localStorage even if Firebase is not ready
+                const storedPlayerName = localStorage.getItem('playerName');
+                if (storedPlayerName) {
+                    currentPlayerName = storedPlayerName;
+                    loginButton.textContent = "Logout";
+                    loginButton.classList.add('logged-in');
+                }
+                updateUserIdDisplay();
+                updateBricksDisplay();
+                drawGame();
+                drawBuild();
                 return;
             }
             try {
@@ -1470,9 +1491,9 @@
                 const docSnap = await getDoc(userProfileRef);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    currentPlayerName = data.playerName || "Anonymous";
+                    currentPlayerName = data.playerName || localStorage.getItem('playerName') || "Anonymous";
                     playerBricks = data.bricks || 0;
-                    PLAYER_COLOR = data.playerColor || '#F44336';
+                    PLAYER_COLOR = data.playerColor || '#0000FF'; // Default to blue
                     WALL_COLOR = data.wallColor || '#000000';
                     PATH_COLOR = data.pathColor || '#f0f0f0';
 
@@ -1486,10 +1507,18 @@
                         loginButton.classList.add('logged-in');
                     }
                 } else {
-                    currentPlayerName = "Anonymous";
+                    // If no profile exists in Firestore, check localStorage
+                    const storedPlayerName = localStorage.getItem('playerName');
+                    if (storedPlayerName) {
+                        currentPlayerName = storedPlayerName;
+                        loginButton.textContent = "Logout";
+                        loginButton.classList.add('logged-in');
+                    } else {
+                        currentPlayerName = "Anonymous";
+                    }
                     playerBricks = 0;
                     // Reset colors to default if no profile exists
-                    PLAYER_COLOR = '#F44336';
+                    PLAYER_COLOR = '#0000FF'; // Default to blue
                     WALL_COLOR = '#000000';
                     PATH_COLOR = '#f0f0f0';
                     playerColorPicker.value = PLAYER_COLOR;
@@ -1502,9 +1531,17 @@
                 drawBuild(); // Redraw build canvas with loaded colors
             } catch (e) {
                 console.error("Error loading user profile:", e);
-                currentPlayerName = "Anonymous";
+                // Fallback to localStorage and defaults on error
+                const storedPlayerName = localStorage.getItem('playerName');
+                if (storedPlayerName) {
+                    currentPlayerName = storedPlayerName;
+                    loginButton.textContent = "Logout";
+                    loginButton.classList.add('logged-in');
+                } else {
+                    currentPlayerName = "Anonymous";
+                }
                 playerBricks = 0;
-                PLAYER_COLOR = '#F44336'; // Fallback to default
+                PLAYER_COLOR = '#0000FF'; // Fallback to default blue
                 WALL_COLOR = '#000000'; // Fallback to default
                 PATH_COLOR = '#f0f0f0'; // Fallback to default
                 playerColorPicker.value = PLAYER_COLOR;
@@ -1527,7 +1564,7 @@
             
             if (currentGameType === GAME_MODES.LEVEL) {
                 if (officialPlayableLevels.length === 0) {
-                    messageBox.textContent = "No official levels set yet! Try building and publishing one.";
+                    messageBox.textContent = "No official levels found. Play a random maze or build your own!";
                     nextLevelButton.style.display = 'none';
                     mazeCtx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height); // Clear canvas
                     return; // Don't start game if no levels
@@ -1609,7 +1646,6 @@
                 startScreen.classList.add('active');
                 infoButton.style.display = 'block';
                 loginButton.style.display = 'block';
-                // fetchDailyLevel(); // Removed this call here
             } else if (screenId === 'gamePlayArea') {
                 gamePlayArea.classList.add('active');
                 infoButton.style.display = 'block';
@@ -1626,7 +1662,13 @@
         }
 
         // Handle clicks on the build canvas
-        function handleBuildCanvasClick(event) {
+        function handleBuildCanvasInteraction(event) {
+            // Only proceed if mouse button is down for drawing, or if it's a single click for player/winpad
+            if (event.buttons !== 1 && event.type === 'mousemove' && currentBuildTool !== BLOCK_TYPES.ERASER) return; // Not dragging with left click
+            if (event.type === 'mousedown') isDrawing = true;
+            if (event.type === 'mouseup') isDrawing = false;
+            if (event.type === 'mousemove' && !isDrawing) return;
+
             const rect = buildCanvas.getBoundingClientRect();
             const scaleX = buildCanvas.width / rect.width;
             const scaleY = buildCanvas.height / rect.height;
@@ -1635,38 +1677,94 @@
             const y = Math.floor((event.clientY - rect.top) * scaleY / BLOCK_SIZE);
 
             if (x >= 0 && x < MAZE_WIDTH && y >= 0 && y < MAZE_HEIGHT) {
+                // Get the current block at the clicked position
+                let currentBlock = buildGrid[y][x];
+                let currentBlockType = typeof currentBlock === 'object' ? currentBlock.type : currentBlock;
+
                 if (currentBuildTool === BLOCK_TYPES.PLAYER_START) {
-                    for (let row = 0; row < MAZE_HEIGHT; row++) {
-                        for (let col = 0; col < MAZE_WIDTH; col++) {
-                            if (buildGrid[row][col] === BLOCK_TYPES.PLAYER_START) {
-                                buildGrid[row][col] = BLOCK_TYPES.PATH;
+                    // Only place player start on mousedown, not drag
+                    if (event.type === 'mousedown') {
+                        for (let row = 0; row < MAZE_HEIGHT; row++) {
+                            for (let col = 0; col < MAZE_WIDTH; col++) {
+                                const block = buildGrid[row][col];
+                                if (typeof block === 'object' && block.type === BLOCK_TYPES.PLAYER_START) {
+                                    buildGrid[row][col] = BLOCK_TYPES.PATH; // Change old player start to path
+                                } else if (block === BLOCK_TYPES.PLAYER_START) {
+                                    buildGrid[row][col] = BLOCK_TYPES.PATH;
+                                }
                             }
                         }
+                        player = { x, y };
+                        buildGrid[y][x] = { type: BLOCK_TYPES.PLAYER_START }; // Store as object for consistency
+                        drawBuild();
                     }
-                    player = { x, y };
-                    buildGrid[y][x] = BLOCK_TYPES.PLAYER_START;
                 } else if (currentBuildTool === BLOCK_TYPES.WINPAD) {
-                    for (let row = 0; row < MAZE_HEIGHT; row++) {
-                        for (let col = 0; col < MAZE_WIDTH; col++) {
-                            if (buildGrid[row][col] === BLOCK_TYPES.WINPAD) {
-                                buildGrid[row][col] = BLOCK_TYPES.PATH;
+                    // Only place winpad on mousedown, not drag
+                    if (event.type === 'mousedown') {
+                        for (let row = 0; row < MAZE_HEIGHT; row++) {
+                            for (let col = 0; col < MAZE_WIDTH; col++) {
+                                const block = buildGrid[row][col];
+                                if (typeof block === 'object' && block.type === BLOCK_TYPES.WINPAD) {
+                                    buildGrid[row][col] = BLOCK_TYPES.PATH; // Change old winpad to path
+                                } else if (block === BLOCK_TYPES.WINPAD) {
+                                    buildGrid[row][col] = BLOCK_TYPES.PATH;
+                                }
                             }
                         }
+                        end = { x, y };
+                        buildGrid[y][x] = { type: BLOCK_TYPES.WINPAD }; // Store as object for consistency
+                        drawBuild();
                     }
-                    end = { x, y };
-                    buildGrid[y][x] = BLOCK_TYPES.WINPAD;
-                } else {
-                    buildGrid[y][x] = (buildGrid[y][x] === currentBuildTool) ? BLOCK_TYPES.PATH : currentBuildTool;
-                    if (buildGrid[y][x] === BLOCK_TYPES.PATH) {
+                } else if (currentBuildTool === BLOCK_TYPES.TRIGGER) {
+                    // For trigger, prompt for target coordinates only on mousedown
+                    if (event.type === 'mousedown') {
+                        let targetX = parseInt(prompt("Enter target X for trigger (0-" + (MAZE_WIDTH - 1) + "):"));
+                        let targetY = parseInt(prompt("Enter target Y for trigger (0-" + (MAZE_HEIGHT - 1) + "):"));
+                        if (!isNaN(targetX) && !isNaN(targetY) && targetX >= 0 && targetX < MAZE_WIDTH && targetY >= 0 && targetY < MAZE_HEIGHT) {
+                            buildGrid[y][x] = { type: BLOCK_TYPES.TRIGGER, targetX: targetX, targetY: targetY, targetType: BLOCK_TYPES.PATH };
+                            buildMessageBox.textContent = `Trigger at (${x},${y}) set to affect (${targetX},${targetY}).`;
+                            drawBuild();
+                        } else {
+                            buildMessageBox.textContent = "Invalid target coordinates for trigger.";
+                        }
+                    }
+                } else if (currentBuildTool === BLOCK_TYPES.ERASER) {
+                    // Eraser tool always turns the block into a PATH
+                    if (currentBlockType !== BLOCK_TYPES.PATH) { // Only change if it's not already a path
+                        buildGrid[y][x] = BLOCK_TYPES.PATH;
+                        // If player or end was on this spot and it's now PATH, reset their positions
                         if (player.x === x && player.y === y) {
-                            player = { x: -1, y: -1 };
+                            player = { x: -1, y: -1 }; // Invalidate player position
+                            buildMessageBox.textContent = "Player Start removed! Place a new one.";
                         }
                         if (end.x === x && end.y === y) {
-                            end = { x: -1, y: -1 };
+                            end = { x: -1, y: -1 }; // Invalidate end position
+                            buildMessageBox.textContent = "Win Pad removed! Place a new one.";
                         }
+                        drawBuild();
                     }
                 }
-                drawBuild();
+                else {
+                    // For other blocks (Wall, Path, Moving, Push), toggle between current tool and PATH on drag or click
+                    if (currentBlockType === currentBuildTool) {
+                        buildGrid[y][x] = BLOCK_TYPES.PATH;
+                    } else {
+                        // Store simple block types as just their number, complex ones as objects
+                        buildGrid[y][x] = currentBuildTool;
+                    }
+
+                    // If player or end was on this spot and it's now PATH, reset their positions
+                    // This logic is important for when you draw over player/winpad with another tool
+                    if (player.x === x && player.y === y && buildGrid[y][x] === BLOCK_TYPES.PATH) {
+                        player = { x: -1, y: -1 }; // Invalidate player position
+                        buildMessageBox.textContent = "Player Start removed! Place a new one.";
+                    }
+                    if (end.x === x && end.y === y && buildGrid[y][x] === BLOCK_TYPES.PATH) {
+                        end = { x: -1, y: -1 }; // Invalidate end position
+                        buildMessageBox.textContent = "Win Pad removed! Place a new one.";
+                    }
+                    drawBuild();
+                }
             }
         }
 
@@ -1676,10 +1774,13 @@
             let foundEnd = false;
             for (let y = 0; y < MAZE_HEIGHT; y++) {
                 for (let x = 0; x < MAZE_WIDTH; x++) {
-                    if (buildGrid[y][x] === BLOCK_TYPES.PLAYER_START) {
+                    const block = buildGrid[y][x];
+                    const blockType = typeof block === 'object' ? block.type : block;
+
+                    if (blockType === BLOCK_TYPES.PLAYER_START) {
                         player = { x, y };
                         foundPlayer = true;
-                    } else if (buildGrid[y][x] === BLOCK_TYPES.WINPAD) {
+                    } else if (blockType === BLOCK_TYPES.WINPAD) {
                         end = { x, y };
                         foundEnd = true;
                     }
@@ -1697,6 +1798,7 @@
             });
             switch (toolType) {
                 case BLOCK_TYPES.WALL: toolWall.classList.add('active-tool'); break;
+                case BLOCK_TYPES.ERASER: toolEraser.classList.add('active-tool'); break; // Highlight eraser
                 case BLOCK_TYPES.PATH: toolPath.classList.add('active-tool'); break;
                 case BLOCK_TYPES.PLAYER_START: toolPlayer.classList.add('active-tool'); break;
                 case BLOCK_TYPES.WINPAD: toolWinpad.classList.add('active-tool'); break;
@@ -1746,6 +1848,7 @@
 
             if (playerName) {
                 currentPlayerName = playerName;
+                localStorage.setItem('playerName', currentPlayerName); // Save player name to localStorage
                 loginButton.textContent = "Logout";
                 loginButton.classList.add('logged-in');
                 updateUserIdDisplay();
@@ -1774,6 +1877,7 @@
 
         function handleLogout() {
             currentPlayerName = "Anonymous";
+            localStorage.removeItem('playerName'); // Remove player name from localStorage
             loginButton.textContent = "Login";
             loginButton.classList.remove('logged-in');
             updateUserIdDisplay();
@@ -1810,6 +1914,14 @@
                 return;
             }
 
+            let levelOrder = prompt("Enter an optional order number for this level (e.g., 1, 2, 3...). Leave blank if no specific order is needed.");
+            levelOrder = levelOrder ? parseInt(levelOrder) : null;
+
+            if (levelOrder !== null && (isNaN(levelOrder) || levelOrder < 1)) {
+                buildMessageBox.textContent = "Invalid order number. Please enter a positive integer or leave blank.";
+                return;
+            }
+
             try {
                 const levelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/users/${window.userId}/levels`);
                 await addDoc(levelsCollectionRef, {
@@ -1817,6 +1929,7 @@
                     grid: JSON.stringify(buildGrid), // Convert grid to string for storage
                     playerStart: player,
                     winpadEnd: end,
+                    order: levelOrder, // Store the optional order number
                     createdAt: new Date(),
                     creatorName: currentPlayerName // Save creator's simulated name
                 });
@@ -1873,7 +1986,7 @@
             myLevelsList.innerHTML = "<div>Loading levels...</div>";
             try {
                 const levelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/users/${window.userId}/levels`);
-                const q = query(levelsCollectionRef);
+                const q = query(levelsCollectionRef); // No orderBy here to avoid index issues, sort in memory
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty) {
@@ -1881,17 +1994,32 @@
                     return;
                 }
 
-                myLevelsList.innerHTML = ''; // Clear previous list
+                const myLevels = [];
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
-                    const levelId = doc.id;
+                    myLevels.push({ id: doc.id, ...data });
+                });
+
+                // Sort levels: first by existing 'order' (ascending), then by 'createdAt' (oldest first)
+                myLevels.sort((a, b) => {
+                    if (a.order !== null && b.order !== null) {
+                        return a.order - b.order;
+                    }
+                    if (a.order !== null) return -1; // Levels with order come first
+                    if (b.order !== null) return 1;
+                    return a.createdAt.toDate() - b.createdAt.toDate(); // Fallback to creation date
+                });
+
+                myLevelsList.innerHTML = ''; // Clear previous list
+                myLevels.forEach((data) => {
                     const levelDiv = document.createElement('div');
+                    const orderDisplay = data.order !== null ? `#${data.order} ` : '';
                     levelDiv.innerHTML = `
-                        <span class="level-name">${data.name} by ${data.creatorName || 'Anonymous'}</span>
+                        <span class="level-name">${orderDisplay}${data.name} by ${data.creatorName || 'Anonymous'}</span>
                         <div>
-                            <button class="play-level-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}'>Play</button>
-                            <button class="delete-level-button" data-level-id="${levelId}">Delete</button>
-                            ${currentPlayerName === 'LtpMer' ? `<button class="set-official-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-creator-name="${data.creatorName}" data-creator-id="${data.creatorId}">Set as Official</button>` : ''}
+                            <button class="play-level-button" data-level-id="${data.id}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}'>Play</button>
+                            <button class="delete-level-button" data-level-id="${data.id}">Delete</button>
+                            ${currentPlayerName === 'LtpMer' ? `<button class="set-official-button" data-level-id="${data.id}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-creator-name="${data.creatorName}" data-creator-id="${data.creatorId}">Set as Official</button>` : ''}
                         </div>
                     `;
                     myLevelsList.appendChild(levelDiv);
@@ -1917,14 +2045,34 @@
                         // Replaced confirm with a custom message box or modal if available
                         if (window.confirm("Are you sure you want to delete this level?")) {
                             try {
+                                // Admin override: LtpMer can delete any level, otherwise only own levels
+                                if (currentPlayerName === 'LtpMer') {
+                                    // Try to delete from public levels first if it exists there
+                                    const publicLevelRef = doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId);
+                                    const publicDocSnap = await getDoc(publicLevelRef);
+                                    if (publicDocSnap.exists()) {
+                                        await deleteDoc(publicLevelRef);
+                                        console.log(`Admin (LtpMer) deleted public level: ${levelId}`);
+                                    }
+                                    // Also try to delete from official levels if it exists there
+                                    // Note: Official levels are named 'level-ORDER_NUMBER', not by their original ID.
+                                    // We need to find the official level by its content ID
+                                    const officialLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/official_levels`);
+                                    const qOfficial = query(officialLevelsCollectionRef, where("id", "==", levelId));
+                                    const officialSnapshot = await getDocs(qOfficial);
+                                    officialSnapshot.forEach(async (officialDoc) => {
+                                        await deleteDoc(doc(officialLevelsCollectionRef, officialDoc.id));
+                                        console.log(`Admin (LtpMer) deleted official level document: ${officialDoc.id}`);
+                                    });
+                                    fetchOfficialPlayableLevels(); // Refresh official levels after deletion
+                                }
+                                // Always delete from user's private levels
                                 await deleteDoc(doc(window.db, `artifacts/${window.__app_id}/users/${window.userId}/levels`, levelId));
-                                // Replaced alert with a custom message box or modal if available
                                 messageBox.textContent = "Level deleted successfully!";
                                 setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                                 loadMyLevels(); // Refresh the list
                             } catch (error) {
                                 console.error("Error deleting level:", error);
-                                // Replaced alert with a custom message box or modal if available
                                 messageBox.textContent = `Error deleting level: ${error.message}. See console.`;
                                 setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                             }
@@ -2160,7 +2308,8 @@
             }
             try {
                 const officialLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/official_levels`);
-                const q = query(officialLevelsCollectionRef, orderBy("order"));
+                // Removed orderBy("order") to avoid index issues, will sort in memory
+                const q = query(officialLevelsCollectionRef); 
                 const querySnapshot = await getDocs(q);
 
                 officialPlayableLevels = [];
@@ -2169,6 +2318,8 @@
                         const data = doc.data();
                         officialPlayableLevels.push(data);
                     });
+                    // Sort by 'order' in memory after fetching
+                    officialPlayableLevels.sort((a, b) => (a.order || Infinity) - (b.order || Infinity));
                     console.log("Official playable levels loaded:", officialPlayableLevels);
                 } else {
                     console.log("No official playable levels found in Firestore.");
@@ -2190,8 +2341,8 @@
             leaderboardList.innerHTML = "<div>Loading leaderboard...</div>";
             try {
                 const leaderboardCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/leaderboard`);
-                // Order by timeTaken ascending, limit to top 10
-                const q = query(leaderboardCollectionRef, orderBy("timeTaken"), limit(10));
+                // Removed orderBy("timeTaken") to avoid index issues, will sort in memory
+                const q = query(leaderboardCollectionRef, limit(10)); // Still limit to top 10
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty) {
@@ -2199,10 +2350,12 @@
                     return;
                 }
 
+                // Sort results by timeTaken in memory
+                const sortedScores = querySnapshot.docs.map(doc => doc.data()).sort((a, b) => a.timeTaken - b.timeTaken);
+
                 leaderboardList.innerHTML = ''; // Clear previous list
                 let rank = 1;
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
+                sortedScores.forEach((data) => {
                     const entryDiv = document.createElement('div');
                     entryDiv.classList.add('leaderboard-entry');
                     entryDiv.innerHTML = `
@@ -2223,8 +2376,9 @@
 
 
         function playSavedLevel(levelData) {
-            mazeGrid = levelData.grid;
-            player = levelData.playerStart;
+            // Ensure grid data is handled correctly, it could be a string or array
+            mazeGrid = typeof levelData.grid === 'string' ? JSON.parse(levelData.grid) : levelData.grid;
+            player = { ...levelData.playerStart }; // Reset player position
             end = levelData.winpadEnd;
             currentGameType = GAME_MODES.SAVED_LEVEL;
             currentLevelId = levelData.id;
@@ -2234,8 +2388,9 @@
         }
 
         function playCommunityLevel(levelData) {
-            mazeGrid = levelData.grid;
-            player = levelData.playerStart;
+            // Ensure grid data is handled correctly, it could be a string or array
+            mazeGrid = typeof levelData.grid === 'string' ? JSON.parse(levelData.grid) : levelData.grid;
+            player = { ...levelData.playerStart }; // Reset player position
             end = levelData.winpadEnd;
             currentGameType = GAME_MODES.COMMUNITY_LEVEL;
             currentLevelId = levelData.id;
@@ -2352,6 +2507,7 @@
         publishLevelButton.addEventListener('click', publishLevel);
 
         toolWall.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WALL));
+        toolEraser.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.ERASER)); // Event listener for new Eraser tool
         toolPath.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PATH));
         toolPlayer.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PLAYER_START));
         toolWinpad.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WINPAD));
@@ -2376,6 +2532,12 @@
                 await fetchOfficialPlayableLevels(); // Fetch official levels after auth
                 fetchDailyLevel(); // Fetch daily level after auth
             });
+            // If firebaseAuthReady event already fired before onload, manually trigger
+            if (window.userId) {
+                loadUserProfile();
+                fetchOfficialPlayableLevels();
+                fetchDailyLevel();
+            }
         };
 
         loginButton.addEventListener('click', () => {
@@ -2398,14 +2560,18 @@
             if (currentDailyLevel) {
                 playCommunityLevel(currentDailyLevel);
             } else {
-                // Replaced alert with a custom message box or modal if available
                 messageBox.textContent = "No daily level is currently set.";
                 setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
             }
         });
 
-        // Handle clicks on the build canvas
-        buildCanvas.addEventListener('click', handleBuildCanvasClick);
+        // Build canvas drawing event listeners
+        buildCanvas.addEventListener('mousedown', handleBuildCanvasInteraction);
+        buildCanvas.addEventListener('mouseup', handleBuildCanvasInteraction);
+        buildCanvas.addEventListener('mousemove', handleBuildCanvasInteraction);
+        // Prevent context menu on right click for better drawing experience
+        buildCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
 
         // Keyboard controls for player movement
         window.addEventListener('keydown', (e) => {
