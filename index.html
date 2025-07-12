@@ -390,6 +390,9 @@
             opacity: 0;
             transition: transform 0.3s ease, opacity 0.3s ease;
             color: #e2e8f0;
+            /* Added for scrollability */
+            max-height: 90vh; /* Limit height to 90% of viewport height */
+            overflow-y: auto; /* Enable vertical scrolling */
         }
 
         .modal-overlay.show .modal-content {
@@ -791,6 +794,15 @@
         .community-level-actions .update-level-props-button:hover {
             background-color: #48bb78;
         }
+        /* New style for "Set as Daily" button */
+        .community-level-actions .set-daily-button-community {
+            background-color: #FFD700; /* Gold */
+            color: #2d3748;
+        }
+        .community-level-actions .set-daily-button-community:hover {
+            background-color: #DAA520; /* Darker Gold */
+        }
+
 
         /* Community search bar styling */
         .community-search-bar {
@@ -1040,6 +1052,7 @@
                 <button id="startRandomMazeButton">Start Random Maze</button>
                 <button id="startRandomBlocksButton">Start Random Blocks</button>
                 <button id="buildModeButton">Build Mode</button>
+                <button id="communityLevelsButtonMenu">Community Levels</button> <!-- NEW: Button to open Community Levels modal -->
             </div>
             <h3>My Levels</h3>
             <div id="myLevelsList" class="level-list-container">
@@ -1047,16 +1060,6 @@
                 Loading levels...
             </div>
             <button id="refreshMyLevelsButton">Refresh My Levels</button>
-            <h3>Community Levels</h3>
-            <p>Search and play levels created by others!</p>
-            <div class="community-search-bar">
-                <input type="text" id="levelSearchInput" placeholder="Search by name or ID">
-                <button id="searchCommunityLevelsButton">Search</button>
-            </div>
-            <div id="communityLevelsList" class="level-list-container">
-                Loading community levels...
-            </div>
-            <button id="refreshCommunityLevelsButton">Refresh Community Levels</button>
             <button class="close-button" id="closeMenuModalButton">Close</button>
         </div>
     </div>
@@ -1085,15 +1088,16 @@
         </div>
     </div>
 
-    <!-- Community Levels Modal -->
+    <!-- Community Levels Modal (Now a separate modal) -->
     <div id="communityLevelsModalOverlay" class="modal-overlay">
         <div class="modal-content">
             <h2>Community Levels</h2>
-            <div class="community-search-bar">
+            <p>Search and play levels created by others!</p> <!-- Moved from menu modal -->
+            <div class="community-search-bar"> <!-- Moved from menu modal -->
                 <input type="text" id="communityLevelSearchInputModal" placeholder="Search by name or ID">
                 <button id="searchCommunityLevelsButtonModal">Search</button>
             </div>
-            <div id="communityLevelsListModal" class="level-list-container">
+            <div id="communityLevelsListModal" class="level-list-container"> <!-- Moved from menu modal -->
                 Loading community levels...
             </div>
             <button id="refreshCommunityLevelsButtonModal">Refresh Community Levels</button>
@@ -1125,15 +1129,16 @@
         let playButton, customizationButtonStart, menuButtonStart, leaderboardButton, dailyLevelContainer, dailyLevelName, playDailyLevelButton;
         let mazeCanvas, mazeCtx, messageBox, nextLevelButton, editCurrentLevelButton, backToMainMenuButtonGame, touchControls;
         let buildCanvas, buildCtx, buildMessageBox, clearBuildGridButton, saveLevelButton, publishLevelButton, backToMainMenuButtonBuild;
-        let infoModalOverlay, closeInfoModalButton, customizationModalOverlay, closeCustomizationModalButton, menuModalOverlay, closeMenuModalButton, loginModalOverlay, playerNameInput, passwordInput, loginSubmitButton, loginCancelButton, communityLevelsModalOverlay, communityLevelsListInMenu, levelSearchInput, searchCommunityLevelsButton, refreshCommunityLevelsButton;
+        let infoModalOverlay, closeInfoModalButton, customizationModalOverlay, closeCustomizationModalButton, menuModalOverlay, closeMenuModalButton, loginModalOverlay, playerNameInput, passwordInput, loginSubmitButton, loginCancelButton;
+        let communityLevelsModalOverlay, communityLevelsListInMenu, levelSearchInput, searchCommunityLevelsButton, refreshCommunityLevelsButton; // Removed levelSearchInput, searchCommunityLevelsButton, refreshCommunityLevelsButton from menu modal context
         let communityLevelSearchInputModal, searchCommunityLevelsButtonModal, communityLevelsListModal, refreshCommunityLevelsButtonModal, closeCommunityLevelsModalButton;
-        let startRandomMazeButton, startRandomBlocksButton, buildModeButton, userIdDisplay, playerBricksDisplay, myLevelsList, refreshMyLevelsButton, searchLevelsButton;
+        let startRandomMazeButton, startRandomBlocksButton, buildModeButton, userIdDisplay, playerBricksDisplay, myLevelsList, refreshMyLevelsButton;
         let playerColorPicker, wallColorPicker, pathColorPicker;
         let drawingToolsContainer, selectionActionsContainer;
         let toolWall, toolEraser, toolPath, toolPlayer, toolWinpad, toolTrigger, toolMovingBlock, toolPushBlock, toolSelection;
         let fillSelectionButton, clearSelectionButton, exitSelectionButton;
         let leaderboardList, refreshLeaderboardButton, closeLeaderboardModalButton;
-
+        let communityLevelsButtonMenu; // NEW: Button for Community Levels in Menu
 
         // Maze dimensions
         const MAZE_WIDTH = 31;
@@ -2307,6 +2312,7 @@
                     creatorName: currentPlayerName,
                     creatorId: window.userId,
                     isDailyLevel: false, // Default to not a daily level
+                    dailyLevelTargetDate: null, // NEW: Field for daily level target date
                     difficulty: levelDifficulty, // Store difficulty for public levels
                     brickReward: brickReward // Store brick reward for public levels
                 });
@@ -2545,6 +2551,7 @@
                                     <input type="number" class="set-bricks-input" data-level-id="${levelId}" min="0" max="4" placeholder="Bricks" value="${data.brickReward || 0}">
                                     <button class="update-level-props-button" data-level-id="${levelId}">Update</button>
                                     <button class="set-official-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${JSON.stringify(data.grid)}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-creator-name="${data.creatorName}" data-creator-id="${data.creatorId}" data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Set as Official</button>
+                                    <button class="set-daily-button-community" data-level-id="${levelId}" data-level-name="${data.name}">Set as Daily</button> <!-- NEW: Set as Daily Button -->
                                     <button class="delete-community-level-button" data-level-id="${levelId}">Delete</button> <!-- New Delete Button for LtpMer -->
                                 </div>
                             ` : ''}
@@ -2639,6 +2646,62 @@
                     });
                 });
 
+                // NEW: Set as Daily Level button handler
+                targetListElement.querySelectorAll('.set-daily-button-community').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const levelId = e.target.dataset.levelId;
+                        const levelName = e.target.dataset.levelName;
+
+                        let targetDate = prompt(`Enter the target date for "${levelName}" to be the Daily Level (YYYY-MM-DD):`);
+                        if (!targetDate) {
+                            if (messageBox) messageBox.textContent = "Setting daily level cancelled.";
+                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                            return;
+                        }
+
+                        // Basic date validation (YYYY-MM-DD format)
+                        if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+                            if (messageBox) messageBox.textContent = "Invalid date format. Please use YYYY-MM-DD.";
+                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                            return;
+                        }
+
+                        if (!window.confirm(`Are you sure you want to set "${levelName}" as the Daily Level for ${targetDate}? This will overwrite any existing daily level for that date.`)) {
+                            return;
+                        }
+
+                        try {
+                            const publicLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/levels`);
+
+                            // 1. Find and unset any existing daily level for the target date
+                            const existingDailyQuery = query(publicLevelsCollectionRef, where("dailyLevelTargetDate", "==", targetDate));
+                            const existingDailySnapshot = await getDocs(existingDailyQuery);
+                            existingDailySnapshot.forEach(async (docToUnset) => {
+                                await updateDoc(doc(publicLevelsCollectionRef, docToUnset.id), {
+                                    isDailyLevel: false,
+                                    dailyLevelTargetDate: null
+                                });
+                                console.log(`Unset previous daily level for ${targetDate}: ${docToUnset.id}`);
+                            });
+
+                            // 2. Set the selected level as the daily level for the target date
+                            await updateDoc(doc(publicLevelsCollectionRef, levelId), {
+                                isDailyLevel: true,
+                                dailyLevelTargetDate: targetDate // Store the target date
+                            });
+
+                            if (messageBox) messageBox.textContent = `Level "${levelName}" set as Daily Level for ${targetDate}!`;
+                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                            fetchDailyLevel(); // Refresh the daily level display on the main screen
+                            loadCommunityLevels(searchQuery); // Refresh community levels list to reflect changes
+                        } catch (error) {
+                            console.error("Error setting daily level:", error);
+                            if (messageBox) messageBox.textContent = `Error setting daily level: ${error.message}. See console.`;
+                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                        }
+                    });
+                });
+
                 // New: Add event listener for "Delete" button in Community Levels for LtpMer
                 targetListElement.querySelectorAll('.delete-community-level-button').forEach(button => {
                     button.addEventListener('click', async (e) => {
@@ -2658,10 +2721,24 @@
                                     console.log(`Deleted associated official level document: ${officialDoc.id}`);
                                 });
 
+                                // Also check and unset if it was a daily level
+                                const dailyLevelRef = doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId);
+                                await updateDoc(dailyLevelRef, {
+                                    isDailyLevel: false,
+                                    dailyLevelTargetDate: null
+                                }).catch(error => {
+                                    // Catch error if document doesn't exist (already deleted)
+                                    if (error.code !== "not-found") {
+                                        console.error("Error unsetting daily level flag during delete:", error);
+                                    }
+                                });
+
+
                                 if (messageBox) messageBox.textContent = "Community level deleted successfully!";
                                 setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                                 loadCommunityLevels(searchQuery); // Refresh the list with current search query
                                 fetchOfficialPlayableLevels(); // Refresh official levels in case one was deleted
+                                fetchDailyLevel(); // Refresh daily level in case it was deleted
                             } catch (error) {
                                 console.error("Error deleting community level:", error);
                                 if (messageBox) messageBox.textContent = `Error deleting community level: ${error.message}. See console.`;
@@ -2691,7 +2768,16 @@
 
             try {
                 const publicLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/levels`);
-                const q = query(publicLevelsCollectionRef, where("isDailyLevel", "==", true));
+                
+                // Get today's date in YYYY-MM-DD format
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = (today.getMonth() + 1).toString().padStart(2, '0');
+                const day = today.getDate().toString().padStart(2, '0');
+                const todayDateString = `${year}-${month}-${day}`;
+
+                // Query for the level whose dailyLevelTargetDate matches today's date
+                const q = query(publicLevelsCollectionRef, where("dailyLevelTargetDate", "==", todayDateString));
                 const querySnapshot = await getDocs(q);
 
                 if (!querySnapshot.empty) {
@@ -2718,7 +2804,7 @@
                     if (playDailyLevelButton) playDailyLevelButton.onclick = () => playCommunityLevel(currentDailyLevel);
                     if (dailyLevelContainer) dailyLevelContainer.style.display = 'block';
                 } else {
-                    if (dailyLevelName) dailyLevelName.textContent = "No daily level set yet.";
+                    if (dailyLevelName) dailyLevelName.textContent = "No daily level set for today.";
                     if (dailyLevelContainer) dailyLevelContainer.style.display = 'block';
                 }
             } catch (e) {
@@ -2981,10 +3067,9 @@
             loginSubmitButton = document.getElementById('loginSubmitButton');
             loginCancelButton = document.getElementById('loginCancelButton');
             communityLevelsModalOverlay = document.getElementById('communityLevelsModalOverlay');
-            communityLevelsListInMenu = document.getElementById('communityLevelsList');
-            levelSearchInput = document.getElementById('levelSearchInput');
-            searchCommunityLevelsButton = document.getElementById('searchCommunityLevelsButton');
-            refreshCommunityLevelsButton = document.getElementById('refreshCommunityLevelsButton');
+            // communityLevelsListInMenu is no longer directly in menu modal, but still used as a variable for consistency
+            communityLevelsListInMenu = document.getElementById('communityLevelsList'); // This will now be null or undefined, but that's okay as it's not used for display anymore.
+            // levelSearchInput, searchCommunityLevelsButton, refreshCommunityLevelsButton are now only in the dedicated modal.
 
             communityLevelSearchInputModal = document.getElementById('communityLevelSearchInputModal');
             searchCommunityLevelsButtonModal = document.getElementById('searchCommunityLevelsButtonModal');
@@ -2996,6 +3081,7 @@
             startRandomMazeButton = document.getElementById('startRandomMazeButton');
             startRandomBlocksButton = document.getElementById('startRandomBlocksButton');
             buildModeButton = document.getElementById('buildModeButton');
+            communityLevelsButtonMenu = document.getElementById('communityLevelsButtonMenu'); // NEW
             userIdDisplay = document.getElementById('userIdDisplay');
             playerBricksDisplay = document.getElementById('playerBricksDisplay');
             myLevelsList = document.getElementById('myLevelsList');
@@ -3100,13 +3186,20 @@
                 loadMyLevels();
                 updateUserIdDisplay();
                 fetchPlayerBricks();
-                loadCommunityLevels(''); // Load community levels in the menu's section without a search query initially
+                // Removed loadCommunityLevels('') from here as it's now triggered by the new button
             });
             if (closeMenuModalButton) closeMenuModalButton.addEventListener('click', () => hideModal(menuModalOverlay));
             if (menuModalOverlay) menuModalOverlay.addEventListener('click', (e) => {
                 if (e.target === menuModalOverlay) {
                     hideModal(menuModalOverlay);
                 }
+            });
+
+            // NEW: Event listener for the Community Levels button in the Menu modal
+            if (communityLevelsButtonMenu) communityLevelsButtonMenu.addEventListener('click', () => {
+                hideModal(menuModalOverlay); // Hide the menu modal first
+                showModal(communityLevelsModalOverlay);
+                loadCommunityLevels(''); // Load all community levels when opening this modal
             });
 
             if (startRandomMazeButton) startRandomMazeButton.addEventListener('click', () => {
@@ -3132,20 +3225,7 @@
 
             if (refreshMyLevelsButton) refreshMyLevelsButton.addEventListener('click', loadMyLevels);
 
-            // searchLevelsButton is not present in HTML, so its listener is removed from here.
-
-            // Event listeners for search in the Menu's Community Levels section
-            if (searchCommunityLevelsButton) searchCommunityLevelsButton.addEventListener('click', () => {
-                loadCommunityLevels(levelSearchInput.value);
-            });
-            if (levelSearchInput) levelSearchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    loadCommunityLevels(levelSearchInput.value);
-                }
-            });
-            if (refreshCommunityLevelsButton) refreshCommunityLevelsButton.addEventListener('click', () => loadCommunityLevels('')); // Refresh with no search
-
-            // Event listeners for search in the Community Levels Modal
+            // Event listeners for search in the Community Levels Modal (now the primary place)
             if (searchCommunityLevelsButtonModal) searchCommunityLevelsButtonModal.addEventListener('click', () => {
                 loadCommunityLevels(communityLevelSearchInputModal.value);
             });
