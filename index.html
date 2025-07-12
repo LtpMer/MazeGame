@@ -2539,9 +2539,9 @@
                     if (buildMessageBox) buildMessageBox.textContent = `Invalid difficulty. Defaulting to 'easy'.`;
                 }
 
-                let promptBricks = prompt(`Enter brick reward for "${levelName}" (0-4):`);
+                let promptBricks = prompt(`Enter brick reward for "${levelName}" (0-1000):`); // Changed max to 1000
                 let parsedBricks = parseInt(promptBricks);
-                if (!isNaN(parsedBricks) && parsedBricks >= 0 && parsedBricks <= 4) {
+                if (!isNaN(parsedBricks) && parsedBricks >= 0 && parsedBricks <= 1000) { // Changed max to 1000
                     brickReward = parsedBricks;
                 } else {
                     if (buildMessageBox) buildMessageBox.textContent = "Invalid brick reward. Defaulting to 0.";
@@ -2602,22 +2602,21 @@
             let levelDifficulty = 'easy'; // Default difficulty for non-LtpMer users
             let brickReward = 0; // Default brick reward for non-LtpMer users
 
-            if (currentPlayerName === 'LtpMer') {
-                const validDifficulties = ['easy', 'medium', 'hard', 'very_hard', 'super_hard'];
-                let promptDifficulty = prompt(`Enter difficulty for "${levelName}" (${validDifficulties.join(', ')}):`).toLowerCase();
-                if (validDifficulties.includes(promptDifficulty)) {
-                    levelDifficulty = promptDifficulty;
-                } else {
-                    if (buildMessageBox) buildMessageBox.textContent = `Invalid difficulty. Defaulting to 'easy'.`;
-                }
+            // Allow creator to set difficulty and bricks for their own published levels
+            const validDifficulties = ['easy', 'medium', 'hard', 'very_hard', 'super_hard'];
+            let promptDifficulty = prompt(`Enter difficulty for "${levelName}" (${validDifficulties.join(', ')}):`).toLowerCase();
+            if (validDifficulties.includes(promptDifficulty)) {
+                levelDifficulty = promptDifficulty;
+            } else {
+                if (buildMessageBox) buildMessageBox.textContent = `Invalid difficulty. Defaulting to 'easy'.`;
+            }
 
-                let promptBricks = prompt(`Enter brick reward for "${levelName}" (0-4):`);
-                let parsedBricks = parseInt(promptBricks);
-                if (!isNaN(parsedBricks) && parsedBricks >= 0 && parsedBricks <= 4) {
-                    brickReward = parsedBricks;
-                } else {
-                    if (buildMessageBox) buildMessageBox.textContent = "Invalid brick reward. Defaulting to 0.";
-                }
+            let promptBricks = prompt(`Enter brick reward for "${levelName}" (0-1000):`); // Changed max to 1000
+            let parsedBricks = parseInt(promptBricks);
+            if (!isNaN(parsedBricks) && parsedBricks >= 0 && parsedBricks <= 1000) { // Changed max to 1000
+                brickReward = parsedBricks;
+            } else {
+                if (buildMessageBox) buildMessageBox.textContent = "Invalid brick reward. Defaulting to 0.";
             }
 
             try {
@@ -2851,22 +2850,21 @@
                     const creatorDisplay = data.creatorName ? `<span class="level-creator">By ${data.creatorName}</span>` : '';
 
                     let adminActionsHtml = '';
+                    // Allow creator (isCreator) or LtpMer to modify difficulty and bricks
                     if (isLtpMer || isCreator) { 
                         adminActionsHtml += `
                             <div class="community-level-actions">
-                                ${isLtpMer ? `
-                                    <select class="set-difficulty-select" data-level-id="${levelId}">
-                                        <option value="">Set Diff</option>
-                                        <option value="easy">Easy</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="hard">Hard</option>
-                                        <option value="very_hard">Very Hard</option>
-                                        <option value="super_hard">Super Hard</option>
-                                    </select>
-                                    <input type="number" class="set-bricks-input" data-level-id="${levelId}" placeholder="Bricks" min="0" max="4" value="${data.brickReward || 0}">
-                                    <button class="update-level-props-button" data-level-id="${levelId}">Update Props</button>
-                                    <button class="set-daily-button-community" data-level-id="${levelId}">Set Daily</button>
-                                ` : ''}
+                                <select class="set-difficulty-select" data-level-id="${levelId}">
+                                    <option value="">Set Diff</option>
+                                    <option value="easy" ${data.difficulty === 'easy' ? 'selected' : ''}>Easy</option>
+                                    <option value="medium" ${data.difficulty === 'medium' ? 'selected' : ''}>Medium</option>
+                                    <option value="hard" ${data.difficulty === 'hard' ? 'selected' : ''}>Hard</option>
+                                    <option value="very_hard" ${data.difficulty === 'very_hard' ? 'selected' : ''}>Very Hard</option>
+                                    <option value="super_hard" ${data.difficulty === 'super_hard' ? 'selected' : ''}>Super Hard</option>
+                                </select>
+                                <input type="number" class="set-bricks-input" data-level-id="${levelId}" placeholder="Bricks" min="0" max="1000" value="${data.brickReward || 0}">
+                                <button class="update-level-props-button" data-level-id="${levelId}">Update Props</button>
+                                ${isLtpMer ? `<button class="set-daily-button-community" data-level-id="${levelId}">Set Daily</button>` : ''}
                                 ${isCreator ? `<button class="delete-level-button" data-level-id="${levelId}">Delete</button>` : ''}
                             </div>
                         `;
@@ -2920,8 +2918,8 @@
                         const newDifficulty = difficultySelect.value;
                         const newBricks = parseInt(bricksInput.value);
 
-                        if (!newDifficulty || isNaN(newBricks) || newBricks < 0 || newBricks > 4) {
-                            if (messageBox) messageBox.textContent = "Invalid difficulty or bricks value.";
+                        if (!newDifficulty || isNaN(newBricks) || newBricks < 0 || newBricks > 1000) { // Changed max to 1000
+                            if (messageBox) messageBox.textContent = "Invalid difficulty or bricks value (0-1000).";
                             setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                             return;
                         }
@@ -3395,7 +3393,7 @@
                                 }
                             } catch (error) {
                                 console.error("Error deleting custom block definition:", error);
-                                if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = `Error deleting definition: ${error.message}`;
+                                if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = `Error deleting definition: ${e.message}`;
                             }
                         }
                     });
@@ -3472,7 +3470,7 @@
             searchCommunityLevelsButtonModal = document.getElementById('searchCommunityLevelsButtonModal');
             communityLevelsListModal = document.getElementById('communityLevelsListModal');
             refreshCommunityLevelsButtonModal = document.getElementById('refreshCommunityLevelsButtonModal');
-            closeCommunityLevelsModalButton = document.getElementById('closeCommunityLevelsModalButton'); // Corrected variable name
+            closeCommunityLevelsModalButton = document.getElementById('closeCommunityLevelsModalButton');
             leaderboardList = document.getElementById('leaderboardList');
             refreshLeaderboardButton = document.getElementById('refreshLeaderboardButton');
             closeLeaderboardModalButton = document.getElementById('closeLeaderboardModalButton');
@@ -3585,7 +3583,7 @@
                 showModal(communityLevelsModalOverlay);
                 loadCommunityLevels(); // Load all community levels initially
             });
-            if (closeCommunityLevelsModalButton) closeCommunityLevelsModalButton.addEventListener('click', () => hideModal(communityLevelsModalOverlay)); // Corrected variable name
+            if (closeCommunityLevelsModalButton) closeCommunityLevelsModalButton.addEventListener('click', () => hideModal(communityLevelsModalOverlay));
             if (searchCommunityLevelsButtonModal) searchCommunityLevelsButtonModal.addEventListener('click', () => {
                 loadCommunityLevels(communityLevelSearchInputModal.value);
             });
@@ -3690,7 +3688,7 @@
                             }
                         } catch (error) {
                             console.error("Error deleting custom block definition:", error);
-                            if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = `Error deleting definition: ${error.message}`;
+                            if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = `Error deleting definition: ${e.message}`;
                         }
                     }
                 }
