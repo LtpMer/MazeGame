@@ -1007,7 +1007,7 @@
     <!-- Info Modal -->
     <div id="infoModalOverlay" class="modal-overlay">
         <div class="modal-content">
-            <h2>Welcome to LtpMer's Maze Game!</h2>
+            <h2>Welcome to Maze Explorer!</h2>
             <p>
                 Navigate the red player block to the green winpad.
                 Use **Arrow Keys** or **WASD** to move.
@@ -1017,8 +1017,6 @@
                 **Customization:** Change game visuals.
                 <br>
                 **Menu:** Access other game modes like random generation, build mode, or saved levels.
-                <br>
-                **Mobile hint:** Hold and drag the center of buttons while playing to position you like
             </p>
             <button class="close-button" id="closeInfoModalButton">Close</button>
         </div>
@@ -2529,9 +2527,36 @@
                 targetListElement.innerHTML = ''; // Clear previous list
                 filteredLevels.forEach((data) => {
                     const levelId = data.id;
+                    const isLtpMer = currentPlayerName === 'LtpMer';
+                    const isCreator = data.creatorId === window.userId;
+
                     const difficultyDisplay = data.difficulty ? `<span class="level-difficulty">(${data.difficulty.replace('_', ' ')})</span>` : '';
                     const bricksDisplay = (data.brickReward !== undefined && data.brickReward !== null) ? `<span class="level-bricks">🧱 ${data.brickReward}</span>` : '';
                     const creatorDisplay = data.creatorName ? `<span class="level-creator">By ${data.creatorName}</span>` : '';
+
+                    let adminActionsHtml = '';
+                    if (isLtpMer || isCreator) { // Allow creator or LtpMer to update/delete
+                        adminActionsHtml += `
+                            <div class="community-level-actions">
+                                ${isLtpMer ? `
+                                    <select class="set-difficulty-select" data-level-id="${levelId}">
+                                        <option value="">Set Diff</option>
+                                        <option value="easy">Easy</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="hard">Hard</option>
+                                        <option value="very_hard">Very Hard</option>
+                                        <option value="super_hard">Super Hard</option>
+                                    </select>
+                                    <input type="number" class="set-bricks-input" data-level-id="${levelId}" min="0" max="4" placeholder="Bricks" value="${data.brickReward || 0}">
+                                    <button class="update-level-props-button" data-level-id="${levelId}">Update</button>
+                                    <button class="set-official-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${JSON.stringify(data.grid)}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-creator-name="${data.creatorName}" data-creator-id="${data.creatorId}" data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Set as Official</button>
+                                    <button class="set-daily-button-community" data-level-id="${levelId}" data-level-name="${data.name}">Set as Daily</button>
+                                ` : ''}
+                                <button class="delete-community-level-button" data-level-id="${levelId}">Delete</button>
+                            </div>
+                        `;
+                    }
+
 
                     const levelDiv = document.createElement('div');
                     levelDiv.innerHTML = `
@@ -2544,30 +2569,14 @@
                         </div>
                         <div class="level-buttons-row">
                             <button class="play-level-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${JSON.stringify(data.grid)}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Play</button>
-                            ${currentPlayerName === 'LtpMer' ? `
-                                <div class="community-level-actions">
-                                    <select class="set-difficulty-select" data-level-id="${levelId}">
-                                        <option value="">Set Diff</option>
-                                        <option value="easy">Easy</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="hard">Hard</option>
-                                        <option value="very_hard">Very Hard</option>
-                                        <option value="super_hard">Super Hard</option>
-                                    </select>
-                                    <input type="number" class="set-bricks-input" data-level-id="${levelId}" min="0" max="4" placeholder="Bricks" value="${data.brickReward || 0}">
-                                    <button class="update-level-props-button" data-level-id="${levelId}">Update</button>
-                                    <button class="set-official-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${JSON.stringify(data.grid)}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-creator-name="${data.creatorName}" data-creator-id="${data.creatorId}" data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Set as Official</button>
-                                    <button class="set-daily-button-community" data-level-id="${levelId}" data-level-name="${data.name}">Set as Daily</button> <!-- NEW: Set as Daily Button -->
-                                    <button class="delete-community-level-button" data-level-id="${levelId}">Delete</button> <!-- New Delete Button for LtpMer -->
-                                </div>
-                            ` : ''}
+                            ${adminActionsHtml}
                         </div>
                         ${creatorDisplay}
                     `;
                     targetListElement.appendChild(levelDiv);
 
-                    // Set initial values for dropdowns/inputs if they exist
-                    if (currentPlayerName === 'LtpMer') {
+                    // Set initial values for dropdowns/inputs if they exist and if LtpMer is logged in
+                    if (isLtpMer) {
                         const selectElement = levelDiv.querySelector(`.set-difficulty-select[data-level-id="${levelId}"]`);
                         if (selectElement && data.difficulty) {
                             selectElement.value = data.difficulty;
@@ -2595,7 +2604,7 @@
                     });
                 });
 
-                // Admin (LtpMer) actions for community levels
+                // Admin (LtpMer) and Creator actions for community levels
                 targetListElement.querySelectorAll('.update-level-props-button').forEach(button => {
                     button.addEventListener('click', async (e) => {
                         const levelId = e.target.dataset.levelId;
@@ -2708,7 +2717,7 @@
                     });
                 });
 
-                // New: Add event listener for "Delete" button in Community Levels for LtpMer
+                // New: Add event listener for "Delete" button in Community Levels for LtpMer and Creator
                 targetListElement.querySelectorAll('.delete-community-level-button').forEach(button => {
                     button.addEventListener('click', async (e) => {
                         const levelId = e.target.dataset.levelId;
