@@ -582,6 +582,12 @@
         .level-list-container .delete-level-button:hover {
             background-color: #c53030;
         }
+        .level-list-container .edit-level-button { /* New edit button style */
+            background-color: #f6ad55; /* Orange for edit */
+        }
+        .level-list-container .edit-level-button:hover {
+            background-color: #ed8936;
+        }
         .level-list-container .set-daily-button { /* New style for admin button */
             background-color: #FFD700; /* Gold */
             color: #2d3748;
@@ -1184,6 +1190,7 @@
 
         let currentPlayerName = "Anonymous";
         let playerBricks = 0;
+        let editingLevelId = null; // New: Stores the ID of the level being edited, if any
 
         // Game Modes
         const GAME_MODES = {
@@ -2182,23 +2189,30 @@
                 return;
             }
 
-            const validDifficulties = ['easy', 'medium', 'hard', 'very_hard', 'super_hard'];
-            let levelDifficulty = prompt(`Enter difficulty for "${levelName}" (${validDifficulties.join(', ')}):`).toLowerCase();
-            if (!validDifficulties.includes(levelDifficulty)) {
-                buildMessageBox.textContent = `Invalid difficulty. Please enter one of: ${validDifficulties.join(', ')}. Level save cancelled.`;
-                return;
-            }
+            let levelDifficulty = 'easy'; // Default difficulty for non-LtpMer users
+            let brickReward = 0; // Default brick reward for non-LtpMer users
 
-            let brickReward = prompt(`Enter brick reward for "${levelName}" (0-4):`);
-            brickReward = parseInt(brickReward);
-            if (isNaN(brickReward) || brickReward < 0 || brickReward > 4) {
-                buildMessageBox.textContent = "Invalid brick reward. Please enter a number between 0 and 4. Level save cancelled.";
-                return;
+            if (currentPlayerName === 'LtpMer') {
+                const validDifficulties = ['easy', 'medium', 'hard', 'very_hard', 'super_hard'];
+                let promptDifficulty = prompt(`Enter difficulty for "${levelName}" (${validDifficulties.join(', ')}):`).toLowerCase();
+                if (validDifficulties.includes(promptDifficulty)) {
+                    levelDifficulty = promptDifficulty;
+                } else {
+                    buildMessageBox.textContent = `Invalid difficulty. Defaulting to 'easy'.`;
+                }
+
+                let promptBricks = prompt(`Enter brick reward for "${levelName}" (0-4):`);
+                let parsedBricks = parseInt(promptBricks);
+                if (!isNaN(parsedBricks) && parsedBricks >= 0 && parsedBricks <= 4) {
+                    brickReward = parsedBricks;
+                } else {
+                    buildMessageBox.textContent = "Invalid brick reward. Defaulting to 0.";
+                }
             }
 
             try {
                 const levelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/users/${window.userId}/levels`);
-                await addDoc(levelsCollectionRef, {
+                const levelData = {
                     name: levelName,
                     grid: JSON.stringify(buildGrid), // Convert grid to string for storage
                     playerStart: player,
@@ -2208,12 +2222,22 @@
                     creatorName: currentPlayerName, // Save creator's simulated name
                     difficulty: levelDifficulty, // Store difficulty for saved levels
                     brickReward: brickReward // Store brick reward for saved levels
-                });
-                buildMessageBox.textContent = `Level "${levelName}" saved successfully!`;
+                };
+
+                if (editingLevelId) {
+                    // Update existing level
+                    await setDoc(doc(levelsCollectionRef, editingLevelId), levelData, { merge: true });
+                    buildMessageBox.textContent = `Level "${levelName}" updated successfully!`;
+                    editingLevelId = null; // Clear editing state
+                } else {
+                    // Add new level
+                    await addDoc(levelsCollectionRef, levelData);
+                    buildMessageBox.textContent = `Level "${levelName}" saved successfully!`;
+                }
                 loadMyLevels(); // Refresh the list of levels
             } catch (e) {
-                console.error("Error saving document: ", e);
-                buildMessageBox.textContent = `Error saving level: ${e.message}. See console for details.`;
+                console.error("Error saving/updating document: ", e);
+                buildMessageBox.textContent = `Error saving/updating level: ${e.message}. See console for details.`;
             }
         }
 
@@ -2237,18 +2261,25 @@
                 return;
             }
 
-            const validDifficulties = ['easy', 'medium', 'hard', 'very_hard', 'super_hard'];
-            let levelDifficulty = prompt(`Enter difficulty for "${levelName}" (${validDifficulties.join(', ')}):`).toLowerCase();
-            if (!validDifficulties.includes(levelDifficulty)) {
-                buildMessageBox.textContent = `Invalid difficulty. Please enter one of: ${validDifficulties.join(', ')}. Level publish cancelled.`;
-                return;
-            }
+            let levelDifficulty = 'easy'; // Default difficulty for non-LtpMer users
+            let brickReward = 0; // Default brick reward for non-LtpMer users
 
-            let brickReward = prompt(`Enter brick reward for "${levelName}" (0-4):`);
-            brickReward = parseInt(brickReward);
-            if (isNaN(brickReward) || brickReward < 0 || brickReward > 4) {
-                buildMessageBox.textContent = "Invalid brick reward. Please enter a number between 0 and 4. Level publish cancelled.";
-                return;
+            if (currentPlayerName === 'LtpMer') {
+                const validDifficulties = ['easy', 'medium', 'hard', 'very_hard', 'super_hard'];
+                let promptDifficulty = prompt(`Enter difficulty for "${levelName}" (${validDifficulties.join(', ')}):`).toLowerCase();
+                if (validDifficulties.includes(promptDifficulty)) {
+                    levelDifficulty = promptDifficulty;
+                } else {
+                    buildMessageBox.textContent = `Invalid difficulty. Defaulting to 'easy'.`;
+                }
+
+                let promptBricks = prompt(`Enter brick reward for "${levelName}" (0-4):`);
+                let parsedBricks = parseInt(promptBricks);
+                if (!isNaN(parsedBricks) && parsedBricks >= 0 && parsedBricks <= 4) {
+                    brickReward = parsedBricks;
+                } else {
+                    buildMessageBox.textContent = "Invalid brick reward. Defaulting to 0.";
+                }
             }
 
             try {
@@ -2324,6 +2355,7 @@
                         </div>
                         <div class="level-buttons-row">
                             <button class="play-level-button" data-level-id="${data.id}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Play</button>
+                            <button class="edit-level-button" data-level-id="${data.id}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}'>Edit</button>
                             <button class="delete-level-button" data-level-id="${data.id}">Delete</button>
                             ${currentPlayerName === 'LtpMer' ? `<button class="set-official-button" data-level-id="${data.id}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-creator-name="${data.creatorName}" data-creator-id="${data.creatorId}" data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Set as Official</button>` : ''}
                         </div>
@@ -2345,6 +2377,20 @@
                             brickReward: parseInt(e.target.dataset.levelBrickReward) // Pass brick reward
                         };
                         playSavedLevel(levelData);
+                    });
+                });
+
+                // New: Add event listener for "Edit" button
+                myLevelsList.querySelectorAll('.edit-level-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const levelData = {
+                            id: e.target.dataset.levelId,
+                            name: e.target.dataset.levelName,
+                            grid: JSON.parse(e.target.dataset.levelGrid),
+                            playerStart: JSON.parse(e.target.dataset.playerStart),
+                            winpadEnd: JSON.parse(e.target.dataset.winpadEnd)
+                        };
+                        editLevel(levelData);
                     });
                 });
 
@@ -2768,6 +2814,26 @@
             showScreen('gamePlayArea');
         }
 
+        // New function to load a level into build mode for editing
+        function editLevel(levelData) {
+            // Set the ID of the level being edited
+            editingLevelId = levelData.id;
+
+            // Copy the grid data into buildGrid
+            buildGrid = levelData.grid.map(row => row.map(block => {
+                return typeof block === 'object' ? { ...block } : block; // Deep copy objects
+            }));
+
+            // Set player and end positions
+            player = { ...levelData.playerStart };
+            end = { ...levelData.winpadEnd };
+
+            hideAllModals();
+            showScreen('buildModeArea');
+            buildMessageBox.textContent = `Editing level "${levelData.name}". Click 'Save Level' to update.`;
+        }
+
+
         // New function to transfer current maze to build grid and switch to build mode
         function saveCurrentLevel() {
             // Copy mazeGrid to buildGrid
@@ -2787,6 +2853,7 @@
             hideAllModals();
             showScreen('buildModeArea');
             buildMessageBox.textContent = "Current level loaded into Build Mode. You can now save or modify it!";
+            editingLevelId = null; // Ensure we're not in an "editing" state for a new save
         }
 
         // --- Event Listeners ---
@@ -2865,6 +2932,9 @@
             currentGameType = GAME_MODES.BUILD;
             hideAllModals();
             showScreen('buildModeArea');
+            editingLevelId = null; // When entering build mode directly, ensure no level is being edited
+            initBuildGrid(); // Start with a fresh grid
+            drawBuild();
         });
 
         refreshMyLevelsButton.addEventListener('click', loadMyLevels);
@@ -2901,6 +2971,7 @@
             initBuildGrid();
             drawBuild();
             buildMessageBox.textContent = "Grid cleared! Start building!";
+            editingLevelId = null; // Clear editing state when clearing grid
         });
 
         saveLevelButton.addEventListener('click', saveLevel);
