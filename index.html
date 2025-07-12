@@ -2460,8 +2460,11 @@
             leaderboardList.innerHTML = "<div>Loading leaderboard...</div>";
             try {
                 const leaderboardCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/leaderboard`);
-                // Removed orderBy("timeTaken") to avoid index issues, will sort in memory
-                const q = query(leaderboardCollectionRef, limit(10)); // Still limit to top 10
+                // IMPORTANT: For this query to work, you MUST create an index in Firestore:
+                // Collection ID: leaderboard
+                // Field to index: timeTaken (Ascending)
+                // Query scope: Collection
+                const q = query(leaderboardCollectionRef, orderBy("timeTaken", "asc"), limit(10)); 
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty) {
@@ -2469,12 +2472,11 @@
                     return;
                 }
 
-                // Sort results by timeTaken in memory
-                const sortedScores = querySnapshot.docs.map(doc => doc.data()).sort((a, b) => a.timeTaken - b.timeTaken);
-
+                // The results are already sorted by Firestore, so no need for in-memory sort
                 leaderboardList.innerHTML = ''; // Clear previous list
                 let rank = 1;
-                sortedScores.forEach((data) => {
+                querySnapshot.forEach((doc) => { // Iterate through the already sorted snapshot
+                    const data = doc.data();
                     const entryDiv = document.createElement('div');
                     entryDiv.classList.add('leaderboard-entry');
                     entryDiv.innerHTML = `
