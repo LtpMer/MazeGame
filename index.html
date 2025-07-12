@@ -664,12 +664,12 @@
             text-overflow: ellipsis;
             margin-right: 10px;
         }
-        .leaderboard-entry .level-name-lb {
+        .leaderboard-entry .level-name-lb { /* This will be removed, but keeping style for now */
             font-size: 0.9em;
             color: #a0aec0;
             margin-right: 10px;
         }
-        .leaderboard-entry .time {
+        .leaderboard-entry .time { /* This will be removed, but keeping style for now */
             font-weight: bold;
             color: #4CAF50;
             flex-shrink: 0;
@@ -679,8 +679,9 @@
             color: #f6ad55; /* Orange for bricks */
             margin-left: 10px;
             flex-shrink: 0;
+            font-size: 1.1em; /* Make bricks stand out */
         }
-        .leaderboard-entry .difficulty-lb { /* New style for difficulty on leaderboard */
+        .leaderboard-entry .difficulty-lb { /* This will be removed, but keeping style for now */
             font-size: 0.8em;
             color: #a0aec0;
             margin-left: 5px;
@@ -1033,6 +1034,7 @@
         <div class="modal-content">
             <h2>Leaderboard</h2>
             <div id="leaderboardList" class="leaderboard-list-container">
+                <!-- Leaderboard entries will be loaded here -->
                 Loading leaderboard...
             </div>
             <button id="refreshLeaderboardButton">Refresh Leaderboard</button>
@@ -1528,19 +1530,26 @@
             const timeTaken = Date.now() - gameStartTime; // Time in milliseconds
 
             try {
+                // We're now saving the player's current total bricks to the leaderboard.
+                // This is a simplified approach for a "bricks leaderboard" as requested.
+                // For a more robust system, you might have a separate 'player_scores' collection
+                // that tracks each player's highest brick count, updated on completion.
+                // For this request, we'll just save the current brick count with the level completion.
                 const leaderboardRef = collection(window.db, `artifacts/${window.__app_id}/public/data/leaderboard`);
                 
-                await addDoc(leaderboardRef, {
-                    levelId: currentLevelId,
-                    levelName: currentLevelName, // Use currentLevelName set during level load
+                // To make the leaderboard show "amount of bricks", we need to store the player's total bricks
+                // in a way that can be queried. The simplest way is to update a 'user_bricks_scores' collection
+                // with the player's latest total brick count.
+                const userBricksScoreRef = doc(window.db, `artifacts/${window.__app_id}/public/data/user_bricks_scores`, window.userId);
+
+                await setDoc(userBricksScoreRef, {
                     playerName: currentPlayerName,
                     userId: window.userId,
-                    timeTaken: timeTaken, // Store in milliseconds
-                    timestamp: new Date(),
-                    bricks: playerBricks, // Store current brick count
-                    difficulty: currentLevelDifficulty || 'N/A' // Store level difficulty
-                });
-                console.log(`Score submitted: ${timeTaken}ms for level ${currentLevelName}`);
+                    bricks: playerBricks, // This is the key for the new leaderboard
+                    lastUpdated: new Date()
+                }, { merge: true }); // Use merge to update existing document
+
+                console.log(`Player ${currentPlayerName}'s total bricks (${playerBricks}) updated for leaderboard.`);
                 messageBox.textContent += ` Your time: ${formatTime(timeTaken)}!`;
             } catch (e) {
                 console.error("Error submitting score:", e);
@@ -2698,33 +2707,27 @@
             }
             leaderboardList.innerHTML = "<div>Loading leaderboard...</div>";
             try {
-                const leaderboardCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/leaderboard`);
-                // IMPORTANT: For this query to work, you MUST create an index in Firestore:
-                // Collection ID: leaderboard
-                // Field to index: timeTaken (Ascending)
-                // Query scope: Collection
-                const q = query(leaderboardCollectionRef, orderBy("timeTaken", "asc"), limit(10)); 
+                // Fetch from the new 'user_bricks_scores' collection
+                const userBricksScoresCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/user_bricks_scores`);
+                // Order by bricks in descending order (highest bricks first)
+                const q = query(userBricksScoresCollectionRef, orderBy("bricks", "desc"), limit(10)); 
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty) {
-                    leaderboardList.innerHTML = "<div>No scores yet. Be the first to set one!</div>";
+                    leaderboardList.innerHTML = "<div>No brick scores yet. Play levels to earn bricks!</div>";
                     return;
                 }
 
-                // The results are already sorted by Firestore, so no need for in-memory sort
                 leaderboardList.innerHTML = ''; // Clear previous list
                 let rank = 1;
-                querySnapshot.forEach((doc) => { // Iterate through the already sorted snapshot
+                querySnapshot.forEach((doc) => {
                     const data = doc.data();
                     const entryDiv = document.createElement('div');
                     entryDiv.classList.add('leaderboard-entry');
-                    const difficultyLb = data.difficulty ? `<span class="difficulty-lb">(${data.difficulty.replace('_', ' ')})</span>` : '';
                     entryDiv.innerHTML = `
                         <span class="rank">${rank}.</span>
                         <span class="player-name">${data.playerName || 'Anonymous'}</span>
-                        <span class="level-name-lb">(${data.levelName || 'N/A'})${difficultyLb}</span>
-                        <span class="time">${formatTime(data.timeTaken)}</span>
-                        <span class="bricks">🧱 ${data.bricks || 0}</span> <!-- Display bricks -->
+                        <span class="bricks">🧱 ${data.bricks || 0}</span>
                     `;
                     leaderboardList.appendChild(entryDiv);
                     rank++;
@@ -2882,7 +2885,7 @@
         // Leaderboard event listeners
         leaderboardButton.addEventListener('click', () => {
             showModal(leaderboardModalOverlay);
-            loadLeaderboard();
+            loadLeaderboard(); // Load immediately when opened
         });
         refreshLeaderboardButton.addEventListener('click', loadLeaderboard);
         closeLeaderboardModalButton.addEventListener('click', () => hideModal(leaderboardModalOverlay));
@@ -2941,12 +2944,15 @@
                 await loadUserProfile(); // Load user profile and customization first
                 fetchOfficialPlayableLevels(); // Fetch official levels on startup
                 fetchDailyLevel(); // Fetch daily level after auth
+                // Start leaderboard auto-update
+                setInterval(loadLeaderboard, 60000); // Update every 60 seconds (1 minute)
             });
             // If firebaseAuthReady event already fired before onload, manually trigger
             if (window.userId) {
                 loadUserProfile();
                 fetchOfficialPlayableLevels(); // Fetch official levels on startup
                 fetchDailyLevel();
+                setInterval(loadLeaderboard, 60000); // Update every 60 seconds (1 minute)
             }
         };
 
