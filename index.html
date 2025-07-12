@@ -10,8 +10,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        // If you want to use Analytics, uncomment the line below and ensure 'getAnalytics' is imported above.
-        // import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
 
         // --- IMPORTANT: FOR EXTERNAL HOSTING, REPLACE THIS WITH YOUR ACTUAL FIREBASE CONFIG ---
         // You MUST ensure this 'myFirebaseConfig' object contains your OWN Firebase project's configuration.
@@ -1290,7 +1288,7 @@
         let toolDamagingBlock, toolCustomBlock; // Added new tools
         let fillSelectionButton, clearSelectionButton, exitSelectionButton;
         let leaderboardList, refreshLeaderboardButton, closeLeaderboardModalButton;
-        let communityLevelsButtonMenu; // NEW: Button for Community Levels in Menu
+        let communityLevelsButtonMenu; // NEW: Button to open Community Levels in Menu
 
         // Custom Block Editor elements
         let customBlockEditorModalOverlay, customBlockNameInput, customBlockColorPicker, customBlockScriptInput, autoActivateCheckbox, saveCustomBlockDefinitionButton, deleteCustomBlockDefinitionButton, customBlockDefinitionsList, closeCustomBlockEditorButton;
@@ -3474,7 +3472,7 @@
             searchCommunityLevelsButtonModal = document.getElementById('searchCommunityLevelsButtonModal');
             communityLevelsListModal = document.getElementById('communityLevelsListModal');
             refreshCommunityLevelsButtonModal = document.getElementById('refreshCommunityLevelsButtonModal');
-            closeCommunityLevelsModalButton = document.getElementById('closeCommunityLevelsModalButton');
+            closeCommunityLevelsModalButton = document.getElementById('closeCommunityLevelsModalButton'); // Corrected variable name
             leaderboardList = document.getElementById('leaderboardList');
             refreshLeaderboardButton = document.getElementById('refreshLeaderboardButton');
             closeLeaderboardModalButton = document.getElementById('closeLeaderboardModalButton');
@@ -3587,7 +3585,7 @@
                 showModal(communityLevelsModalOverlay);
                 loadCommunityLevels(); // Load all community levels initially
             });
-            if (closeCommunityLevelsModalButton) closeCommunityLevelsButtonModal.addEventListener('click', () => hideModal(communityLevelsModalOverlay));
+            if (closeCommunityLevelsModalButton) closeCommunityLevelsModalButton.addEventListener('click', () => hideModal(communityLevelsModalOverlay)); // Corrected variable name
             if (searchCommunityLevelsButtonModal) searchCommunityLevelsButtonModal.addEventListener('click', () => {
                 loadCommunityLevels(communityLevelSearchInputModal.value);
             });
