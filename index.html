@@ -22,7 +22,7 @@
           apiKey: "AIzaSyAB3UcTTArjYHrhcDFo780HsK2gIYVGXjQ",
           authDomain: "mazegame-27b3f.firebaseapp.com",
           projectId: "mazegame-27b3f",
-          storageBucket: "mazegame-27b3f.firebasestorage.app",
+          storageBucket: "mazegame-27b3f.firebase-storage.app",
           messagingSenderId: "632041065509",
           appId: "1:632041065509:web:659ed37bf4475df8da83cc",
           measurementId: "G-EFMZ0KCNM5" // Optional: Include if you want Firebase Analytics
@@ -272,16 +272,19 @@
         /* Touch controls for mobile */
         .touch-controls {
             display: none; /* Hidden by default, shown on smaller screens */
+            position: absolute; /* Position absolutely within game-play-area */
+            left: 20px; /* Adjust as needed */
+            bottom: 20px; /* Adjust as needed */
             grid-template-areas:
                 ". up ."
                 "left . right"
                 ". down .";
             gap: 10px;
-            margin-top: 20px;
             width: 200px;
             height: 200px;
             justify-items: center;
             align-items: center;
+            z-index: 5; /* Ensure it's above canvas but below modals */
         }
 
         .touch-button {
@@ -789,6 +792,42 @@
             background-color: #48bb78;
         }
 
+        /* Community search bar styling */
+        .community-search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .community-search-bar input {
+            flex-grow: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #63b3ed;
+            background-color: #4a5568;
+            color: #e2e8f0;
+            font-size: 1rem;
+        }
+
+        .community-search-bar button {
+            flex-shrink: 0;
+            background-color: #63b3ed;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            border: none;
+            max-width: unset; /* Remove max-width constraint */
+        }
+
+        .community-search-bar button:hover {
+            background-color: #4299e1;
+        }
+
 
         @media (max-width: 768px) {
             h1 {
@@ -808,6 +847,16 @@
             }
             .touch-controls {
                 display: grid; /* Show touch controls on small screens */
+                position: absolute; /* Keep absolute positioning */
+                left: 10px; /* Adjust for smaller screens */
+                bottom: 10px; /* Adjust for smaller screens */
+                width: 150px; /* Smaller touch controls */
+                height: 150px;
+            }
+            .touch-button {
+                width: 45px; /* Smaller buttons */
+                height: 45px;
+                font-size: 1.2rem;
             }
             .corner-buttons {
                 top: 10px;
@@ -851,9 +900,17 @@
             .community-level-actions select,
             .community-level-actions input[type="number"],
             .community-level-actions button {
-                width: 100%; /* Full width for stacked controls */
+                width: 100%;
                 max-width: 100%;
-                margin-left: 0 !important; /* Override button margin */
+                margin-left: 0 !important;
+            }
+            .community-search-bar {
+                flex-direction: column;
+            }
+            .community-search-bar input,
+            .community-search-bar button {
+                width: 100%;
+                max-width: 100%;
             }
         }
     </style>
@@ -882,7 +939,7 @@
             <div class="controls">
                 <div class="button-row">
                     <button id="nextLevelButton" style="display: none;">Next Level</button> <!-- Only for Level Mode -->
-                    <button id="saveCurrentLevelButton">Save Current Level</button> <!-- New Save Current Level Button -->
+                    <button id="editCurrentLevelButton">Edit Current Level</button> <!-- Renamed from saveCurrentLevelButton -->
                     <button id="backToMainMenuButtonGame">Back to Main Menu</button>
                 </div>
                 <div class="touch-controls">
@@ -992,9 +1049,14 @@
             <button id="refreshMyLevelsButton">Refresh My Levels</button>
             <h3>Community Levels</h3>
             <p>Search and play levels created by others!</p>
-            <div class="button-row menu-modal-buttons">
-                <button id="searchLevelsButton">Search Levels</button>
+            <div class="community-search-bar">
+                <input type="text" id="levelSearchInput" placeholder="Search by name or ID">
+                <button id="searchCommunityLevelsButton">Search</button>
             </div>
+            <div id="communityLevelsList" class="level-list-container">
+                Loading community levels...
+            </div>
+            <button id="refreshCommunityLevelsButton">Refresh Community Levels</button>
             <button class="close-button" id="closeMenuModalButton">Close</button>
         </div>
     </div>
@@ -1027,10 +1089,14 @@
     <div id="communityLevelsModalOverlay" class="modal-overlay">
         <div class="modal-content">
             <h2>Community Levels</h2>
-            <div id="communityLevelsList" class="level-list-container">
+            <div class="community-search-bar">
+                <input type="text" id="communityLevelSearchInputModal" placeholder="Search by name or ID">
+                <button id="searchCommunityLevelsButtonModal">Search</button>
+            </div>
+            <div id="communityLevelsListModal" class="level-list-container">
                 Loading community levels...
             </div>
-            <button id="refreshCommunityLevelsButton">Refresh Community Levels</button>
+            <button id="refreshCommunityLevelsButtonModal">Refresh Community Levels</button>
             <button class="close-button" id="closeCommunityLevelsModalButton">Close</button>
         </div>
     </div>
@@ -1075,7 +1141,7 @@
         const mazeCtx = mazeCanvas.getContext('2d');
         const messageBox = document.getElementById('messageBox');
         const nextLevelButton = document.getElementById('nextLevelButton');
-        const saveCurrentLevelButton = document.getElementById('saveCurrentLevelButton'); // New button
+        const editCurrentLevelButton = document.getElementById('editCurrentLevelButton'); // Renamed
         const backToMainMenuButtonGame = document.getElementById('backToMainMenuButtonGame');
         const touchControls = document.querySelector('.touch-controls');
 
@@ -1101,13 +1167,19 @@
         const loginSubmitButton = document.getElementById('loginSubmitButton');
         const loginCancelButton = document.getElementById('loginCancelButton');
         const communityLevelsModalOverlay = document.getElementById('communityLevelsModalOverlay');
-        const communityLevelsList = document.getElementById('communityLevelsList');
-        const refreshCommunityLevelsButton = document.getElementById('refreshCommunityLevelsButton');
+        // Renamed communityLevelsList to communityLevelsListInMenu for clarity
+        const communityLevelsListInMenu = document.getElementById('communityLevelsList');
+        // New elements for search in Menu's Community Levels section
+        const levelSearchInput = document.getElementById('levelSearchInput');
+        const searchCommunityLevelsButton = document.getElementById('searchCommunityLevelsButton');
+        const refreshCommunityLevelsButton = document.getElementById('refreshCommunityLevelsButton'); // Added for menu modal's refresh
+
+        // New elements for search in Community Levels Modal
+        const communityLevelSearchInputModal = document.getElementById('communityLevelSearchInputModal');
+        const searchCommunityLevelsButtonModal = document.getElementById('searchCommunityLevelsButtonModal');
+        const communityLevelsListModal = document.getElementById('communityLevelsListModal'); // Corrected ID
+        const refreshCommunityLevelsButtonModal = document.getElementById('refreshCommunityLevelsButtonModal'); // Corrected ID
         const closeCommunityLevelsModalButton = document.getElementById('closeCommunityLevelsModalButton');
-        const leaderboardModalOverlay = document.getElementById('leaderboardModalOverlay');
-        const leaderboardList = document.getElementById('leaderboardList');
-        const refreshLeaderboardButton = document.getElementById('refreshLeaderboardButton');
-        const closeLeaderboardModalButton = document.getElementById('closeLeaderboardModalButton');
 
         // Buttons inside Menu Modal
         const startRandomMazeButton = document.getElementById('startRandomMazeButton');
@@ -1753,12 +1825,12 @@
                 if (officialPlayableLevels.length === 0) {
                     messageBox.textContent = `No official levels found. Play a random maze or build your own!`;
                     nextLevelButton.style.display = 'none';
-                    saveCurrentLevelButton.style.display = 'none'; // Hide save button for official levels
+                    editCurrentLevelButton.style.display = 'none'; // Hide edit button for official levels
                     mazeCtx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height); // Clear canvas
                     return; // Don't start game if no levels
                 }
                 loadOfficialLevel(currentLevelIndex); // Loads from officialPlayableLevels
-                saveCurrentLevelButton.style.display = 'none'; // Hide save button for official levels
+                editCurrentLevelButton.style.display = 'none'; // Hide edit button for official levels
             } else if (currentGameType === GAME_MODES.MAZE) {
                 generateMaze();
                 player = getRandomPathPosition();
@@ -1769,7 +1841,7 @@
                 currentLevelName = "Random Maze";
                 currentLevelDifficulty = 'random'; // Assign a difficulty for random levels
                 currentLevelBrickReward = 1; // Default bricks for random maze
-                saveCurrentLevelButton.style.display = 'block'; // Show save button for random modes
+                editCurrentLevelButton.style.display = 'block'; // Show edit button for random modes
             } else if (currentGameType === GAME_MODES.BLOCKS) {
                 generateBlocks();
                 player = getRandomPathPosition();
@@ -1780,17 +1852,17 @@
                 currentLevelName = "Random Blocks";
                 currentLevelDifficulty = 'random'; // Assign a difficulty for random levels
                 currentLevelBrickReward = 1; // Default bricks for random blocks
-                saveCurrentLevelButton.style.display = 'block'; // Show save button for random modes
+                editCurrentLevelButton.style.display = 'block'; // Show edit button for random modes
             } else if (currentGameType === GAME_MODES.BUILD) {
                 if (!buildGrid || buildGrid.length === 0 || buildGrid[0].length === 0) {
                     initBuildGrid();
                 }
                 buildMessageBox.textContent = "Click to place/remove blocks!";
                 updatePlayerAndEndFromBuildGrid();
-                saveCurrentLevelButton.style.display = 'none'; // Hide save button in build mode
+                editCurrentLevelButton.style.display = 'none'; // Hide edit button in build mode
             } else if (currentGameType === GAME_MODES.SAVED_LEVEL || currentGameType === GAME_MODES.COMMUNITY_LEVEL) {
                 // mazeGrid, player, end, currentLevelId, currentLevelName, currentLevelDifficulty, currentLevelBrickReward are already set by playSavedLevel/playCommunityLevel
-                saveCurrentLevelButton.style.display = 'none'; // Hide save button for saved/community levels
+                editCurrentLevelButton.style.display = 'block'; // Show edit button for saved/community levels
             }
             
             nextLevelButton.style.display = (currentGameType === GAME_MODES.LEVEL && officialPlayableLevels.length > 0) ? 'block' : 'none';
@@ -2459,28 +2531,46 @@
             }
         }
 
-        async function loadCommunityLevels() {
+        // Modified loadCommunityLevels to accept a search query
+        async function loadCommunityLevels(searchQuery = '') {
+            const targetListElement = communityLevelsModalOverlay.classList.contains('show') ? communityLevelsListModal : communityLevelsListInMenu;
+            // The input for the menu modal is levelSearchInput, for the separate modal it's communityLevelSearchInputModal
+            // This variable is not directly used here, but for clarity in the event listener setup.
+
             if (!window.userId || !window.db) {
-                communityLevelsList.innerHTML = "<div>Please log in to see community levels.</div>";
+                targetListElement.innerHTML = "<div>Please log in to see community levels.</div>";
                 console.warn("Cannot load community levels: Firebase not fully initialized or user not authenticated.");
                 return;
             }
 
-            communityLevelsList.innerHTML = "<div>Loading community levels...</div>";
+            targetListElement.innerHTML = "<div>Loading community levels...</div>";
             try {
                 const publicLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/levels`);
-                const q = query(publicLevelsCollectionRef);
-                const querySnapshot = await getDocs(q);
+                // Fetch all levels and filter client-side for name search
+                const querySnapshot = await getDocs(publicLevelsCollectionRef);
 
-                if (querySnapshot.empty) {
-                    communityLevelsList.innerHTML = "<div>No community levels found. Be the first to publish one!</div>";
+                let filteredLevels = [];
+                const lowerCaseSearchQuery = searchQuery.toLowerCase().trim();
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const levelName = data.name ? data.name.toLowerCase() : '';
+                    const levelId = doc.id;
+
+                    // Filter logic: if search query is empty, include all. Otherwise, check name or ID.
+                    if (lowerCaseSearchQuery === '' || levelName.includes(lowerCaseSearchQuery) || levelId === lowerCaseSearchQuery) {
+                        filteredLevels.push({ id: levelId, ...data });
+                    }
+                });
+
+                if (filteredLevels.length === 0) {
+                    targetListElement.innerHTML = "<div>No community levels found matching your search.</div>";
                     return;
                 }
 
-                communityLevelsList.innerHTML = ''; // Clear previous list
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    const levelId = doc.id;
+                targetListElement.innerHTML = ''; // Clear previous list
+                filteredLevels.forEach((data) => {
+                    const levelId = data.id;
                     const difficultyDisplay = data.difficulty ? `<span class="level-difficulty">(${data.difficulty.replace('_', ' ')})</span>` : '';
                     const bricksDisplay = (data.brickReward !== undefined && data.brickReward !== null) ? `<span class="level-bricks">🧱 ${data.brickReward}</span>` : '';
                     const creatorDisplay = data.creatorName ? `<span class="level-creator">By ${data.creatorName}</span>` : '';
@@ -2495,7 +2585,7 @@
                             </div>
                         </div>
                         <div class="level-buttons-row">
-                            <button class="play-level-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Play</button>
+                            <button class="play-level-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${JSON.stringify(data.grid)}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Play</button>
                             ${currentPlayerName === 'LtpMer' ? `
                                 <div class="community-level-actions">
                                     <select class="set-difficulty-select" data-level-id="${levelId}">
@@ -2508,13 +2598,14 @@
                                     </select>
                                     <input type="number" class="set-bricks-input" data-level-id="${levelId}" min="0" max="4" placeholder="Bricks" value="${data.brickReward || 0}">
                                     <button class="update-level-props-button" data-level-id="${levelId}">Update</button>
-                                    <button class="set-official-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-creator-name="${data.creatorName}" data-creator-id="${data.creatorId}" data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Set as Official</button>
+                                    <button class="set-official-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${JSON.stringify(data.grid)}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-creator-name="${data.creatorName}" data-creator-id="${data.creatorId}" data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Set as Official</button>
+                                    <button class="delete-community-level-button" data-level-id="${levelId}">Delete</button> <!-- New Delete Button for LtpMer -->
                                 </div>
                             ` : ''}
                         </div>
                         ${creatorDisplay}
                     `;
-                    communityLevelsList.appendChild(levelDiv);
+                    targetListElement.appendChild(levelDiv);
 
                     // Set initial values for dropdowns/inputs if they exist
                     if (currentPlayerName === 'LtpMer') {
@@ -2530,7 +2621,7 @@
                 });
 
                 // Add event listeners to the dynamically created buttons
-                communityLevelsList.querySelectorAll('.play-level-button').forEach(button => {
+                targetListElement.querySelectorAll('.play-level-button').forEach(button => {
                     button.addEventListener('click', (e) => {
                         const levelData = {
                             id: e.target.dataset.levelId,
@@ -2546,7 +2637,7 @@
                 });
 
                 // Admin (LtpMer) actions for community levels
-                communityLevelsList.querySelectorAll('.update-level-props-button').forEach(button => {
+                targetListElement.querySelectorAll('.update-level-props-button').forEach(button => {
                     button.addEventListener('click', async (e) => {
                         const levelId = e.target.dataset.levelId;
                         const parentDiv = e.target.closest('div');
@@ -2575,7 +2666,7 @@
                             });
                             messageBox.textContent = `Level properties updated for ${levelId}!`;
                             setTimeout(() => messageBox.textContent = "", 3000);
-                            loadCommunityLevels(); // Refresh list to show changes
+                            loadCommunityLevels(searchQuery); // Refresh list to show changes with current search query
                         } catch (error) {
                             console.error("Error updating level properties:", error);
                             messageBox.textContent = `Error updating level properties: ${error.message}`;
@@ -2584,7 +2675,7 @@
                     });
                 });
 
-                communityLevelsList.querySelectorAll('.set-official-button').forEach(button => {
+                targetListElement.querySelectorAll('.set-official-button').forEach(button => {
                     button.addEventListener('click', (e) => {
                         // When setting as official from community levels, use the current properties
                         const levelData = {
@@ -2602,9 +2693,41 @@
                     });
                 });
 
+                // New: Add event listener for "Delete" button in Community Levels for LtpMer
+                targetListElement.querySelectorAll('.delete-community-level-button').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const levelId = e.target.dataset.levelId;
+                        if (window.confirm("Are you sure you want to delete this community level? This will also remove it if it's an official level.")) {
+                            try {
+                                // Delete from public levels
+                                await deleteDoc(doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId));
+                                console.log(`Deleted community level: ${levelId}`);
+
+                                // Also check and delete from official levels if it exists there
+                                const officialLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/official_levels`);
+                                const qOfficial = query(officialLevelsCollectionRef, where("id", "==", levelId));
+                                const officialSnapshot = await getDocs(qOfficial);
+                                officialSnapshot.forEach(async (officialDoc) => {
+                                    await deleteDoc(doc(officialLevelsCollectionRef, officialDoc.id));
+                                    console.log(`Deleted associated official level document: ${officialDoc.id}`);
+                                });
+
+                                messageBox.textContent = "Community level deleted successfully!";
+                                setTimeout(() => messageBox.textContent = "", 3000);
+                                loadCommunityLevels(searchQuery); // Refresh the list with current search query
+                                fetchOfficialPlayableLevels(); // Refresh official levels in case one was deleted
+                            } catch (error) {
+                                console.error("Error deleting community level:", error);
+                                messageBox.textContent = `Error deleting community level: ${error.message}. See console.`;
+                                setTimeout(() => messageBox.textContent = "", 3000);
+                            }
+                        }
+                    });
+                });
+
             } catch (e) {
                 console.error("Error loading community documents: ", e);
-                communityLevelsList.innerHTML = `<div>Error loading community levels: ${e.message}.</div>`;
+                targetListElement.innerHTML = `<div>Error loading community levels: ${e.message}.</div>`;
             }
         }
 
@@ -2835,7 +2958,7 @@
 
 
         // New function to transfer current maze to build grid and switch to build mode
-        function saveCurrentLevel() {
+        function editCurrentLevel() { // Renamed from saveCurrentLevel
             // Copy mazeGrid to buildGrid
             buildGrid = mazeGrid.map(row => row.map(block => {
                 // Ensure block objects are copied by value, not reference
@@ -2853,156 +2976,13 @@
             hideAllModals();
             showScreen('buildModeArea');
             buildMessageBox.textContent = "Current level loaded into Build Mode. You can now save or modify it!";
-            editingLevelId = null; // Ensure we're not in an "editing" state for a new save
+            // Set editingLevelId if the current game type is a saved or community level
+            if (currentGameType === GAME_MODES.SAVED_LEVEL || currentGameType === GAME_MODES.COMMUNITY_LEVEL) {
+                editingLevelId = currentLevelId;
+            } else {
+                editingLevelId = null; // For random levels, it's a new save
+            }
         }
-
-        // --- Event Listeners ---
-
-        playButton.addEventListener('click', async () => {
-            // Directly start official levels, no difficulty selection modal
-            await fetchOfficialPlayableLevels(); // Fetch all official levels
-            currentLevelIndex = 0; // Start from the first official level
-            if (officialPlayableLevels.length > 0) {
-                currentGameType = GAME_MODES.LEVEL;
-                hideAllModals();
-                showScreen('gamePlayArea');
-            } else {
-                messageBox.textContent = "No official levels found. Please ask LtpMer to set some!";
-                setTimeout(() => messageBox.textContent = "", 5000);
-            }
-        });
-
-        nextLevelButton.addEventListener('click', () => {
-            currentLevelIndex = (currentLevelIndex + 1) % officialPlayableLevels.length;
-            initializeGame();
-        });
-
-        saveCurrentLevelButton.addEventListener('click', saveCurrentLevel); // Event listener for new button
-
-        infoButton.addEventListener('click', () => showModal(infoModalOverlay));
-        closeInfoModalButton.addEventListener('click', () => hideModal(infoModalOverlay));
-        infoModalOverlay.addEventListener('click', (e) => {
-            if (e.target === infoModalOverlay) {
-                hideModal(infoModalOverlay);
-            }
-        });
-
-        customizationButtonStart.addEventListener('click', () => showModal(customizationModalOverlay));
-        closeCustomizationModalButton.addEventListener('click', () => {
-            hideModal(customizationModalOverlay);
-            saveCustomization(); // Save customization when closing the modal
-        });
-        customizationModalOverlay.addEventListener('click', (e) => {
-            if (e.target === customizationModalOverlay) {
-                hideModal(customizationModalOverlay);
-                saveCustomization(); // Save customization when clicking outside the modal
-            }
-        });
-
-        playerColorPicker.addEventListener('input', (e) => { PLAYER_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
-        wallColorPicker.addEventListener('input', (e) => { WALL_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
-        pathColorPicker.addEventListener('input', (e) => { PATH_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
-
-        menuButtonStart.addEventListener('click', () => {
-            showModal(menuModalOverlay);
-            loadMyLevels();
-            updateUserIdDisplay();
-            fetchPlayerBricks();
-        });
-        closeMenuModalButton.addEventListener('click', () => hideModal(menuModalOverlay));
-        menuModalOverlay.addEventListener('click', (e) => {
-            if (e.target === menuModalOverlay) {
-                hideModal(menuModalOverlay);
-            }
-        });
-
-        startRandomMazeButton.addEventListener('click', () => {
-            currentGameType = GAME_MODES.MAZE;
-            hideAllModals();
-            showScreen('gamePlayArea');
-        });
-
-        startRandomBlocksButton.addEventListener('click', () => {
-            currentGameType = GAME_MODES.BLOCKS;
-            hideAllModals();
-            showScreen('gamePlayArea');
-        });
-
-        buildModeButton.addEventListener('click', () => {
-            currentGameType = GAME_MODES.BUILD;
-            hideAllModals();
-            showScreen('buildModeArea');
-            editingLevelId = null; // When entering build mode directly, ensure no level is being edited
-            initBuildGrid(); // Start with a fresh grid
-            drawBuild();
-        });
-
-        refreshMyLevelsButton.addEventListener('click', loadMyLevels);
-
-        // Community Levels button in Menu
-        searchLevelsButton.addEventListener('click', () => {
-            showModal(communityLevelsModalOverlay);
-            loadCommunityLevels();
-        });
-        refreshCommunityLevelsButton.addEventListener('click', loadCommunityLevels);
-        closeCommunityLevelsModalButton.addEventListener('click', () => hideModal(communityLevelsModalOverlay));
-        communityLevelsModalOverlay.addEventListener('click', (e) => {
-            if (e.target === communityLevelsModalOverlay) {
-                hideModal(communityLevelsModalOverlay);
-            }
-        });
-
-        // Leaderboard event listeners
-        leaderboardButton.addEventListener('click', () => {
-            showModal(leaderboardModalOverlay);
-            loadLeaderboard(); // Load immediately when opened
-        });
-        refreshLeaderboardButton.addEventListener('click', loadLeaderboard);
-        closeLeaderboardModalButton.addEventListener('click', () => hideModal(leaderboardModalOverlay));
-        leaderboardModalOverlay.addEventListener('click', (e) => {
-            if (e.target === leaderboardModalOverlay) {
-                hideModal(leaderboardModalOverlay);
-            }
-        });
-
-
-        // Build Mode specific buttons and tools
-        clearBuildGridButton.addEventListener('click', () => {
-            initBuildGrid();
-            drawBuild();
-            buildMessageBox.textContent = "Grid cleared! Start building!";
-            editingLevelId = null; // Clear editing state when clearing grid
-        });
-
-        saveLevelButton.addEventListener('click', saveLevel);
-        publishLevelButton.addEventListener('click', publishLevel);
-
-        // Tool selection event listeners
-        toolEraser.addEventListener('click', () => selectBuildTool('eraser')); // Eraser tool sets currentBuildTool to 'eraser' string
-        toolWall.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WALL));
-        toolPath.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PATH));
-        toolPlayer.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PLAYER_START));
-        toolWinpad.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WINPAD));
-        toolTrigger.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.TRIGGER));
-        toolMovingBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.MOVING_BLOCK));
-        toolPushBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PUSH_BLOCK));
-        toolSelection.addEventListener('click', () => selectBuildTool('selection')); // Selection tool sets currentBuildTool to 'selection' string
-
-        // Selection action buttons
-        fillSelectionButton.addEventListener('click', () => {
-            if (lastSelectedDrawingTool !== 'selection') { // Ensure it's a valid block type
-                fillSelection(lastSelectedDrawingTool);
-            } else {
-                buildMessageBox.textContent = "Please select a drawing tool first (e.g., Wall, Player) to fill the selection.";
-            }
-        });
-        clearSelectionButton.addEventListener('click', () => fillSelection(BLOCK_TYPES.PATH)); // Clear selection always fills with PATH
-        exitSelectionButton.addEventListener('click', () => selectBuildTool(lastSelectedDrawingTool)); // New: Exit selection and go back to last drawing tool
-
-        backToMainMenuButtonGame.addEventListener('click', () => showScreen('startScreen'));
-        backToMainMenuButtonBuild.addEventListener('click', () => showScreen('startScreen'));
-
-        window.addEventListener('resize', resizeCanvas);
 
         // Initial setup when the window loads
         window.onload = () => {
@@ -3025,99 +3005,255 @@
                 fetchDailyLevel();
                 setInterval(loadLeaderboard, 60000); // Update every 60 seconds (1 minute)
             }
-        };
 
-        loginButton.addEventListener('click', () => {
-            if (loginButton.classList.contains('logged-in')) {
-                handleLogout();
-            } else {
-                showModal(loginModalOverlay);
-            }
-        });
-        loginSubmitButton.addEventListener('click', handleLogin);
-        loginCancelButton.addEventListener('click', () => hideModal(loginModalOverlay));
-        loginModalOverlay.addEventListener('click', (e) => {
-            if (e.target === loginModalOverlay) {
-                hideModal(loginModalOverlay);
-            }
-        });
+            // --- Event Listeners (Moved inside window.onload) ---
+            playButton.addEventListener('click', async () => {
+                await fetchOfficialPlayableLevels();
+                currentLevelIndex = 0;
+                if (officialPlayableLevels.length > 0) {
+                    currentGameType = GAME_MODES.LEVEL;
+                    hideAllModals();
+                    showScreen('gamePlayArea');
+                } else {
+                    messageBox.textContent = "No official levels found. Please ask LtpMer to set some!";
+                    setTimeout(() => messageBox.textContent = "", 5000);
+                }
+            });
 
-        // Event listener for daily level play button
-        playDailyLevelButton.addEventListener('click', () => {
-            if (currentDailyLevel) {
-                playCommunityLevel(currentDailyLevel);
-            } else {
-                messageBox.textContent = "No daily level is currently set.";
-                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
-            }
-        });
+            nextLevelButton.addEventListener('click', () => {
+                currentLevelIndex = (currentLevelIndex + 1) % officialPlayableLevels.length;
+                initializeGame();
+            });
 
-        // Build canvas drawing event listeners
-        buildCanvas.addEventListener('mousedown', handleBuildCanvasInteraction);
-        buildCanvas.addEventListener('mouseup', handleBuildCanvasInteraction);
-        buildCanvas.addEventListener('mousemove', handleBuildCanvasInteraction);
-        // Prevent context menu on right click for better drawing experience
-        buildCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            editCurrentLevelButton.addEventListener('click', editCurrentLevel);
 
+            infoButton.addEventListener('click', () => showModal(infoModalOverlay));
+            closeInfoModalButton.addEventListener('click', () => hideModal(infoModalOverlay));
+            infoModalOverlay.addEventListener('click', (e) => {
+                if (e.target === infoModalOverlay) {
+                    hideModal(infoModalOverlay);
+                }
+            });
 
-        // Keyboard controls for player movement
-        window.addEventListener('keydown', (e) => {
-            if (currentActiveScreen === 'gamePlayArea') {
-                switch (e.key) {
-                    case 'ArrowUp':
-                    case 'w':
-                    case 'W':
+            customizationButtonStart.addEventListener('click', () => showModal(customizationModalOverlay));
+            closeCustomizationModalButton.addEventListener('click', () => {
+                hideModal(customizationModalOverlay);
+                saveCustomization();
+            });
+            customizationModalOverlay.addEventListener('click', (e) => {
+                if (e.target === customizationModalOverlay) {
+                    hideModal(customizationModalOverlay);
+                    saveCustomization();
+                }
+            });
+
+            playerColorPicker.addEventListener('input', (e) => { PLAYER_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
+            wallColorPicker.addEventListener('input', (e) => { WALL_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
+            pathColorPicker.addEventListener('input', (e) => { PATH_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
+
+            menuButtonStart.addEventListener('click', () => {
+                showModal(menuModalOverlay);
+                loadMyLevels();
+                updateUserIdDisplay();
+                fetchPlayerBricks();
+                loadCommunityLevels(''); // Load community levels in the menu's section without a search query initially
+            });
+            closeMenuModalButton.addEventListener('click', () => hideModal(menuModalOverlay));
+            menuModalOverlay.addEventListener('click', (e) => {
+                if (e.target === menuModalOverlay) {
+                    hideModal(menuModalOverlay);
+                }
+            });
+
+            startRandomMazeButton.addEventListener('click', () => {
+                currentGameType = GAME_MODES.MAZE;
+                hideAllModals();
+                showScreen('gamePlayArea');
+            });
+
+            startRandomBlocksButton.addEventListener('click', () => {
+                currentGameType = GAME_MODES.BLOCKS;
+                hideAllModals();
+                showScreen('gamePlayArea');
+            });
+
+            buildModeButton.addEventListener('click', () => {
+                currentGameType = GAME_MODES.BUILD;
+                hideAllModals();
+                showScreen('buildModeArea');
+                editingLevelId = null;
+                initBuildGrid();
+                drawBuild();
+            });
+
+            refreshMyLevelsButton.addEventListener('click', loadMyLevels);
+
+            searchLevelsButton.addEventListener('click', () => {
+                showModal(communityLevelsModalOverlay);
+                loadCommunityLevels(''); // Load community levels in the modal's section without a search query initially
+            });
+
+            // Event listeners for search in the Menu's Community Levels section
+            searchCommunityLevelsButton.addEventListener('click', () => {
+                loadCommunityLevels(levelSearchInput.value);
+            });
+            levelSearchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    loadCommunityLevels(levelSearchInput.value);
+                }
+            });
+            refreshCommunityLevelsButton.addEventListener('click', () => loadCommunityLevels('')); // Refresh with no search
+
+            // Event listeners for search in the Community Levels Modal
+            searchCommunityLevelsButtonModal.addEventListener('click', () => {
+                loadCommunityLevels(communityLevelSearchInputModal.value);
+            });
+            communityLevelSearchInputModal.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    loadCommunityLevels(communityLevelSearchInputModal.value);
+                }
+            });
+            refreshCommunityLevelsButtonModal.addEventListener('click', () => loadCommunityLevels(''));
+            closeCommunityLevelsModalButton.addEventListener('click', () => hideModal(communityLevelsModalOverlay));
+            communityLevelsModalOverlay.addEventListener('click', (e) => {
+                if (e.target === communityLevelsModalOverlay) {
+                    hideModal(communityLevelsModalOverlay);
+                }
+            });
+
+            leaderboardButton.addEventListener('click', () => {
+                showModal(leaderboardModalOverlay);
+                loadLeaderboard();
+            });
+            refreshLeaderboardButton.addEventListener('click', loadLeaderboard);
+            closeLeaderboardModalButton.addEventListener('click', () => hideModal(leaderboardModalOverlay));
+            leaderboardModalOverlay.addEventListener('click', (e) => {
+                if (e.target === leaderboardModalOverlay) {
+                    hideModal(leaderboardModalOverlay);
+                }
+            });
+
+            clearBuildGridButton.addEventListener('click', () => {
+                initBuildGrid();
+                drawBuild();
+                buildMessageBox.textContent = "Grid cleared! Start building!";
+                editingLevelId = null;
+            });
+
+            saveLevelButton.addEventListener('click', saveLevel);
+            publishLevelButton.addEventListener('click', publishLevel);
+
+            toolEraser.addEventListener('click', () => selectBuildTool('eraser'));
+            toolWall.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WALL));
+            toolPath.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PATH));
+            toolPlayer.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PLAYER_START));
+            toolWinpad.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WINPAD));
+            toolTrigger.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.TRIGGER));
+            toolMovingBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.MOVING_BLOCK));
+            toolPushBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PUSH_BLOCK));
+            toolSelection.addEventListener('click', () => selectBuildTool('selection'));
+
+            fillSelectionButton.addEventListener('click', () => {
+                if (lastSelectedDrawingTool !== 'selection') {
+                    fillSelection(lastSelectedDrawingTool);
+                } else {
+                    buildMessageBox.textContent = "Please select a drawing tool first (e.g., Wall, Player) to fill the selection.";
+                }
+            });
+            clearSelectionButton.addEventListener('click', () => fillSelection(BLOCK_TYPES.PATH));
+            exitSelectionButton.addEventListener('click', () => selectBuildTool(lastSelectedDrawingTool));
+
+            backToMainMenuButtonGame.addEventListener('click', () => showScreen('startScreen'));
+            backToMainMenuButtonBuild.addEventListener('click', () => showScreen('startScreen'));
+
+            loginButton.addEventListener('click', () => {
+                if (loginButton.classList.contains('logged-in')) {
+                    handleLogout();
+                } else {
+                    showModal(loginModalOverlay);
+                }
+            });
+            loginSubmitButton.addEventListener('click', handleLogin);
+            loginCancelButton.addEventListener('click', () => hideModal(loginModalOverlay));
+            loginModalOverlay.addEventListener('click', (e) => {
+                if (e.target === loginModalOverlay) {
+                    hideModal(loginModalOverlay);
+                }
+            });
+
+            playDailyLevelButton.addEventListener('click', () => {
+                if (currentDailyLevel) {
+                    playCommunityLevel(currentDailyLevel);
+                } else {
+                    messageBox.textContent = "No daily level is currently set.";
+                    setTimeout(() => messageBox.textContent = "", 3000);
+                }
+            });
+
+            buildCanvas.addEventListener('mousedown', handleBuildCanvasInteraction);
+            buildCanvas.addEventListener('mouseup', handleBuildCanvasInteraction);
+            buildCanvas.addEventListener('mousemove', handleBuildCanvasInteraction);
+            buildCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            window.addEventListener('keydown', (e) => {
+                if (currentActiveScreen === 'gamePlayArea') {
+                    switch (e.key) {
+                        case 'ArrowUp':
+                        case 'w':
+                        case 'W':
+                            movePlayer(0, -1);
+                            break;
+                        case 'ArrowDown':
+                        case 's':
+                        case 'S':
+                            movePlayer(0, 1);
+                            break;
+                        case 'ArrowLeft':
+                        case 'a':
+                        case 'A':
+                            movePlayer(-1, 0);
+                            break;
+                        case 'ArrowRight':
+                        case 'd':
+                        case 'D':
+                            movePlayer(1, 0);
+                            break;
+                        case 'Escape':
+                            hideAllModals();
+                            break;
+                    }
+                } else {
+                    if (e.key === 'Escape') {
+                        hideAllModals();
+                    }
+                }
+            });
+
+            touchControls.addEventListener('click', (e) => {
+                if (currentActiveScreen !== 'gamePlayArea') return;
+
+                const button = e.target.closest('.touch-button');
+                if (!button) return;
+
+                const direction = button.dataset.direction;
+                switch (direction) {
+                    case 'up':
                         movePlayer(0, -1);
                         break;
-                    case 'ArrowDown':
-                    case 's':
-                    case 'S':
+                    case 'down':
                         movePlayer(0, 1);
                         break;
-                    case 'ArrowLeft':
-                    case 'a':
-                    case 'A':
+                    case 'left':
                         movePlayer(-1, 0);
                         break;
-                    case 'ArrowRight':
-                    case 'd':
-                    case 'D':
+                    case 'right':
                         movePlayer(1, 0);
                         break;
-                    case 'Escape':
-                        hideAllModals();
-                        break;
                 }
-            } else {
-                if (e.key === 'Escape') {
-                    hideAllModals();
-                }
-            }
-        });
+            });
 
-        // Touch controls for player movement
-        touchControls.addEventListener('click', (e) => {
-            if (currentActiveScreen !== 'gamePlayArea') return;
-
-            const button = e.target.closest('.touch-button');
-            if (!button) return;
-
-            const direction = button.dataset.direction;
-            switch (direction) {
-                case 'up':
-                    movePlayer(0, -1);
-                    break;
-                case 'down':
-                    movePlayer(0, 1);
-                    break;
-                case 'left':
-                    movePlayer(-1, 0);
-                    break;
-                case 'right':
-                    movePlayer(1, 0);
-                    break;
-            }
-        });
+            window.addEventListener('resize', resizeCanvas); // Keep this outside for immediate responsiveness
+        };
     </script>
 </body>
 </html>
