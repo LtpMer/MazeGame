@@ -536,14 +536,15 @@
             width: 100%;
             text-align: left;
         }
-        .level-list-container div {
+        .level-list-container > div { /* Target direct children div of level-list-container */
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column; /* Stack name/metadata and buttons vertically */
             padding: 8px 0;
             border-bottom: 1px dashed #4a5568;
+            position: relative; /* For "By User" positioning */
+            padding-bottom: 25px; /* Add space for "By User" */
         }
-        .level-list-container div:last-child {
+        .level-list-container > div:last-child {
             border-bottom: none;
         }
         .level-list-container button {
@@ -553,11 +554,21 @@
             max-width: 80px;
             flex-shrink: 0;
         }
+        .level-list-container .level-name-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 5px;
+        }
         .level-list-container .level-name {
             flex-grow: 1;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-right: 10px; /* Space between name and metadata */
         }
         .level-list-container .play-level-button {
             background-color: #68d391;
@@ -602,6 +613,20 @@
             display: flex;
             align-items: center;
             gap: 5px;
+            flex-shrink: 0; /* Prevent metadata from shrinking */
+        }
+        .level-buttons-row {
+            display: flex;
+            justify-content: flex-end; /* Align buttons to the right */
+            width: 100%;
+            margin-top: 10px;
+        }
+        .level-creator { /* New style for "By User" */
+            position: absolute;
+            bottom: 5px;
+            left: 10px;
+            font-size: 0.75em;
+            color: #a0aec0;
         }
 
 
@@ -720,6 +745,8 @@
             gap: 5px;
             margin-top: 5px;
             align-items: center;
+            width: 100%; /* Ensure it takes full width within its parent */
+            justify-content: flex-end; /* Align to right */
         }
         .community-level-actions select {
             background-color: #4a5568;
@@ -806,6 +833,20 @@
             #customizationButtonStart, #menuButtonStart, #leaderboardButton {
                 font-size: 1.1rem;
                 padding: 12px 25px;
+            }
+            .level-list-container > div {
+                padding-bottom: 35px; /* More space for "By User" on small screens */
+            }
+            .community-level-actions {
+                flex-direction: column; /* Stack admin controls vertically */
+                align-items: flex-start;
+            }
+            .community-level-actions select,
+            .community-level-actions input[type="number"],
+            .community-level-actions button {
+                width: 100%; /* Full width for stacked controls */
+                max-width: 100%;
+                margin-left: 0 !important; /* Override button margin */
             }
         }
     </style>
@@ -1060,14 +1101,6 @@
         const refreshLeaderboardButton = document.getElementById('refreshLeaderboardButton');
         const closeLeaderboardModalButton = document.getElementById('closeLeaderboardModalButton');
 
-        // Removed: Play Mode Selection Modal elements
-        // const playModeSelectionModalOverlay = document.getElementById('playModeSelectionModalOverlay');
-        // const easyDifficultyButton = document.getElementById('easyDifficultyButton');
-        // const mediumDifficultyButton = document.getElementById('mediumDifficultyButton');
-        // const hardDifficultyButton = document.getElementById('hardDifficultyButton');
-        // const closePlayModeSelectionModalButton = document.getElementById('closePlayModeSelectionModalButton');
-
-
         // Buttons inside Menu Modal
         const startRandomMazeButton = document.getElementById('startRandomMazeButton');
         const startRandomBlocksButton = document.getElementById('startRandomBlocksButton');
@@ -1161,7 +1194,6 @@
         };
         let currentGameType = GAME_MODES.LEVEL;
         let currentLevelIndex = 0; // Index within the `officialPlayableLevels` array
-        // Removed: let currentDifficulty = 'easy'; // Default difficulty for official levels
         let currentLevelDifficulty = ''; // New: Difficulty of the level currently being played
         let currentLevelBrickReward = 0; // New: Brick reward for the level currently being played
 
@@ -1470,7 +1502,7 @@
                 let bricksDisplay = '';
 
                 if (currentLevelDifficulty && currentLevelDifficulty !== 'N/A') {
-                    difficultyDisplay = ` (${currentLevelDifficulty})`;
+                    difficultyDisplay = ` (${currentLevelDifficulty.replace('_', ' ')})`; // Replace underscore for display
                 }
                 if (currentLevelBrickReward > 0) {
                     bricksDisplay = ` 🧱 ${currentLevelBrickReward}`;
@@ -1573,7 +1605,8 @@
                     playerBricks = 0;
                 }
                 updateBricksDisplay();
-            } catch (e) {
+            }
+            catch (e) {
                 console.error("Error fetching player bricks:", e);
                 playerBricks = 0; // Default to 0 on error
                 updateBricksDisplay();
@@ -2040,7 +2073,6 @@
             hideModal(loginModalOverlay);
             hideModal(communityLevelsModalOverlay);
             hideModal(leaderboardModalOverlay);
-            // Removed: hideModal(playModeSelectionModalOverlay); 
         }
 
         // --- Simulated Login Functions ---
@@ -2123,9 +2155,13 @@
                 return;
             }
 
-            const levelName = prompt("Enter a name for your level:");
+            const levelName = prompt("Enter a name for your level (max 30 characters):");
             if (!levelName) {
                 buildMessageBox.textContent = "Level save cancelled.";
+                return;
+            }
+            if (levelName.length > 30) {
+                buildMessageBox.textContent = "Level name exceeds 30 characters. Please shorten it.";
                 return;
             }
 
@@ -2182,9 +2218,13 @@
                 return;
             }
 
-            const levelName = prompt("Enter a name for your public level:");
+            const levelName = prompt("Enter a name for your public level (max 30 characters):");
             if (!levelName) {
                 buildMessageBox.textContent = "Level publish cancelled.";
+                return;
+            }
+            if (levelName.length > 30) {
+                buildMessageBox.textContent = "Level name exceeds 30 characters. Please shorten it.";
                 return;
             }
 
@@ -2261,20 +2301,24 @@
                 myLevels.forEach((data) => {
                     const levelDiv = document.createElement('div');
                     const orderDisplay = data.order !== null ? `#${data.order} ` : '';
-                    const difficultyDisplay = data.difficulty ? `<span class="level-difficulty">(${data.difficulty})</span>` : '';
+                    const difficultyDisplay = data.difficulty ? `<span class="level-difficulty">(${data.difficulty.replace('_', ' ')})</span>` : '';
                     const bricksDisplay = (data.brickReward !== undefined && data.brickReward !== null) ? `<span class="level-bricks">🧱 ${data.brickReward}</span>` : '';
+                    const creatorDisplay = data.creatorName ? `<span class="level-creator">By ${data.creatorName}</span>` : '';
 
                     levelDiv.innerHTML = `
-                        <span class="level-name">${orderDisplay}${data.name} by ${data.creatorName || 'Anonymous'}</span>
-                        <div class="level-metadata">
-                            ${difficultyDisplay}
-                            ${bricksDisplay}
+                        <div class="level-name-row">
+                            <span class="level-name">${orderDisplay}${data.name}</span>
+                            <div class="level-metadata">
+                                ${difficultyDisplay}
+                                ${bricksDisplay}
+                            </div>
                         </div>
-                        <div>
+                        <div class="level-buttons-row">
                             <button class="play-level-button" data-level-id="${data.id}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Play</button>
                             <button class="delete-level-button" data-level-id="${data.id}">Delete</button>
                             ${currentPlayerName === 'LtpMer' ? `<button class="set-official-button" data-level-id="${data.id}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-creator-name="${data.creatorName}" data-creator-id="${data.creatorId}" data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Set as Official</button>` : ''}
                         </div>
+                        ${creatorDisplay}
                     `;
                     myLevelsList.appendChild(levelDiv);
                 });
@@ -2382,17 +2426,20 @@
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
                     const levelId = doc.id;
-                    const difficultyDisplay = data.difficulty ? `<span class="level-difficulty">(${data.difficulty})</span>` : '';
+                    const difficultyDisplay = data.difficulty ? `<span class="level-difficulty">(${data.difficulty.replace('_', ' ')})</span>` : '';
                     const bricksDisplay = (data.brickReward !== undefined && data.brickReward !== null) ? `<span class="level-bricks">🧱 ${data.brickReward}</span>` : '';
+                    const creatorDisplay = data.creatorName ? `<span class="level-creator">By ${data.creatorName}</span>` : '';
 
                     const levelDiv = document.createElement('div');
                     levelDiv.innerHTML = `
-                        <span class="level-name">${data.name} by ${data.creatorName || 'Anonymous'}</span>
-                        <div class="level-metadata">
-                            ${difficultyDisplay}
-                            ${bricksDisplay}
+                        <div class="level-name-row">
+                            <span class="level-name">${data.name}</span>
+                            <div class="level-metadata">
+                                ${difficultyDisplay}
+                                ${bricksDisplay}
+                            </div>
                         </div>
-                        <div>
+                        <div class="level-buttons-row">
                             <button class="play-level-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Play</button>
                             ${currentPlayerName === 'LtpMer' ? `
                                 <div class="community-level-actions">
@@ -2410,6 +2457,7 @@
                                 </div>
                             ` : ''}
                         </div>
+                        ${creatorDisplay}
                     `;
                     communityLevelsList.appendChild(levelDiv);
 
@@ -2536,7 +2584,7 @@
                     };
                     dailyLevelName.textContent = `${currentDailyLevel.name} by ${data.creatorName || 'Anonymous'}`;
                     if (currentDailyLevel.difficulty && currentDailyLevel.difficulty !== 'N/A') {
-                        dailyLevelName.textContent += ` (${currentDailyLevel.difficulty})`;
+                        dailyLevelName.textContent += ` (${currentDailyLevel.difficulty.replace('_', ' ')})`;
                     }
                     if (currentDailyLevel.brickReward > 0) {
                         dailyLevelName.textContent += ` 🧱 ${currentDailyLevel.brickReward}`;
@@ -2579,7 +2627,7 @@
             const difficultyToSet = levelData.difficulty || 'N/A';
             const brickRewardToSet = levelData.brickReward || 0;
 
-            if (!window.confirm(`Are you sure you want to set "${levelData.name}" as official level #${order} (Difficulty: ${difficultyToSet}, Bricks: ${brickRewardToSet})?`)) {
+            if (!window.confirm(`Are you sure you want to set "${levelData.name}" as official level #${order} (Difficulty: ${difficultyToSet.replace('_', ' ')}, Bricks: ${brickRewardToSet})?`)) {
                 return;
             }
 
@@ -2670,7 +2718,7 @@
                     const data = doc.data();
                     const entryDiv = document.createElement('div');
                     entryDiv.classList.add('leaderboard-entry');
-                    const difficultyLb = data.difficulty ? `<span class="difficulty-lb">(${data.difficulty})</span>` : '';
+                    const difficultyLb = data.difficulty ? `<span class="difficulty-lb">(${data.difficulty.replace('_', ' ')})</span>` : '';
                     entryDiv.innerHTML = `
                         <span class="rank">${rank}.</span>
                         <span class="player-name">${data.playerName || 'Anonymous'}</span>
@@ -2738,23 +2786,6 @@
             buildMessageBox.textContent = "Current level loaded into Build Mode. You can now save or modify it!";
         }
 
-        // Removed: Function to start official levels with a chosen difficulty
-        // async function startOfficialLevels(difficulty) {
-        //     currentDifficulty = difficulty; // Set the global current difficulty
-        //     await fetchOfficialPlayableLevels(currentDifficulty); // Fetch levels for this difficulty
-        //     currentLevelIndex = 0; // Start from the first level of this difficulty
-
-        //     if (officialPlayableLevels.length > 0) {
-        //         currentGameType = GAME_MODES.LEVEL;
-        //         hideAllModals();
-        //         showScreen('gamePlayArea');
-        //     } else {
-        //         messageBox.textContent = `No official ${currentDifficulty} levels found. Try another difficulty or build your own!`;
-        //         setTimeout(() => messageBox.textContent = "", 5000);
-        //         hideModal(playModeSelectionModalOverlay); // Hide modal even if no levels
-        //     }
-        // }
-
         // --- Event Listeners ---
 
         playButton.addEventListener('click', async () => {
@@ -2770,18 +2801,6 @@
                 setTimeout(() => messageBox.textContent = "", 5000);
             }
         });
-
-        // Removed: Difficulty selection buttons and their event listeners
-        // easyDifficultyButton.addEventListener('click', () => startOfficialLevels('easy'));
-        // mediumDifficultyButton.addEventListener('click', () => startOfficialLevels('medium'));
-        // hardDifficultyButton.addEventListener('click', () => startOfficialLevels('hard'));
-        // closePlayModeSelectionModalButton.addEventListener('click', () => hideModal(playModeSelectionModalOverlay));
-        // playModeSelectionModalOverlay.addEventListener('click', (e) => {
-        //     if (e.target === playModeSelectionModalOverlay) {
-        //         hideModal(playModeSelectionModalOverlay);
-        //     }
-        // });
-
 
         nextLevelButton.addEventListener('click', () => {
             currentLevelIndex = (currentLevelIndex + 1) % officialPlayableLevels.length;
