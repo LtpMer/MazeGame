@@ -273,8 +273,10 @@
         .touch-controls {
             display: none; /* Hidden by default, shown on smaller screens */
             position: absolute; /* Position absolutely within game-play-area */
-            left: 20px; /* Adjust as needed */
-            bottom: 20px; /* Adjust as needed */
+            /* Default position, will be overridden by localStorage */
+            left: 20px; 
+            bottom: 20px; 
+
             grid-template-areas:
                 ". up ."
                 "left . right"
@@ -285,6 +287,8 @@
             justify-items: center;
             align-items: center;
             z-index: 5; /* Ensure it's above canvas but below modals */
+            cursor: grab; /* Indicate draggable */
+            touch-action: none; /* Prevent default touch actions like scrolling/zooming */
         }
 
         .touch-button {
@@ -298,7 +302,7 @@
             justify-content: center;
             align-items: center;
             font-size: 1.5rem;
-            cursor: pointer;
+            cursor: pointer; /* Cursor for individual buttons */
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
             transition: background-color 0.3s ease, transform 0.2s ease;
         }
@@ -860,8 +864,7 @@
             .touch-controls {
                 display: grid; /* Show touch controls on small screens */
                 position: absolute; /* Keep absolute positioning */
-                left: 10px; /* Adjust for smaller screens */
-                bottom: 10px; /* Adjust for smaller screens */
+                /* Initial position will be set by JS from localStorage */
                 width: 150px; /* Smaller touch controls */
                 height: 150px;
             }
@@ -1839,6 +1842,7 @@
             } else if (buildModeArea && buildModeArea.classList.contains('active')) {
                 if (buildCtx) drawBuild();
             }
+            positionTouchControls(); // Reposition touch controls on resize
         }
 
         // Function to switch between different main screens
@@ -3018,6 +3022,106 @@
             }
         }
 
+        // Drag functionality for touch controls
+        let isDraggingTouchControls = false;
+        let initialX, initialY;
+        let offsetX, offsetY;
+
+        function startDragTouchControls(e) {
+            if (e.target.classList.contains('touch-button')) return; // Don't drag if clicking on a button inside
+
+            isDraggingTouchControls = true;
+            touchControls.style.cursor = 'grabbing';
+
+            const rect = touchControls.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            initialX = clientX;
+            initialY = clientY;
+            offsetX = clientX - rect.left;
+            offsetY = clientY - rect.top;
+
+            // Prevent default touch behavior (scrolling, zooming)
+            if (e.type === 'touchstart') {
+                e.preventDefault();
+            }
+        }
+
+        function dragTouchControls(e) {
+            if (!isDraggingTouchControls) return;
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            let newLeft = clientX - offsetX;
+            let newTop = clientY - offsetY;
+
+            // Get boundaries of the game-container to keep controls within it
+            const gameContainer = document.querySelector('.game-container');
+            const containerRect = gameContainer.getBoundingClientRect();
+            const controlsRect = touchControls.getBoundingClientRect();
+
+            // Clamp newLeft and newTop to stay within container bounds
+            newLeft = Math.max(containerRect.left, newLeft);
+            newLeft = Math.min(containerRect.right - controlsRect.width, newLeft);
+            newTop = Math.max(containerRect.top, newTop);
+            newTop = Math.min(containerRect.bottom - controlsRect.height, newTop);
+
+            // Convert to relative position within the game-container
+            touchControls.style.left = `${newLeft - containerRect.left}px`;
+            touchControls.style.top = `${newTop - containerRect.top}px`;
+
+            // Prevent default touch behavior (scrolling, zooming)
+            if (e.type === 'touchmove') {
+                e.preventDefault();
+            }
+        }
+
+        function stopDragTouchControls() {
+            isDraggingTouchControls = false;
+            touchControls.style.cursor = 'grab';
+            // Save the final position to localStorage
+            if (touchControls) {
+                localStorage.setItem('touchControlsLeft', touchControls.style.left);
+                localStorage.setItem('touchControlsTop', touchControls.style.top);
+            }
+        }
+
+        function positionTouchControls() {
+            if (!touchControls) return;
+
+            const savedLeft = localStorage.getItem('touchControlsLeft');
+            const savedTop = localStorage.getItem('touchControlsTop');
+
+            if (savedLeft && savedTop) {
+                // Apply saved positions
+                touchControls.style.left = savedLeft;
+                touchControls.style.top = savedTop;
+            } else {
+                // Apply default positions if no saved state
+                // These are relative to the parent, which is .game-play-area
+                // For absolute positioning, they need to be relative to the closest positioned ancestor.
+                // Since .game-container is relative, we can position them relative to it.
+                // Let's calculate initial position relative to game-container
+                const gameContainer = document.querySelector('.game-container');
+                if (gameContainer) {
+                    const containerRect = gameContainer.getBoundingClientRect();
+                    const controlsWidth = touchControls.offsetWidth;
+                    const controlsHeight = touchControls.offsetHeight;
+
+                    // Default to bottom-left corner with some padding
+                    const defaultLeft = 20; // 20px from left of container
+                    const defaultBottom = 20; // 20px from bottom of container
+                    const defaultTop = containerRect.height - controlsHeight - defaultBottom;
+
+                    touchControls.style.left = `${defaultLeft}px`;
+                    touchControls.style.top = `${defaultTop}px`;
+                }
+            }
+        }
+
+
         // Initial setup when the window loads
         window.onload = () => {
             // Get main UI elements
@@ -3119,7 +3223,8 @@
             // Immediately show the start screen and resize the canvas
             showScreen('startScreen');
             resizeCanvas();
-            
+            positionTouchControls(); // Position controls on load
+
             // Listen for Firebase auth readiness and then load user data and levels
             document.addEventListener('firebaseAuthReady', async () => {
                 await loadUserProfile(); // Load user profile and customization first
@@ -3353,7 +3458,23 @@
             });
 
             if (touchControls) {
+                // Add drag listeners to the touch controls container
+                touchControls.addEventListener('mousedown', startDragTouchControls);
+                touchControls.addEventListener('mousemove', dragTouchControls);
+                touchControls.addEventListener('mouseup', stopDragTouchControls);
+
+                // Add touch listeners for mobile devices
+                touchControls.addEventListener('touchstart', startDragTouchControls);
+                touchControls.addEventListener('touchmove', dragTouchControls);
+                touchControls.addEventListener('touchend', stopDragTouchControls);
+
                 touchControls.addEventListener('click', (e) => {
+                    // Prevent movement if the drag just ended (to avoid accidental button clicks)
+                    if (isDraggingTouchControls) {
+                        isDraggingTouchControls = false; // Reset drag state
+                        return; // Do not process as a button click
+                    }
+
                     if (currentActiveScreen !== 'gamePlayArea') return;
 
                     const button = e.target.closest('.touch-button');
