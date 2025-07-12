@@ -1120,81 +1120,20 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Get main UI elements
-        const startScreen = document.getElementById('startScreen');
-        const gamePlayArea = document.getElementById('gamePlayArea');
-        const buildModeArea = document.getElementById('buildModeArea');
-        const infoButton = document.getElementById('infoButton');
-        const loginButton = document.getElementById('loginButton');
+        // Declare variables globally, but initialize them inside window.onload
+        let startScreen, gamePlayArea, buildModeArea, infoButton, loginButton;
+        let playButton, customizationButtonStart, menuButtonStart, leaderboardButton, dailyLevelContainer, dailyLevelName, playDailyLevelButton;
+        let mazeCanvas, mazeCtx, messageBox, nextLevelButton, editCurrentLevelButton, backToMainMenuButtonGame, touchControls;
+        let buildCanvas, buildCtx, buildMessageBox, clearBuildGridButton, saveLevelButton, publishLevelButton, backToMainMenuButtonBuild;
+        let infoModalOverlay, closeInfoModalButton, customizationModalOverlay, closeCustomizationModalButton, menuModalOverlay, closeMenuModalButton, loginModalOverlay, playerNameInput, passwordInput, loginSubmitButton, loginCancelButton, communityLevelsModalOverlay, communityLevelsListInMenu, levelSearchInput, searchCommunityLevelsButton, refreshCommunityLevelsButton;
+        let communityLevelSearchInputModal, searchCommunityLevelsButtonModal, communityLevelsListModal, refreshCommunityLevelsButtonModal, closeCommunityLevelsModalButton;
+        let startRandomMazeButton, startRandomBlocksButton, buildModeButton, userIdDisplay, playerBricksDisplay, myLevelsList, refreshMyLevelsButton, searchLevelsButton;
+        let playerColorPicker, wallColorPicker, pathColorPicker;
+        let drawingToolsContainer, selectionActionsContainer;
+        let toolWall, toolEraser, toolPath, toolPlayer, toolWinpad, toolTrigger, toolMovingBlock, toolPushBlock, toolSelection;
+        let fillSelectionButton, clearSelectionButton, exitSelectionButton;
+        let leaderboardList, refreshLeaderboardButton, closeLeaderboardModalButton;
 
-        // Get start screen buttons
-        const playButton = document.getElementById('playButton');
-        const customizationButtonStart = document.getElementById('customizationButtonStart');
-        const menuButtonStart = document.getElementById('menuButtonStart');
-        const leaderboardButton = document.getElementById('leaderboardButton');
-        const dailyLevelContainer = document.getElementById('dailyLevelContainer');
-        const dailyLevelName = document.getElementById('dailyLevelName');
-        const playDailyLevelButton = document.getElementById('playDailyLevelButton');
-
-        // Get game play area elements
-        const mazeCanvas = document.getElementById('mazeCanvas');
-        const mazeCtx = mazeCanvas.getContext('2d');
-        const messageBox = document.getElementById('messageBox');
-        const nextLevelButton = document.getElementById('nextLevelButton');
-        const editCurrentLevelButton = document.getElementById('editCurrentLevelButton'); // Renamed
-        const backToMainMenuButtonGame = document.getElementById('backToMainMenuButtonGame');
-        const touchControls = document.querySelector('.touch-controls');
-
-        // Get build mode area elements
-        const buildCanvas = document.getElementById('buildCanvas');
-        const buildCtx = buildCanvas.getContext('2d');
-        const buildMessageBox = document.getElementById('buildMessageBox');
-        const clearBuildGridButton = document.getElementById('clearBuildGridButton');
-        const saveLevelButton = document.getElementById('saveLevelButton');
-        const publishLevelButton = document.getElementById('publishLevelButton');
-        const backToMainMenuButtonBuild = document.getElementById('backToMainMenuButtonBuild');
-
-        // Modals
-        const infoModalOverlay = document.getElementById('infoModalOverlay');
-        const closeInfoModalButton = document.getElementById('closeInfoModalButton');
-        const customizationModalOverlay = document.getElementById('customizationModalOverlay');
-        const closeCustomizationModalButton = document.getElementById('closeCustomizationModalButton');
-        const menuModalOverlay = document.getElementById('menuModalOverlay');
-        const closeMenuModalButton = document.getElementById('closeMenuModalButton');
-        const loginModalOverlay = document.getElementById('loginModalOverlay');
-        const playerNameInput = document.getElementById('playerNameInput');
-        const passwordInput = document.getElementById('passwordInput');
-        const loginSubmitButton = document.getElementById('loginSubmitButton');
-        const loginCancelButton = document.getElementById('loginCancelButton');
-        const communityLevelsModalOverlay = document.getElementById('communityLevelsModalOverlay');
-        // Renamed communityLevelsList to communityLevelsListInMenu for clarity
-        const communityLevelsListInMenu = document.getElementById('communityLevelsList');
-        // New elements for search in Menu's Community Levels section
-        const levelSearchInput = document.getElementById('levelSearchInput');
-        const searchCommunityLevelsButton = document.getElementById('searchCommunityLevelsButton');
-        const refreshCommunityLevelsButton = document.getElementById('refreshCommunityLevelsButton'); // Added for menu modal's refresh
-
-        // New elements for search in Community Levels Modal
-        const communityLevelSearchInputModal = document.getElementById('communityLevelSearchInputModal');
-        const searchCommunityLevelsButtonModal = document.getElementById('searchCommunityLevelsButtonModal');
-        const communityLevelsListModal = document.getElementById('communityLevelsListModal'); // Corrected ID
-        const refreshCommunityLevelsButtonModal = document.getElementById('refreshCommunityLevelsButtonModal'); // Corrected ID
-        const closeCommunityLevelsModalButton = document.getElementById('closeCommunityLevelsModalButton');
-
-        // Buttons inside Menu Modal
-        const startRandomMazeButton = document.getElementById('startRandomMazeButton');
-        const startRandomBlocksButton = document.getElementById('startRandomBlocksButton');
-        const buildModeButton = document.getElementById('buildModeButton');
-        const userIdDisplay = document.getElementById('userIdDisplay');
-        const playerBricksDisplay = document.getElementById('playerBricksDisplay');
-        const myLevelsList = document.getElementById('myLevelsList');
-        const refreshMyLevelsButton = document.getElementById('refreshMyLevelsButton');
-        const searchLevelsButton = document.getElementById('searchLevelsButton');
-
-        // Customization elements
-        const playerColorPicker = document.getElementById('playerColorPicker');
-        const wallColorPicker = document.getElementById('wallColorPicker');
-        const pathColorPicker = document.getElementById('pathColorPicker');
 
         // Maze dimensions
         const MAZE_WIDTH = 31;
@@ -1222,23 +1161,6 @@
             // ERASER is handled by setting currentBuildTool to PATH
             // SELECTION is handled by setting currentBuildTool to 'selection' string
         };
-
-        // Build Mode Tools
-        const drawingToolsContainer = document.getElementById('drawingTools'); // New container for drawing tools
-        const selectionActionsContainer = document.getElementById('selectionActions'); // New container for selection actions
-
-        const toolWall = document.getElementById('toolWall');
-        const toolEraser = document.getElementById('toolEraser'); 
-        const toolPath = document.getElementById('toolPath'); 
-        const toolPlayer = document.getElementById('toolPlayer');
-        const toolWinpad = document.getElementById('toolWinpad');
-        const toolTrigger = document.getElementById('toolTrigger');
-        const toolMovingBlock = document.getElementById('toolMovingBlock');
-        const toolPushBlock = document.getElementById('toolPushBlock');
-        const toolSelection = document.getElementById('toolSelection'); // New Selection Tool
-        const fillSelectionButton = document.getElementById('fillSelectionButton'); // New Fill Selection Button
-        const clearSelectionButton = document.getElementById('clearSelectionButton'); // New Clear Selection Button
-        const exitSelectionButton = document.getElementById('exitSelectionButton'); // New Exit Selection Button
 
         let currentBuildTool = BLOCK_TYPES.WALL; // The currently active tool for drawing/selection
         let lastSelectedDrawingTool = BLOCK_TYPES.WALL; // Stores the last non-selection tool chosen
@@ -1704,7 +1626,9 @@
 
         // Updates the bricks display in the UI
         function updateBricksDisplay() {
-            playerBricksDisplay.textContent = `Bricks: 🧱 ${playerBricks}`;
+            if (playerBricksDisplay) { // Ensure element exists before updating
+                playerBricksDisplay.textContent = `Bricks: 🧱 ${playerBricks}`;
+            }
         }
 
         // Saves customization settings to Firestore
@@ -1735,13 +1659,15 @@
                 const storedPlayerName = localStorage.getItem('playerName');
                 if (storedPlayerName) {
                     currentPlayerName = storedPlayerName;
-                    loginButton.textContent = "Logout";
-                    loginButton.classList.add('logged-in');
+                    if (loginButton) { // Check if loginButton is initialized
+                        loginButton.textContent = "Logout";
+                        loginButton.classList.add('logged-in');
+                    }
                 }
                 updateUserIdDisplay();
                 updateBricksDisplay();
-                drawGame();
-                drawBuild();
+                if (mazeCtx) drawGame(); // Only draw if context is available
+                if (buildCtx) drawBuild(); // Only draw if context is available
                 return;
             }
             try {
@@ -1756,21 +1682,25 @@
                     PATH_COLOR = data.pathColor || '#f0f0f0';
 
                     // Update color pickers to reflect loaded colors
-                    playerColorPicker.value = PLAYER_COLOR;
-                    wallColorPicker.value = WALL_COLOR;
-                    pathColorPicker.value = PATH_COLOR;
+                    if (playerColorPicker) playerColorPicker.value = PLAYER_COLOR;
+                    if (wallColorPicker) wallColorPicker.value = WALL_COLOR;
+                    if (pathColorPicker) pathColorPicker.value = PATH_COLOR;
 
                     if (currentPlayerName !== "Anonymous") {
-                        loginButton.textContent = "Logout";
-                        loginButton.classList.add('logged-in');
+                        if (loginButton) { // Check if loginButton is initialized
+                            loginButton.textContent = "Logout";
+                            loginButton.classList.add('logged-in');
+                        }
                     }
                 } else {
                     // If no profile exists in Firestore, check localStorage
                     const storedPlayerName = localStorage.getItem('playerName');
                     if (storedPlayerName) {
                         currentPlayerName = storedPlayerName;
-                        loginButton.textContent = "Logout";
-                        loginButton.classList.add('logged-in');
+                        if (loginButton) { // Check if loginButton is initialized
+                            loginButton.textContent = "Logout";
+                            loginButton.classList.add('logged-in');
+                        }
                     } else {
                         currentPlayerName = "Anonymous";
                     }
@@ -1779,21 +1709,21 @@
                     PLAYER_COLOR = '#0000FF'; // Default to blue
                     WALL_COLOR = '#000000';
                     PATH_COLOR = '#f0f0f0';
-                    playerColorPicker.value = PLAYER_COLOR;
-                    wallColorPicker.value = WALL_COLOR;
-                    pathColorPicker.value = PATH_COLOR;
+                    if (playerColorPicker) playerColorPicker.value = PLAYER_COLOR;
+                    if (wallColorPicker) wallColorPicker.value = WALL_COLOR;
+                    if (pathColorPicker) pathColorPicker.value = PATH_COLOR;
                 }
                 updateUserIdDisplay();
                 updateBricksDisplay();
-                drawGame(); // Redraw game with loaded colors
-                drawBuild(); // Redraw build canvas with loaded colors
+                if (mazeCtx) drawGame(); // Redraw game with loaded colors
+                if (buildCtx) drawBuild(); // Redraw build canvas with loaded colors
             } catch (e) {
                 console.error("Error loading user profile:", e);
                 // Fallback to localStorage and defaults on error
                 const storedPlayerName = localStorage.getItem('playerName');
                 if (storedPlayerName) {
                     currentPlayerName = storedPlayerName;
-                    loginButton.textContent = "Logout";
+                    if (loginButton) loginButton.textContent = "Logout";
                 } else {
                     currentPlayerName = "Anonymous";
                 }
@@ -1801,14 +1731,14 @@
                 PLAYER_COLOR = '#0000FF'; // Fallback to default blue
                 WALL_COLOR = '#000000'; // Fallback to default
                 PATH_COLOR = '#f0f0f0'; // Fallback to default
-                playerColorPicker.value = PLAYER_COLOR;
-                wallColorPicker.value = WALL_COLOR;
-                pathColorPicker.value = PATH_COLOR;
+                if (playerColorPicker) playerColorPicker.value = PLAYER_COLOR;
+                if (wallColorPicker) wallColorPicker.value = WALL_COLOR;
+                if (pathColorPicker) pathColorPicker.value = PATH_COLOR;
                 updateUserIdDisplay();
                 updateBricksDisplay();
-                drawGame();
-                drawBuild();
-                messageBox.textContent = `Error loading profile: ${e.message}. Check console for details.`;
+                if (mazeCtx) drawGame();
+                if (buildCtx) drawBuild();
+                if (messageBox) messageBox.textContent = `Error loading profile: ${e.message}. Check console for details.`;
             }
         }
 
@@ -1823,14 +1753,14 @@
 
             if (currentGameType === GAME_MODES.LEVEL) {
                 if (officialPlayableLevels.length === 0) {
-                    messageBox.textContent = `No official levels found. Play a random maze or build your own!`;
-                    nextLevelButton.style.display = 'none';
-                    editCurrentLevelButton.style.display = 'none'; // Hide edit button for official levels
-                    mazeCtx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height); // Clear canvas
+                    if (messageBox) messageBox.textContent = `No official levels found. Play a random maze or build your own!`;
+                    if (nextLevelButton) nextLevelButton.style.display = 'none';
+                    if (editCurrentLevelButton) editCurrentLevelButton.style.display = 'none'; // Hide edit button for official levels
+                    if (mazeCtx && mazeCanvas) mazeCtx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height); // Clear canvas
                     return; // Don't start game if no levels
                 }
                 loadOfficialLevel(currentLevelIndex); // Loads from officialPlayableLevels
-                editCurrentLevelButton.style.display = 'none'; // Hide edit button for official levels
+                if (editCurrentLevelButton) editCurrentLevelButton.style.display = 'none'; // Hide edit button for official levels
             } else if (currentGameType === GAME_MODES.MAZE) {
                 generateMaze();
                 player = getRandomPathPosition();
@@ -1841,7 +1771,7 @@
                 currentLevelName = "Random Maze";
                 currentLevelDifficulty = 'random'; // Assign a difficulty for random levels
                 currentLevelBrickReward = 1; // Default bricks for random maze
-                editCurrentLevelButton.style.display = 'block'; // Show edit button for random modes
+                if (editCurrentLevelButton) editCurrentLevelButton.style.display = 'block'; // Show edit button for random modes
             } else if (currentGameType === GAME_MODES.BLOCKS) {
                 generateBlocks();
                 player = getRandomPathPosition();
@@ -1852,78 +1782,84 @@
                 currentLevelName = "Random Blocks";
                 currentLevelDifficulty = 'random'; // Assign a difficulty for random levels
                 currentLevelBrickReward = 1; // Default bricks for random blocks
-                editCurrentLevelButton.style.display = 'block'; // Show edit button for random modes
+                if (editCurrentLevelButton) editCurrentLevelButton.style.display = 'block'; // Show edit button for random modes
             } else if (currentGameType === GAME_MODES.BUILD) {
                 if (!buildGrid || buildGrid.length === 0 || buildGrid[0].length === 0) {
                     initBuildGrid();
                 }
-                buildMessageBox.textContent = "Click to place/remove blocks!";
+                if (buildMessageBox) buildMessageBox.textContent = "Click to place/remove blocks!";
                 updatePlayerAndEndFromBuildGrid();
-                editCurrentLevelButton.style.display = 'none'; // Hide edit button in build mode
+                if (editCurrentLevelButton) editCurrentLevelButton.style.display = 'none'; // Hide edit button in build mode
             } else if (currentGameType === GAME_MODES.SAVED_LEVEL || currentGameType === GAME_MODES.COMMUNITY_LEVEL) {
                 // mazeGrid, player, end, currentLevelId, currentLevelName, currentLevelDifficulty, currentLevelBrickReward are already set by playSavedLevel/playCommunityLevel
-                editCurrentLevelButton.style.display = 'block'; // Show edit button for saved/community levels
+                if (editCurrentLevelButton) editCurrentLevelButton.style.display = 'block'; // Show edit button for saved/community levels
             }
             
-            nextLevelButton.style.display = (currentGameType === GAME_MODES.LEVEL && officialPlayableLevels.length > 0) ? 'block' : 'none';
+            if (nextLevelButton) nextLevelButton.style.display = (currentGameType === GAME_MODES.LEVEL && officialPlayableLevels.length > 0) ? 'block' : 'none';
 
             if (currentGameType !== GAME_MODES.BUILD) {
                 startLevelTimer(); // Start timer for playable levels
                 checkWinCondition();
-                drawGame();
+                if (mazeCtx) drawGame();
             } else {
-                drawBuild();
+                if (buildCtx) drawBuild();
             }
         }
 
         // Adjusts canvas size and block size based on container width and window height
         function resizeCanvas() {
             const container = document.querySelector('.game-container');
+            if (!container) return; // Exit if container is not found
+
             const containerWidth = container.clientWidth - 60;
 
             BLOCK_SIZE = Math.floor(Math.min(containerWidth / MAZE_WIDTH, (window.innerHeight * 0.6) / MAZE_HEIGHT));
             BLOCK_SIZE = Math.max(BLOCK_SIZE, 8);
             BLOCK_SIZE = Math.min(BLOCK_SIZE, 15);
 
-            mazeCanvas.width = MAZE_WIDTH * BLOCK_SIZE;
-            mazeCanvas.height = MAZE_HEIGHT * BLOCK_SIZE;
-            buildCanvas.width = MAZE_WIDTH * BLOCK_SIZE;
-            buildCanvas.height = MAZE_HEIGHT * BLOCK_SIZE;
+            if (mazeCanvas) {
+                mazeCanvas.width = MAZE_WIDTH * BLOCK_SIZE;
+                mazeCanvas.height = MAZE_HEIGHT * BLOCK_SIZE;
+            }
+            if (buildCanvas) {
+                buildCanvas.width = MAZE_WIDTH * BLOCK_SIZE;
+                buildCanvas.height = MAZE_HEIGHT * BLOCK_SIZE;
+            }
 
             // Redraw content after resizing
-            if (startScreen.classList.contains('active')) {
+            if (startScreen && startScreen.classList.contains('active')) {
                 // No canvas drawing on start screen
-            } else if (gamePlayArea.classList.contains('active')) {
-                drawGame();
-            } else if (buildModeArea.classList.contains('active')) {
-                drawBuild();
+            } else if (gamePlayArea && gamePlayArea.classList.contains('active')) {
+                if (mazeCtx) drawGame();
+            } else if (buildModeArea && buildModeArea.classList.contains('active')) {
+                if (buildCtx) drawBuild();
             }
         }
 
         // Function to switch between different main screens
         let currentActiveScreen = 'startScreen';
         function showScreen(screenId) {
-            startScreen.classList.remove('active');
-            gamePlayArea.classList.remove('active');
-            buildModeArea.classList.remove('active');
-            infoButton.style.display = 'none';
-            loginButton.style.display = 'none';
+            if (startScreen) startScreen.classList.remove('active');
+            if (gamePlayArea) gamePlayArea.classList.remove('active');
+            if (buildModeArea) buildModeArea.classList.remove('active');
+            if (infoButton) infoButton.style.display = 'none';
+            if (loginButton) loginButton.style.display = 'none';
 
             currentActiveScreen = screenId;
 
             if (screenId === 'startScreen') {
-                startScreen.classList.add('active');
-                infoButton.style.display = 'block';
-                loginButton.style.display = 'block';
+                if (startScreen) startScreen.classList.add('active');
+                if (infoButton) infoButton.style.display = 'block';
+                if (loginButton) loginButton.style.display = 'block';
             } else if (screenId === 'gamePlayArea') {
-                gamePlayArea.classList.add('active');
-                infoButton.style.display = 'block';
-                loginButton.style.display = 'block';
+                if (gamePlayArea) gamePlayArea.classList.add('active');
+                if (infoButton) infoButton.style.display = 'block';
+                if (loginButton) loginButton.style.display = 'block';
                 initializeGame();
             } else if (screenId === 'buildModeArea') {
-                buildModeArea.classList.add('active');
-                infoButton.style.display = 'block';
-                loginButton.style.display = 'block';
+                if (buildModeArea) buildModeArea.classList.add('active');
+                if (infoButton) infoButton.style.display = 'block';
+                if (loginButton) loginButton.style.display = 'block';
                 initializeGame();
                 selectBuildTool(BLOCK_TYPES.WALL); // Default to Wall tool
             }
@@ -1932,6 +1868,8 @@
 
         // Handle clicks on the build canvas
         function handleBuildCanvasInteraction(event) {
+            if (!buildCanvas || !buildCtx) return; // Ensure canvas is available
+
             const rect = buildCanvas.getBoundingClientRect();
             const scaleX = buildCanvas.width / rect.width;
             const scaleY = buildCanvas.height / rect.height;
@@ -1969,7 +1907,7 @@
                         y2: Math.max(selectionStartPoint.y, selectionEndPoint.y)
                     };
                     drawBuild(); // Final redraw with selection
-                    buildMessageBox.textContent = `Selected area from (${currentSelectionRect.x1},${currentSelectionRect.y1}) to (${currentSelectionRect.x2},${currentSelectionRect.y2}).`;
+                    if (buildMessageBox) buildMessageBox.textContent = `Selected area from (${currentSelectionRect.x1},${currentSelectionRect.y1}) to (${currentSelectionRect.x2},${currentSelectionRect.y2}).`;
                 }
             } else { // Handle drawing tools
                 // Only proceed if mouse button is down for drawing, or if it's a single click for player/winpad
@@ -2019,10 +1957,10 @@
                         let targetY = parseInt(prompt("Enter target Y for trigger (0-" + (MAZE_HEIGHT - 1) + "):"));
                         if (!isNaN(targetX) && !isNaN(targetY) && targetX >= 0 && targetX < MAZE_WIDTH && targetY >= 0 && targetY < MAZE_HEIGHT) {
                             buildGrid[y][x] = { type: BLOCK_TYPES.TRIGGER, targetX: targetX, targetY: targetY, targetType: BLOCK_TYPES.PATH };
-                            buildMessageBox.textContent = `Trigger at (${x},${y}) set to affect (${targetX},${ty}).`;
+                            if (buildMessageBox) buildMessageBox.textContent = `Trigger at (${x},${y}) set to affect (${targetX},${ty}).`;
                             drawBuild();
                         } else {
-                            buildMessageBox.textContent = "Invalid target coordinates for trigger.";
+                            if (buildMessageBox) buildMessageBox.textContent = "Invalid target coordinates for trigger.";
                         }
                     }
                 } else {
@@ -2036,11 +1974,11 @@
                     // If player or end was on this spot and it's now PATH, reset their positions
                     if (player.x === x && player.y === y && (buildGrid[y][x] === BLOCK_TYPES.PATH || (typeof buildGrid[y][x] === 'object' && buildGrid[y][x].type === BLOCK_TYPES.PATH))) {
                         player = { x: -1, y: -1 }; // Invalidate player position
-                        buildMessageBox.textContent = "Player Start removed! Place a new one.";
+                        if (buildMessageBox) buildMessageBox.textContent = "Player Start removed! Place a new one.";
                     }
                     if (end.x === x && end.y === y && (buildGrid[y][x] === BLOCK_TYPES.PATH || (typeof buildGrid[y][x] === 'object' && buildGrid[y][x].type === BLOCK_TYPES.PATH))) {
                         end = { x: -1, y: -1 }; // Invalidate end position
-                        buildMessageBox.textContent = "Win Pad removed! Place a new one.";
+                        if (buildMessageBox) buildMessageBox.textContent = "Win Pad removed! Place a new one.";
                     }
                     drawBuild();
                 }
@@ -2079,39 +2017,39 @@
             // Update currentBuildTool and lastSelectedDrawingTool
             if (toolType === 'selection') { // Special case for selection mode
                 currentBuildTool = 'selection'; // Use a string to represent selection mode
-                buildMessageBox.textContent = "Tool: Selection. Click and drag to select an area.";
+                if (buildMessageBox) buildMessageBox.textContent = "Tool: Selection. Click and drag to select an area.";
                 // Show selection action buttons, hide drawing tools
-                selectionActionsContainer.style.display = 'flex';
-                drawingToolsContainer.style.display = 'none';
+                if (selectionActionsContainer) selectionActionsContainer.style.display = 'flex';
+                if (drawingToolsContainer) drawingToolsContainer.style.display = 'none';
                 clearSelection(); // Clear any existing selection when entering selection mode
             } else { // It's a drawing block type
                 currentBuildTool = toolType;
                 lastSelectedDrawingTool = toolType; // Store the actual block type
-                buildMessageBox.textContent = `Tool: ${Object.keys(BLOCK_TYPES).find(key => BLOCK_TYPES[key] === toolType).replace('_', ' ')}`;
+                if (buildMessageBox) buildMessageBox.textContent = `Tool: ${Object.keys(BLOCK_TYPES).find(key => BLOCK_TYPES[key] === toolType).replace('_', ' ')}`;
                 // Hide selection action buttons, show drawing tools
-                selectionActionsContainer.style.display = 'none';
-                drawingToolsContainer.style.display = 'flex';
+                if (selectionActionsContainer) selectionActionsContainer.style.display = 'none';
+                if (drawingToolsContainer) drawingToolsContainer.style.display = 'flex';
                 clearSelection(); // Clear any existing selection when switching to drawing mode
             }
 
             // Highlight the active tool button
             switch (currentBuildTool) {
-                case BLOCK_TYPES.WALL: toolWall.classList.add('active-tool'); break;
-                case 'eraser': toolEraser.classList.add('active-tool'); break; // Highlight eraser
-                case BLOCK_TYPES.PATH: toolPath.classList.add('active-tool'); break;
-                case BLOCK_TYPES.PLAYER_START: toolPlayer.classList.add('active-tool'); break;
-                case BLOCK_TYPES.WINPAD: toolWinpad.classList.add('active-tool'); break;
-                case BLOCK_TYPES.TRIGGER: toolTrigger.classList.add('active-tool'); break;
-                case BLOCK_TYPES.MOVING_BLOCK: toolMovingBlock.classList.add('active-tool'); break;
-                case BLOCK_TYPES.PUSH_BLOCK: toolPushBlock.classList.add('active-tool'); break;
-                case 'selection': toolSelection.classList.add('active-tool'); break; // Highlight selection button
+                case BLOCK_TYPES.WALL: if (toolWall) toolWall.classList.add('active-tool'); break;
+                case 'eraser': if (toolEraser) toolEraser.classList.add('active-tool'); break; // Highlight eraser
+                case BLOCK_TYPES.PATH: if (toolPath) toolPath.classList.add('active-tool'); break;
+                case BLOCK_TYPES.PLAYER_START: if (toolPlayer) toolPlayer.classList.add('active-tool'); break;
+                case BLOCK_TYPES.WINPAD: if (toolWinpad) toolWinpad.classList.add('active-tool'); break;
+                case BLOCK_TYPES.TRIGGER: if (toolTrigger) toolTrigger.classList.add('active-tool'); break;
+                case BLOCK_TYPES.MOVING_BLOCK: if (toolMovingBlock) toolMovingBlock.classList.add('active-tool'); break;
+                case BLOCK_TYPES.PUSH_BLOCK: if (toolPushBlock) toolPushBlock.classList.add('active-tool'); break;
+                case 'selection': if (toolSelection) toolSelection.classList.add('active-tool'); break; // Highlight selection button
             }
         }
 
         // Fills the current selection with a specified block type
         function fillSelection(fillType) {
             if (!currentSelectionRect) {
-                buildMessageBox.textContent = "No area selected to fill.";
+                if (buildMessageBox) buildMessageBox.textContent = "No area selected to fill.";
                 return;
             }
 
@@ -2121,17 +2059,17 @@
                     // Handle player/winpad replacement
                     if (player.x === x && player.y === y && fillType !== BLOCK_TYPES.PLAYER_START) {
                         player = { x: -1, y: -1 }; // Invalidate player position
-                        buildMessageBox.textContent = "Player Start removed! Place a new one.";
+                        if (buildMessageBox) buildMessageBox.textContent = "Player Start removed! Place a new one.";
                     }
                     if (end.x === x && end.y === y && fillType !== BLOCK_TYPES.WINPAD) {
                         end = { x: -1, y: -1 }; // Invalidate end position
-                        buildMessageBox.textContent = "Win Pad removed! Place a new one.";
+                        if (buildMessageBox) buildMessageBox.textContent = "Win Pad removed! Place a new one.";
                     }
                     buildGrid[y][x] = fillType;
                 }
             }
             drawBuild();
-            buildMessageBox.textContent = `Selected area filled with ${Object.keys(BLOCK_TYPES).find(key => BLOCK_TYPES[key] === fillType).replace('_', ' ')}.`;
+            if (buildMessageBox) buildMessageBox.textContent = `Selected area filled with ${Object.keys(BLOCK_TYPES).find(key => BLOCK_TYPES[key] === fillType).replace('_', ' ')}.`;
             clearSelection(); // Clear selection after filling
         }
 
@@ -2141,17 +2079,17 @@
             selectionEndPoint = null;
             currentSelectionRect = null;
             drawBuild(); // Redraw to remove selection rectangle
-            buildMessageBox.textContent = "Selection cleared.";
+            if (buildMessageBox) buildMessageBox.textContent = "Selection cleared.";
         }
 
 
         // Functions to show/hide modals
         function showModal(modalOverlay) {
-            modalOverlay.classList.add('show');
+            if (modalOverlay) modalOverlay.classList.add('show');
         }
 
         function hideModal(modalOverlay) {
-            modalOverlay.classList.remove('show');
+            if (modalOverlay) modalOverlay.classList.remove('show');
         }
 
         function hideAllModals() {
@@ -2170,22 +2108,24 @@
 
             // Validation checks
             if (playerName.length < 3) {
-                messageBox.textContent = "Player Name must be at least 3 characters long.";
-                setTimeout(() => messageBox.textContent = "", 3000);
+                if (messageBox) messageBox.textContent = "Player Name must be at least 3 characters long.";
+                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                 return;
             }
 
             if (password.length < 6) {
-                messageBox.textContent = "Password must be at least 6 characters long.";
-                setTimeout(() => messageBox.textContent = "", 3000);
+                if (messageBox) messageBox.textContent = "Password must be at least 6 characters long.";
+                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                 return;
             }
 
             if (playerName) {
                 currentPlayerName = playerName;
                 localStorage.setItem('playerName', currentPlayerName); // Save player name to localStorage
-                loginButton.textContent = "Logout";
-                loginButton.classList.add('logged-in');
+                if (loginButton) {
+                    loginButton.textContent = "Logout";
+                    loginButton.classList.add('logged-in');
+                }
                 updateUserIdDisplay();
                 hideModal(loginModalOverlay);
                 loadMyLevels(); // Refresh levels for the "logged in" user
@@ -2199,24 +2139,26 @@
                         console.log("Player name saved to profile.");
                     } catch (e) {
                         console.error("Error saving player name to profile:", e);
-                        messageBox.textContent = `Error saving player name: ${e.message}. Check console for details.`;
+                        if (messageBox) messageBox.textContent = `Error saving player name: ${e.message}. Check console for details.`;
                     }
                 }
 
             } else {
                 // This else block might be redundant due to the new validation, but kept for safety.
-                messageBox.textContent = "Please enter a player name.";
-                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
+                if (messageBox) messageBox.textContent = "Please enter a player name.";
+                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000); // Clear message after 3 seconds
             }
         }
 
         function handleLogout() {
             currentPlayerName = "Anonymous";
             localStorage.removeItem('playerName'); // Remove player name from localStorage
-            loginButton.textContent = "Login";
-            loginButton.classList.remove('logged-in');
+            if (loginButton) {
+                loginButton.textContent = "Login";
+                loginButton.classList.remove('logged-in');
+            }
             updateUserIdDisplay();
-            myLevelsList.innerHTML = "<div>No levels loaded.</div>"; // Clear levels on logout
+            if (myLevelsList) myLevelsList.innerHTML = "<div>No levels loaded.</div>"; // Clear levels on logout
             playerBricks = 0; // Reset bricks on logout
             updateBricksDisplay();
         }
@@ -2235,21 +2177,21 @@
         // --- Firebase Firestore Functions ---
         async function saveLevel() {
             if (!window.userId || !window.db) {
-                buildMessageBox.textContent = "Error: Firebase not fully initialized or user not authenticated to save level.";
+                if (buildMessageBox) buildMessageBox.textContent = "Error: Firebase not fully initialized or user not authenticated to save level.";
                 return;
             }
             if (player.x === -1 || end.x === -1) {
-                buildMessageBox.textContent = "Please place both Player Start and Win Pad before saving!";
+                if (buildMessageBox) buildMessageBox.textContent = "Please place both Player Start and Win Pad before saving!";
                 return;
             }
 
             const levelName = prompt("Enter a name for your level (max 30 characters):");
             if (!levelName) {
-                buildMessageBox.textContent = "Level save cancelled.";
+                if (buildMessageBox) buildMessageBox.textContent = "Level save cancelled.";
                 return;
             }
             if (levelName.length > 30) {
-                buildMessageBox.textContent = "Level name exceeds 30 characters. Please shorten it.";
+                if (buildMessageBox) buildMessageBox.textContent = "Level name exceeds 30 characters. Please shorten it.";
                 return;
             }
 
@@ -2257,7 +2199,7 @@
             levelOrder = levelOrder ? parseInt(levelOrder) : null;
 
             if (levelOrder !== null && (isNaN(levelOrder) || levelOrder < 1)) {
-                buildMessageBox.textContent = "Invalid order number. Please enter a positive integer or leave blank.";
+                if (buildMessageBox) buildMessageBox.textContent = "Invalid order number. Please enter a positive integer or leave blank.";
                 return;
             }
 
@@ -2270,7 +2212,7 @@
                 if (validDifficulties.includes(promptDifficulty)) {
                     levelDifficulty = promptDifficulty;
                 } else {
-                    buildMessageBox.textContent = `Invalid difficulty. Defaulting to 'easy'.`;
+                    if (buildMessageBox) buildMessageBox.textContent = `Invalid difficulty. Defaulting to 'easy'.`;
                 }
 
                 let promptBricks = prompt(`Enter brick reward for "${levelName}" (0-4):`);
@@ -2278,7 +2220,7 @@
                 if (!isNaN(parsedBricks) && parsedBricks >= 0 && parsedBricks <= 4) {
                     brickReward = parsedBricks;
                 } else {
-                    buildMessageBox.textContent = "Invalid brick reward. Defaulting to 0.";
+                    if (buildMessageBox) buildMessageBox.textContent = "Invalid brick reward. Defaulting to 0.";
                 }
             }
 
@@ -2299,37 +2241,37 @@
                 if (editingLevelId) {
                     // Update existing level
                     await setDoc(doc(levelsCollectionRef, editingLevelId), levelData, { merge: true });
-                    buildMessageBox.textContent = `Level "${levelName}" updated successfully!`;
+                    if (buildMessageBox) buildMessageBox.textContent = `Level "${levelName}" updated successfully!`;
                     editingLevelId = null; // Clear editing state
                 } else {
                     // Add new level
                     await addDoc(levelsCollectionRef, levelData);
-                    buildMessageBox.textContent = `Level "${levelName}" saved successfully!`;
+                    if (buildMessageBox) buildMessageBox.textContent = `Level "${levelName}" saved successfully!`;
                 }
                 loadMyLevels(); // Refresh the list of levels
             } catch (e) {
                 console.error("Error saving/updating document: ", e);
-                buildMessageBox.textContent = `Error saving/updating level: ${e.message}. See console for details.`;
+                if (buildMessageBox) buildMessageBox.textContent = `Error saving/updating level: ${e.message}. See console for details.`;
             }
         }
 
         async function publishLevel() {
             if (!window.userId || !window.db) {
-                buildMessageBox.textContent = "Error: Firebase not fully initialized or user not authenticated to publish level.";
+                if (buildMessageBox) buildMessageBox.textContent = "Error: Firebase not fully initialized or user not authenticated to publish level.";
                 return;
             }
             if (player.x === -1 || end.x === -1) {
-                buildMessageBox.textContent = "Please place both Player Start and Win Pad before publishing!";
+                if (buildMessageBox) buildMessageBox.textContent = "Please place both Player Start and Win Pad before publishing!";
                 return;
             }
 
             const levelName = prompt("Enter a name for your public level (max 30 characters):");
             if (!levelName) {
-                buildMessageBox.textContent = "Level publish cancelled.";
+                if (buildMessageBox) buildMessageBox.textContent = "Level publish cancelled.";
                 return;
             }
             if (levelName.length > 30) {
-                buildMessageBox.textContent = "Level name exceeds 30 characters. Please shorten it.";
+                if (buildMessageBox) buildMessageBox.textContent = "Level name exceeds 30 characters. Please shorten it.";
                 return;
             }
 
@@ -2342,7 +2284,7 @@
                 if (validDifficulties.includes(promptDifficulty)) {
                     levelDifficulty = promptDifficulty;
                 } else {
-                    buildMessageBox.textContent = `Invalid difficulty. Defaulting to 'easy'.`;
+                    if (buildMessageBox) buildMessageBox.textContent = `Invalid difficulty. Defaulting to 'easy'.`;
                 }
 
                 let promptBricks = prompt(`Enter brick reward for "${levelName}" (0-4):`);
@@ -2350,7 +2292,7 @@
                 if (!isNaN(parsedBricks) && parsedBricks >= 0 && parsedBricks <= 4) {
                     brickReward = parsedBricks;
                 } else {
-                    buildMessageBox.textContent = "Invalid brick reward. Defaulting to 0.";
+                    if (buildMessageBox) buildMessageBox.textContent = "Invalid brick reward. Defaulting to 0.";
                 }
             }
 
@@ -2368,28 +2310,28 @@
                     difficulty: levelDifficulty, // Store difficulty for public levels
                     brickReward: brickReward // Store brick reward for public levels
                 });
-                buildMessageBox.textContent = `Level "${levelName}" published successfully!`;
+                if (buildMessageBox) buildMessageBox.textContent = `Level "${levelName}" published successfully!`;
             } catch (e) {
                 console.error("Error publishing document: ", e);
-                buildMessageBox.textContent = `Error publishing level: ${e.message}. See console for details.`;
+                if (buildMessageBox) buildMessageBox.textContent = `Error publishing level: ${e.message}. See console for details.`;
             }
         }
 
         async function loadMyLevels() {
             if (!window.userId || !window.db) {
-                myLevelsList.innerHTML = "<div>Please log in to see your levels.</div>";
+                if (myLevelsList) myLevelsList.innerHTML = "<div>Please log in to see your levels.</div>";
                 console.warn("Cannot load my levels: Firebase not fully initialized or user not authenticated.");
                 return;
             }
 
-            myLevelsList.innerHTML = "<div>Loading levels...</div>";
+            if (myLevelsList) myLevelsList.innerHTML = "<div>Loading levels...</div>";
             try {
                 const levelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/users/${window.userId}/levels`);
                 const q = query(levelsCollectionRef); // No orderBy here to avoid index issues, sort in memory
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty) {
-                    myLevelsList.innerHTML = "<div>No levels saved yet.</div>";
+                    if (myLevelsList) myLevelsList.innerHTML = "<div>No levels saved yet.</div>";
                     return;
                 }
 
@@ -2409,7 +2351,7 @@
                     return a.createdAt.toDate() - b.createdAt.toDate(); // Fallback to creation date
                 });
 
-                myLevelsList.innerHTML = ''; // Clear previous list
+                if (myLevelsList) myLevelsList.innerHTML = ''; // Clear previous list
                 myLevels.forEach((data) => {
                     const levelDiv = document.createElement('div');
                     const orderDisplay = data.order !== null ? `#${data.order} ` : '';
@@ -2433,109 +2375,113 @@
                         </div>
                         ${creatorDisplay}
                     `;
-                    myLevelsList.appendChild(levelDiv);
+                    if (myLevelsList) myLevelsList.appendChild(levelDiv);
                 });
 
                 // Add event listeners to the dynamically created buttons
-                myLevelsList.querySelectorAll('.play-level-button').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const levelData = {
-                            id: e.target.dataset.levelId,
-                            name: e.target.dataset.levelName,
-                            grid: JSON.parse(e.target.dataset.levelGrid),
-                            playerStart: JSON.parse(e.target.dataset.playerStart),
-                            winpadEnd: JSON.parse(e.target.dataset.winpadEnd),
-                            difficulty: e.target.dataset.levelDifficulty, // Pass difficulty
-                            brickReward: parseInt(e.target.dataset.levelBrickReward) // Pass brick reward
-                        };
-                        playSavedLevel(levelData);
+                if (myLevelsList) {
+                    myLevelsList.querySelectorAll('.play-level-button').forEach(button => {
+                        button.addEventListener('click', (e) => {
+                            const levelData = {
+                                id: e.target.dataset.levelId,
+                                name: e.target.dataset.levelName,
+                                grid: JSON.parse(e.target.dataset.levelGrid),
+                                playerStart: JSON.parse(e.target.dataset.playerStart),
+                                winpadEnd: JSON.parse(e.target.dataset.winpadEnd),
+                                difficulty: e.target.dataset.levelDifficulty, // Pass difficulty
+                                brickReward: parseInt(e.target.dataset.levelBrickReward) // Pass brick reward
+                            };
+                            playSavedLevel(levelData);
+                        });
                     });
-                });
 
-                // New: Add event listener for "Edit" button
-                myLevelsList.querySelectorAll('.edit-level-button').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const levelData = {
-                            id: e.target.dataset.levelId,
-                            name: e.target.dataset.levelName,
-                            grid: JSON.parse(e.target.dataset.levelGrid),
-                            playerStart: JSON.parse(e.target.dataset.playerStart),
-                            winpadEnd: JSON.parse(e.target.dataset.winpadEnd)
-                        };
-                        editLevel(levelData);
+                    // New: Add event listener for "Edit" button
+                    myLevelsList.querySelectorAll('.edit-level-button').forEach(button => {
+                        button.addEventListener('click', (e) => {
+                            const levelData = {
+                                id: e.target.dataset.levelId,
+                                name: e.target.dataset.levelName,
+                                grid: JSON.parse(e.target.dataset.levelGrid),
+                                playerStart: JSON.parse(e.target.dataset.playerStart),
+                                winpadEnd: JSON.parse(e.target.dataset.winpadEnd)
+                            };
+                            editLevel(levelData);
+                        });
                     });
-                });
 
-                myLevelsList.querySelectorAll('.delete-level-button').forEach(button => {
-                    button.addEventListener('click', async (e) => {
-                        const levelId = e.target.dataset.levelId;
-                        // Replaced confirm with a custom message box or modal if available
-                        if (window.confirm("Are you sure you want to delete this level?")) {
-                            try {
-                                // Admin override: LtpMer can delete any level, otherwise only own levels
-                                if (currentPlayerName === 'LtpMer') {
-                                    // Try to delete from public levels first if it exists there
-                                    const publicLevelRef = doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId);
-                                    const publicDocSnap = await getDoc(publicLevelRef);
-                                    if (publicDocSnap.exists()) {
-                                        await deleteDoc(publicLevelRef);
-                                        console.log(`Admin (LtpMer) deleted public level: ${levelId}`);
+                    myLevelsList.querySelectorAll('.delete-level-button').forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            const levelId = e.target.dataset.levelId;
+                            // Replaced confirm with a custom message box or modal if available
+                            if (window.confirm("Are you sure you want to delete this level?")) {
+                                try {
+                                    // Admin override: LtpMer can delete any level, otherwise only own levels
+                                    if (currentPlayerName === 'LtpMer') {
+                                        // Try to delete from public levels first if it exists there
+                                        const publicLevelRef = doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId);
+                                        const publicDocSnap = await getDoc(publicLevelRef);
+                                        if (publicDocSnap.exists()) {
+                                            await deleteDoc(publicLevelRef);
+                                            console.log(`Admin (LtpMer) deleted public level: ${levelId}`);
+                                        }
+                                        // Also try to delete from official levels if it exists there
+                                        // Note: Official levels are named 'level-ORDER_NUMBER', not by their original ID.
+                                        // We need to find the official level by its content ID
+                                        const officialLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/official_levels`);
+                                        const qOfficial = query(officialLevelsCollectionRef, where("id", "==", levelId));
+                                        const officialSnapshot = await getDocs(qOfficial);
+                                        officialSnapshot.forEach(async (officialDoc) => {
+                                            await deleteDoc(doc(officialLevelsCollectionRef, officialDoc.id));
+                                            console.log(`Admin (LtpMer) deleted official level document: ${officialDoc.id}`);
+                                        });
+                                        fetchOfficialPlayableLevels(); // Refresh official levels after deletion (no difficulty param anymore)
                                     }
-                                    // Also try to delete from official levels if it exists there
-                                    // Note: Official levels are named 'level-ORDER_NUMBER', not by their original ID.
-                                    // We need to find the official level by its content ID
-                                    const officialLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/official_levels`);
-                                    const qOfficial = query(officialLevelsCollectionRef, where("id", "==", levelId));
-                                    const officialSnapshot = await getDocs(qOfficial);
-                                    officialSnapshot.forEach(async (officialDoc) => {
-                                        await deleteDoc(doc(officialLevelsCollectionRef, officialDoc.id));
-                                        console.log(`Admin (LtpMer) deleted official level document: ${officialDoc.id}`);
-                                    });
-                                    fetchOfficialPlayableLevels(); // Refresh official levels after deletion (no difficulty param anymore)
+                                    // Always delete from user's private levels
+                                    await deleteDoc(doc(window.db, `artifacts/${window.__app_id}/users/${window.userId}/levels`, levelId));
+                                    if (messageBox) messageBox.textContent = "Level deleted successfully!";
+                                    setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000); // Clear message after 3 seconds
+                                    loadMyLevels(); // Refresh the list
+                                } catch (error) {
+                                    console.error("Error deleting level:", error);
+                                    if (messageBox) messageBox.textContent = `Error deleting level: ${error.message}. See console.`;
+                                    setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000); // Clear message after 3 seconds
                                 }
-                                // Always delete from user's private levels
-                                await deleteDoc(doc(window.db, `artifacts/${window.__app_id}/users/${window.userId}/levels`, levelId));
-                                messageBox.textContent = "Level deleted successfully!";
-                                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
-                                loadMyLevels(); // Refresh the list
-                            } catch (error) {
-                                console.error("Error deleting level:", error);
-                                messageBox.textContent = `Error deleting level: ${error.message}. See console.`;
-                                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
                             }
-                        }
+                        });
                     });
-                });
 
-                // New: Add event listener for "Set as Official" button
-                myLevelsList.querySelectorAll('.set-official-button').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const levelData = {
-                            id: e.target.dataset.levelId,
-                            name: e.target.dataset.levelName,
-                            grid: e.target.dataset.levelGrid, // Keep as string for direct storage
-                            playerStart: JSON.parse(e.target.dataset.playerStart),
-                            winpadEnd: JSON.parse(e.target.dataset.winpadEnd),
-                            creatorName: e.target.dataset.creatorName,
-                            creatorId: e.target.dataset.creatorId,
-                            difficulty: e.target.dataset.levelDifficulty, // Pass difficulty
-                            brickReward: parseInt(e.target.dataset.levelBrickReward) // Pass brick reward
-                        };
-                        setOfficialLevel(levelData);
+                    // New: Add event listener for "Set as Official" button
+                    myLevelsList.querySelectorAll('.set-official-button').forEach(button => {
+                        button.addEventListener('click', (e) => {
+                            const levelData = {
+                                id: e.target.dataset.levelId,
+                                name: e.target.dataset.levelName,
+                                grid: e.target.dataset.levelGrid, // Keep as string for direct storage
+                                playerStart: JSON.parse(e.target.dataset.playerStart),
+                                winpadEnd: JSON.parse(e.target.dataset.winpadEnd),
+                                creatorName: e.target.dataset.creatorName,
+                                creatorId: e.target.dataset.creatorId,
+                                difficulty: e.target.dataset.levelDifficulty, // Pass difficulty
+                                brickReward: parseInt(e.target.dataset.levelBrickReward) // Pass brick reward
+                            };
+                            setOfficialLevel(levelData);
+                        });
                     });
-                });
+                }
 
             } catch (e) {
                 console.error("Error loading documents: ", e);
-                myLevelsList.innerHTML = `<div>Error loading levels: ${e.message}.</div>`;
+                if (myLevelsList) myLevelsList.innerHTML = `<div>Error loading levels: ${e.message}.</div>`;
             }
         }
 
         // Modified loadCommunityLevels to accept a search query
         async function loadCommunityLevels(searchQuery = '') {
-            const targetListElement = communityLevelsModalOverlay.classList.contains('show') ? communityLevelsListModal : communityLevelsListInMenu;
+            const targetListElement = communityLevelsModalOverlay && communityLevelsModalOverlay.classList.contains('show') ? communityLevelsListModal : communityLevelsListInMenu;
             // The input for the menu modal is levelSearchInput, for the separate modal it's communityLevelSearchInputModal
             // This variable is not directly used here, but for clarity in the event listener setup.
+
+            if (!targetListElement) return; // Exit if the target list element is not found
 
             if (!window.userId || !window.db) {
                 targetListElement.innerHTML = "<div>Please log in to see community levels.</div>";
@@ -2648,13 +2594,13 @@
                         const newBricks = parseInt(bricksInput.value);
 
                         if (!newDifficulty) {
-                            messageBox.textContent = "Please select a difficulty.";
-                            setTimeout(() => messageBox.textContent = "", 3000);
+                            if (messageBox) messageBox.textContent = "Please select a difficulty.";
+                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                             return;
                         }
                         if (isNaN(newBricks) || newBricks < 0 || newBricks > 4) {
-                            messageBox.textContent = "Bricks must be between 0 and 4.";
-                            setTimeout(() => messageBox.textContent = "", 3000);
+                            if (messageBox) messageBox.textContent = "Bricks must be between 0 and 4.";
+                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                             return;
                         }
 
@@ -2664,13 +2610,13 @@
                                 difficulty: newDifficulty,
                                 brickReward: newBricks
                             });
-                            messageBox.textContent = `Level properties updated for ${levelId}!`;
-                            setTimeout(() => messageBox.textContent = "", 3000);
+                            if (messageBox) messageBox.textContent = `Level properties updated for ${levelId}!`;
+                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                             loadCommunityLevels(searchQuery); // Refresh list to show changes with current search query
                         } catch (error) {
                             console.error("Error updating level properties:", error);
-                            messageBox.textContent = `Error updating level properties: ${error.message}`;
-                            setTimeout(() => messageBox.textContent = "", 3000);
+                            if (messageBox) messageBox.textContent = `Error updating level properties: ${error.message}`;
+                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                         }
                     });
                 });
@@ -2712,14 +2658,14 @@
                                     console.log(`Deleted associated official level document: ${officialDoc.id}`);
                                 });
 
-                                messageBox.textContent = "Community level deleted successfully!";
-                                setTimeout(() => messageBox.textContent = "", 3000);
+                                if (messageBox) messageBox.textContent = "Community level deleted successfully!";
+                                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                                 loadCommunityLevels(searchQuery); // Refresh the list with current search query
                                 fetchOfficialPlayableLevels(); // Refresh official levels in case one was deleted
                             } catch (error) {
                                 console.error("Error deleting community level:", error);
-                                messageBox.textContent = `Error deleting community level: ${error.message}. See console.`;
-                                setTimeout(() => messageBox.textContent = "", 3000);
+                                if (messageBox) messageBox.textContent = `Error deleting community level: ${error.message}. See console.`;
+                                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                             }
                         }
                     });
@@ -2727,18 +2673,18 @@
 
             } catch (e) {
                 console.error("Error loading community documents: ", e);
-                targetListElement.innerHTML = `<div>Error loading community levels: ${e.message}.</div>`;
+                if (targetListElement) targetListElement.innerHTML = `<div>Error loading community levels: ${e.message}.</div>`;
             }
         }
 
         async function fetchDailyLevel() {
-            dailyLevelContainer.style.display = 'none'; // Hide by default
-            dailyLevelName.textContent = 'Loading daily level...';
-            playDailyLevelButton.onclick = null; // Clear previous handler
+            if (dailyLevelContainer) dailyLevelContainer.style.display = 'none'; // Hide by default
+            if (dailyLevelName) dailyLevelName.textContent = 'Loading daily level...';
+            if (playDailyLevelButton) playDailyLevelButton.onclick = null; // Clear previous handler
 
             if (!window.db) {
-                dailyLevelName.textContent = "Firebase not initialized. Cannot fetch daily level.";
-                dailyLevelContainer.style.display = 'block';
+                if (dailyLevelName) dailyLevelName.textContent = "Firebase not initialized. Cannot fetch daily level.";
+                if (dailyLevelContainer) dailyLevelContainer.style.display = 'block';
                 console.warn("Cannot fetch daily level: Firebase database not available.");
                 return;
             }
@@ -2760,35 +2706,37 @@
                         difficulty: data.difficulty || 'N/A', // Fetch difficulty for daily level
                         brickReward: data.brickReward || 0 // Fetch brick reward for daily level
                     };
-                    dailyLevelName.textContent = `${currentDailyLevel.name} by ${data.creatorName || 'Anonymous'}`;
-                    if (currentDailyLevel.difficulty && currentDailyLevel.difficulty !== 'N/A') {
-                        dailyLevelName.textContent += ` (${currentDailyLevel.difficulty.replace('_', ' ')})`;
+                    if (dailyLevelName) {
+                        dailyLevelName.textContent = `${currentDailyLevel.name} by ${data.creatorName || 'Anonymous'}`;
+                        if (currentDailyLevel.difficulty && currentDailyLevel.difficulty !== 'N/A') {
+                            dailyLevelName.textContent += ` (${currentDailyLevel.difficulty.replace('_', ' ')})`;
+                        }
+                        if (currentDailyLevel.brickReward > 0) {
+                            dailyLevelName.textContent += ` 🧱 ${currentDailyLevel.brickReward}`;
+                        }
                     }
-                    if (currentDailyLevel.brickReward > 0) {
-                        dailyLevelName.textContent += ` 🧱 ${currentDailyLevel.brickReward}`;
-                    }
-                    playDailyLevelButton.onclick = () => playCommunityLevel(currentDailyLevel);
-                    dailyLevelContainer.style.display = 'block';
+                    if (playDailyLevelButton) playDailyLevelButton.onclick = () => playCommunityLevel(currentDailyLevel);
+                    if (dailyLevelContainer) dailyLevelContainer.style.display = 'block';
                 } else {
-                    dailyLevelName.textContent = "No daily level set yet.";
-                    dailyLevelContainer.style.display = 'block';
+                    if (dailyLevelName) dailyLevelName.textContent = "No daily level set yet.";
+                    if (dailyLevelContainer) dailyLevelContainer.style.display = 'block';
                 }
             } catch (e) {
                 console.error("Error fetching daily level:", e);
-                dailyLevelName.textContent = `Error loading daily level: ${e.message}.`;
-                dailyLevelContainer.style.display = 'block';
+                if (dailyLevelName) dailyLevelName.textContent = `Error loading daily level: ${e.message}.`;
+                if (dailyLevelContainer) dailyLevelContainer.style.display = 'block';
             }
         }
 
         async function setOfficialLevel(levelData) {
             if (currentPlayerName !== 'LtpMer') {
-                messageBox.textContent = "Only LtpMer can set official levels.";
-                setTimeout(() => messageBox.textContent = "", 3000);
+                if (messageBox) messageBox.textContent = "Only LtpMer can set official levels.";
+                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                 return;
             }
             if (!window.db) {
-                messageBox.textContent = "Firebase not initialized. Cannot set official level.";
-                setTimeout(() => messageBox.textContent = "", 3000);
+                if (messageBox) messageBox.textContent = "Firebase not initialized. Cannot set official level.";
+                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                 return;
             }
 
@@ -2796,8 +2744,8 @@
             order = parseInt(order);
 
             if (isNaN(order) || order < 1) {
-                messageBox.textContent = "Invalid order number. Please enter a positive integer.";
-                setTimeout(() => messageBox.textContent = "", 3000);
+                if (messageBox) messageBox.textContent = "Invalid order number. Please enter a positive integer.";
+                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                 return;
             }
             
@@ -2827,13 +2775,13 @@
                     brickReward: brickRewardToSet, // Store brick reward
                     setAt: new Date()
                 });
-                messageBox.textContent = `Level "${levelData.name}" set as official level #${order} successfully!`;
-                setTimeout(() => messageBox.textContent = "", 3000);
+                if (messageBox) messageBox.textContent = `Level "${levelData.name}" set as official level #${order} successfully!`;
+                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                 fetchOfficialPlayableLevels(); // Refresh official levels after modification
             } catch (e) {
                 console.error("Error setting official level:", e);
-                messageBox.textContent = `Error setting official level: ${e.message}. See console for details.`;
-                setTimeout(() => messageBox.textContent = "", 3000);
+                if (messageBox) messageBox.textContent = `Error setting official level: ${e.message}. See console for details.`;
+                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
             }
         }
 
@@ -2863,18 +2811,18 @@
             } catch (e) {
                 console.error("Error fetching official playable levels:", e);
                 officialPlayableLevels = []; // Clear on error
-                messageBox.textContent = `Error fetching official levels: ${e.message}. Check console for details.`;
+                if (messageBox) messageBox.textContent = `Error fetching official levels: ${e.message}. Check console for details.`;
             }
         }
 
 
         async function loadLeaderboard() {
             if (!window.db) {
-                leaderboardList.innerHTML = "<div>Leaderboard not available.</div>";
+                if (leaderboardList) leaderboardList.innerHTML = "<div>Leaderboard not available.</div>";
                 console.warn("Cannot load leaderboard: Firebase database not available.");
                 return;
             }
-            leaderboardList.innerHTML = "<div>Loading leaderboard...</div>";
+            if (leaderboardList) leaderboardList.innerHTML = "<div>Loading leaderboard...</div>";
             try {
                 // Fetch from the new 'user_bricks_scores' collection
                 const userBricksScoresCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/user_bricks_scores`);
@@ -2883,11 +2831,11 @@
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty) {
-                    leaderboardList.innerHTML = "<div>No brick scores yet. Play levels to earn bricks!</div>";
+                    if (leaderboardList) leaderboardList.innerHTML = "<div>No brick scores yet. Play levels to earn bricks!</div>";
                     return;
                 }
 
-                leaderboardList.innerHTML = ''; // Clear previous list
+                if (leaderboardList) leaderboardList.innerHTML = ''; // Clear previous list
                 let rank = 1;
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
@@ -2898,13 +2846,13 @@
                         <span class="player-name">${data.playerName || 'Anonymous'}</span>
                         <span class="bricks">🧱 ${data.bricks || 0}</span>
                     `;
-                    leaderboardList.appendChild(entryDiv);
+                    if (leaderboardList) leaderboardList.appendChild(entryDiv);
                     rank++;
                 });
             }
             catch (e) {
                 console.error("Error loading leaderboard:", e);
-                leaderboardList.innerHTML = `<div>Error loading leaderboard: ${e.message}.</div>`;
+                if (leaderboardList) leaderboardList.innerHTML = `<div>Error loading leaderboard: ${e.message}.</div>`;
             }
         }
 
@@ -2953,7 +2901,7 @@
 
             hideAllModals();
             showScreen('buildModeArea');
-            buildMessageBox.textContent = `Editing level "${levelData.name}". Click 'Save Level' to update.`;
+            if (buildMessageBox) buildMessageBox.textContent = `Editing level "${levelData.name}". Click 'Save Level' to update.`;
         }
 
 
@@ -2975,7 +2923,7 @@
 
             hideAllModals();
             showScreen('buildModeArea');
-            buildMessageBox.textContent = "Current level loaded into Build Mode. You can now save or modify it!";
+            if (buildMessageBox) buildMessageBox.textContent = "Current level loaded into Build Mode. You can now save or modify it!";
             // Set editingLevelId if the current game type is a saved or community level
             if (currentGameType === GAME_MODES.SAVED_LEVEL || currentGameType === GAME_MODES.COMMUNITY_LEVEL) {
                 editingLevelId = currentLevelId;
@@ -2986,6 +2934,102 @@
 
         // Initial setup when the window loads
         window.onload = () => {
+            // Get main UI elements
+            startScreen = document.getElementById('startScreen');
+            gamePlayArea = document.getElementById('gamePlayArea');
+            buildModeArea = document.getElementById('buildModeArea');
+            infoButton = document.getElementById('infoButton');
+            loginButton = document.getElementById('loginButton');
+
+            // Get start screen buttons
+            playButton = document.getElementById('playButton');
+            customizationButtonStart = document.getElementById('customizationButtonStart');
+            menuButtonStart = document.getElementById('menuButtonStart');
+            leaderboardButton = document.getElementById('leaderboardButton');
+            dailyLevelContainer = document.getElementById('dailyLevelContainer');
+            dailyLevelName = document.getElementById('dailyLevelName');
+            playDailyLevelButton = document.getElementById('playDailyLevelButton');
+
+            // Get game play area elements
+            mazeCanvas = document.getElementById('mazeCanvas');
+            mazeCtx = mazeCanvas ? mazeCanvas.getContext('2d') : null; // Initialize context only if canvas exists
+            messageBox = document.getElementById('messageBox');
+            nextLevelButton = document.getElementById('nextLevelButton');
+            editCurrentLevelButton = document.getElementById('editCurrentLevelButton');
+            backToMainMenuButtonGame = document.getElementById('backToMainMenuButtonGame');
+            touchControls = document.querySelector('.touch-controls');
+
+            // Get build mode area elements
+            buildCanvas = document.getElementById('buildCanvas');
+            buildCtx = buildCanvas ? buildCanvas.getContext('2d') : null; // Initialize context only if canvas exists
+            buildMessageBox = document.getElementById('buildMessageBox');
+            clearBuildGridButton = document.getElementById('clearBuildGridButton');
+            saveLevelButton = document.getElementById('saveLevelButton');
+            publishLevelButton = document.getElementById('publishLevelButton');
+            backToMainMenuButtonBuild = document.getElementById('backToMainMenuButtonBuild');
+
+            // Modals
+            infoModalOverlay = document.getElementById('infoModalOverlay');
+            closeInfoModalButton = document.getElementById('closeInfoModalButton');
+            customizationModalOverlay = document.getElementById('customizationModalOverlay');
+            closeCustomizationModalButton = document.getElementById('closeCustomizationModalButton');
+            menuModalOverlay = document.getElementById('menuModalOverlay');
+            closeMenuModalButton = document.getElementById('closeMenuModalButton');
+            loginModalOverlay = document.getElementById('loginModalOverlay');
+            playerNameInput = document.getElementById('playerNameInput');
+            passwordInput = document.getElementById('passwordInput');
+            loginSubmitButton = document.getElementById('loginSubmitButton');
+            loginCancelButton = document.getElementById('loginCancelButton');
+            communityLevelsModalOverlay = document.getElementById('communityLevelsModalOverlay');
+            communityLevelsListInMenu = document.getElementById('communityLevelsList');
+            levelSearchInput = document.getElementById('levelSearchInput');
+            searchCommunityLevelsButton = document.getElementById('searchCommunityLevelsButton');
+            refreshCommunityLevelsButton = document.getElementById('refreshCommunityLevelsButton');
+
+            communityLevelSearchInputModal = document.getElementById('communityLevelSearchInputModal');
+            searchCommunityLevelsButtonModal = document.getElementById('searchCommunityLevelsButtonModal');
+            communityLevelsListModal = document.getElementById('communityLevelsListModal');
+            refreshCommunityLevelsButtonModal = document.getElementById('refreshCommunityLevelsButtonModal');
+            closeCommunityLevelsModalButton = document.getElementById('closeCommunityLevelsModalButton');
+
+            // Buttons inside Menu Modal
+            startRandomMazeButton = document.getElementById('startRandomMazeButton');
+            startRandomBlocksButton = document.getElementById('startRandomBlocksButton');
+            buildModeButton = document.getElementById('buildModeButton');
+            userIdDisplay = document.getElementById('userIdDisplay');
+            playerBricksDisplay = document.getElementById('playerBricksDisplay');
+            myLevelsList = document.getElementById('myLevelsList');
+            refreshMyLevelsButton = document.getElementById('refreshMyLevelsButton');
+            // searchLevelsButton is not present in HTML, removed from here
+
+            // Customization elements
+            playerColorPicker = document.getElementById('playerColorPicker');
+            wallColorPicker = document.getElementById('wallColorPicker');
+            pathColorPicker = document.getElementById('pathColorPicker');
+
+            // Build Mode Tools
+            drawingToolsContainer = document.getElementById('drawingTools');
+            selectionActionsContainer = document.getElementById('selectionActions');
+
+            toolWall = document.getElementById('toolWall');
+            toolEraser = document.getElementById('toolEraser'); 
+            toolPath = document.getElementById('toolPath'); 
+            toolPlayer = document.getElementById('toolPlayer');
+            toolWinpad = document.getElementById('toolWinpad');
+            toolTrigger = document.getElementById('toolTrigger');
+            toolMovingBlock = document.getElementById('toolMovingBlock');
+            toolPushBlock = document.getElementById('toolPushBlock');
+            toolSelection = document.getElementById('toolSelection');
+            fillSelectionButton = document.getElementById('fillSelectionButton');
+            clearSelectionButton = document.getElementById('clearSelectionButton');
+            exitSelectionButton = document.getElementById('exitSelectionButton');
+
+            // Leaderboard elements
+            leaderboardList = document.getElementById('leaderboardList');
+            refreshLeaderboardButton = document.getElementById('refreshLeaderboardButton');
+            closeLeaderboardModalButton = document.getElementById('closeLeaderboardModalButton');
+
+
             // Immediately show the start screen and resize the canvas
             showScreen('startScreen');
             resizeCanvas();
@@ -3007,7 +3051,7 @@
             }
 
             // --- Event Listeners (Moved inside window.onload) ---
-            playButton.addEventListener('click', async () => {
+            if (playButton) playButton.addEventListener('click', async () => {
                 await fetchOfficialPlayableLevels();
                 currentLevelIndex = 0;
                 if (officialPlayableLevels.length > 0) {
@@ -3015,69 +3059,69 @@
                     hideAllModals();
                     showScreen('gamePlayArea');
                 } else {
-                    messageBox.textContent = "No official levels found. Please ask LtpMer to set some!";
-                    setTimeout(() => messageBox.textContent = "", 5000);
+                    if (messageBox) messageBox.textContent = "No official levels found. Please ask LtpMer to set some!";
+                    setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 5000);
                 }
             });
 
-            nextLevelButton.addEventListener('click', () => {
+            if (nextLevelButton) nextLevelButton.addEventListener('click', () => {
                 currentLevelIndex = (currentLevelIndex + 1) % officialPlayableLevels.length;
                 initializeGame();
             });
 
-            editCurrentLevelButton.addEventListener('click', editCurrentLevel);
+            if (editCurrentLevelButton) editCurrentLevelButton.addEventListener('click', editCurrentLevel);
 
-            infoButton.addEventListener('click', () => showModal(infoModalOverlay));
-            closeInfoModalButton.addEventListener('click', () => hideModal(infoModalOverlay));
-            infoModalOverlay.addEventListener('click', (e) => {
+            if (infoButton) infoButton.addEventListener('click', () => showModal(infoModalOverlay));
+            if (closeInfoModalButton) closeInfoModalButton.addEventListener('click', () => hideModal(infoModalOverlay));
+            if (infoModalOverlay) infoModalOverlay.addEventListener('click', (e) => {
                 if (e.target === infoModalOverlay) {
                     hideModal(infoModalOverlay);
                 }
             });
 
-            customizationButtonStart.addEventListener('click', () => showModal(customizationModalOverlay));
-            closeCustomizationModalButton.addEventListener('click', () => {
+            if (customizationButtonStart) customizationButtonStart.addEventListener('click', () => showModal(customizationModalOverlay));
+            if (closeCustomizationModalButton) closeCustomizationModalButton.addEventListener('click', () => {
                 hideModal(customizationModalOverlay);
                 saveCustomization();
             });
-            customizationModalOverlay.addEventListener('click', (e) => {
+            if (customizationModalOverlay) customizationModalOverlay.addEventListener('click', (e) => {
                 if (e.target === customizationModalOverlay) {
                     hideModal(customizationModalOverlay);
                     saveCustomization();
                 }
             });
 
-            playerColorPicker.addEventListener('input', (e) => { PLAYER_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
-            wallColorPicker.addEventListener('input', (e) => { WALL_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
-            pathColorPicker.addEventListener('input', (e) => { PATH_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
+            if (playerColorPicker) playerColorPicker.addEventListener('input', (e) => { PLAYER_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
+            if (wallColorPicker) wallColorPicker.addEventListener('input', (e) => { WALL_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
+            if (pathColorPicker) pathColorPicker.addEventListener('input', (e) => { PATH_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
 
-            menuButtonStart.addEventListener('click', () => {
+            if (menuButtonStart) menuButtonStart.addEventListener('click', () => {
                 showModal(menuModalOverlay);
                 loadMyLevels();
                 updateUserIdDisplay();
                 fetchPlayerBricks();
                 loadCommunityLevels(''); // Load community levels in the menu's section without a search query initially
             });
-            closeMenuModalButton.addEventListener('click', () => hideModal(menuModalOverlay));
-            menuModalOverlay.addEventListener('click', (e) => {
+            if (closeMenuModalButton) closeMenuModalButton.addEventListener('click', () => hideModal(menuModalOverlay));
+            if (menuModalOverlay) menuModalOverlay.addEventListener('click', (e) => {
                 if (e.target === menuModalOverlay) {
                     hideModal(menuModalOverlay);
                 }
             });
 
-            startRandomMazeButton.addEventListener('click', () => {
+            if (startRandomMazeButton) startRandomMazeButton.addEventListener('click', () => {
                 currentGameType = GAME_MODES.MAZE;
                 hideAllModals();
                 showScreen('gamePlayArea');
             });
 
-            startRandomBlocksButton.addEventListener('click', () => {
+            if (startRandomBlocksButton) startRandomBlocksButton.addEventListener('click', () => {
                 currentGameType = GAME_MODES.BLOCKS;
                 hideAllModals();
                 showScreen('gamePlayArea');
             });
 
-            buildModeButton.addEventListener('click', () => {
+            if (buildModeButton) buildModeButton.addEventListener('click', () => {
                 currentGameType = GAME_MODES.BUILD;
                 hideAllModals();
                 showScreen('buildModeArea');
@@ -3086,114 +3130,113 @@
                 drawBuild();
             });
 
-            refreshMyLevelsButton.addEventListener('click', loadMyLevels);
+            if (refreshMyLevelsButton) refreshMyLevelsButton.addEventListener('click', loadMyLevels);
 
-            searchLevelsButton.addEventListener('click', () => {
-                showModal(communityLevelsModalOverlay);
-                loadCommunityLevels(''); // Load community levels in the modal's section without a search query initially
-            });
+            // searchLevelsButton is not present in HTML, so its listener is removed from here.
 
             // Event listeners for search in the Menu's Community Levels section
-            searchCommunityLevelsButton.addEventListener('click', () => {
+            if (searchCommunityLevelsButton) searchCommunityLevelsButton.addEventListener('click', () => {
                 loadCommunityLevels(levelSearchInput.value);
             });
-            levelSearchInput.addEventListener('keypress', (e) => {
+            if (levelSearchInput) levelSearchInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     loadCommunityLevels(levelSearchInput.value);
                 }
             });
-            refreshCommunityLevelsButton.addEventListener('click', () => loadCommunityLevels('')); // Refresh with no search
+            if (refreshCommunityLevelsButton) refreshCommunityLevelsButton.addEventListener('click', () => loadCommunityLevels('')); // Refresh with no search
 
             // Event listeners for search in the Community Levels Modal
-            searchCommunityLevelsButtonModal.addEventListener('click', () => {
+            if (searchCommunityLevelsButtonModal) searchCommunityLevelsButtonModal.addEventListener('click', () => {
                 loadCommunityLevels(communityLevelSearchInputModal.value);
             });
-            communityLevelSearchInputModal.addEventListener('keypress', (e) => {
+            if (communityLevelSearchInputModal) communityLevelSearchInputModal.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     loadCommunityLevels(communityLevelSearchInputModal.value);
                 }
             });
-            refreshCommunityLevelsButtonModal.addEventListener('click', () => loadCommunityLevels(''));
-            closeCommunityLevelsModalButton.addEventListener('click', () => hideModal(communityLevelsModalOverlay));
-            communityLevelsModalOverlay.addEventListener('click', (e) => {
+            if (refreshCommunityLevelsButtonModal) refreshCommunityLevelsButtonModal.addEventListener('click', () => loadCommunityLevels(''));
+            if (closeCommunityLevelsModalButton) closeCommunityLevelsModalButton.addEventListener('click', () => hideModal(communityLevelsModalOverlay));
+            if (communityLevelsModalOverlay) communityLevelsModalOverlay.addEventListener('click', (e) => {
                 if (e.target === communityLevelsModalOverlay) {
                     hideModal(communityLevelsModalOverlay);
                 }
             });
 
-            leaderboardButton.addEventListener('click', () => {
+            if (leaderboardButton) leaderboardButton.addEventListener('click', () => {
                 showModal(leaderboardModalOverlay);
                 loadLeaderboard();
             });
-            refreshLeaderboardButton.addEventListener('click', loadLeaderboard);
-            closeLeaderboardModalButton.addEventListener('click', () => hideModal(leaderboardModalOverlay));
-            leaderboardModalOverlay.addEventListener('click', (e) => {
+            if (refreshLeaderboardButton) refreshLeaderboardButton.addEventListener('click', loadLeaderboard);
+            if (closeLeaderboardModalButton) closeLeaderboardModalButton.addEventListener('click', () => hideModal(leaderboardModalOverlay));
+            if (leaderboardModalOverlay) leaderboardModalOverlay.addEventListener('click', (e) => {
                 if (e.target === leaderboardModalOverlay) {
                     hideModal(leaderboardModalOverlay);
                 }
             });
 
-            clearBuildGridButton.addEventListener('click', () => {
+            if (clearBuildGridButton) clearBuildGridButton.addEventListener('click', () => {
                 initBuildGrid();
                 drawBuild();
-                buildMessageBox.textContent = "Grid cleared! Start building!";
+                if (buildMessageBox) buildMessageBox.textContent = "Grid cleared! Start building!";
                 editingLevelId = null;
             });
 
-            saveLevelButton.addEventListener('click', saveLevel);
-            publishLevelButton.addEventListener('click', publishLevel);
+            if (saveLevelButton) saveLevelButton.addEventListener('click', saveLevel);
+            if (publishLevelButton) publishLevelButton.addEventListener('click', publishLevel);
 
-            toolEraser.addEventListener('click', () => selectBuildTool('eraser'));
-            toolWall.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WALL));
-            toolPath.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PATH));
-            toolPlayer.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PLAYER_START));
-            toolWinpad.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WINPAD));
-            toolTrigger.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.TRIGGER));
-            toolMovingBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.MOVING_BLOCK));
-            toolPushBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PUSH_BLOCK));
-            toolSelection.addEventListener('click', () => selectBuildTool('selection'));
+            if (toolEraser) toolEraser.addEventListener('click', () => selectBuildTool('eraser'));
+            if (toolWall) toolWall.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WALL));
+            if (toolPath) toolPath.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PATH));
+            if (toolPlayer) toolPlayer.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PLAYER_START));
+            if (toolWinpad) toolWinpad.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WINPAD));
+            if (toolTrigger) toolTrigger.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.TRIGGER));
+            if (toolMovingBlock) toolMovingBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.MOVING_BLOCK));
+            if (toolPushBlock) toolPushBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PUSH_BLOCK));
+            if (toolSelection) toolSelection.addEventListener('click', () => selectBuildTool('selection'));
 
-            fillSelectionButton.addEventListener('click', () => {
+            if (fillSelectionButton) fillSelectionButton.addEventListener('click', () => {
                 if (lastSelectedDrawingTool !== 'selection') {
                     fillSelection(lastSelectedDrawingTool);
                 } else {
-                    buildMessageBox.textContent = "Please select a drawing tool first (e.g., Wall, Player) to fill the selection.";
+                    if (buildMessageBox) buildMessageBox.textContent = "Please select a drawing tool first (e.g., Wall, Player) to fill the selection.";
                 }
             });
-            clearSelectionButton.addEventListener('click', () => fillSelection(BLOCK_TYPES.PATH));
-            exitSelectionButton.addEventListener('click', () => selectBuildTool(lastSelectedDrawingTool));
+            if (clearSelectionButton) clearSelectionButton.addEventListener('click', () => fillSelection(BLOCK_TYPES.PATH));
+            if (exitSelectionButton) exitSelectionButton.addEventListener('click', () => selectBuildTool(lastSelectedDrawingTool));
 
-            backToMainMenuButtonGame.addEventListener('click', () => showScreen('startScreen'));
-            backToMainMenuButtonBuild.addEventListener('click', () => showScreen('startScreen'));
+            if (backToMainMenuButtonGame) backToMainMenuButtonGame.addEventListener('click', () => showScreen('startScreen'));
+            if (backToMainMenuButtonBuild) backToMainMenuButtonBuild.addEventListener('click', () => showScreen('startScreen'));
 
-            loginButton.addEventListener('click', () => {
+            if (loginButton) loginButton.addEventListener('click', () => {
                 if (loginButton.classList.contains('logged-in')) {
                     handleLogout();
                 } else {
                     showModal(loginModalOverlay);
                 }
             });
-            loginSubmitButton.addEventListener('click', handleLogin);
-            loginCancelButton.addEventListener('click', () => hideModal(loginModalOverlay));
-            loginModalOverlay.addEventListener('click', (e) => {
+            if (loginSubmitButton) loginSubmitButton.addEventListener('click', handleLogin);
+            if (loginCancelButton) loginCancelButton.addEventListener('click', () => hideModal(loginModalOverlay));
+            if (loginModalOverlay) loginModalOverlay.addEventListener('click', (e) => {
                 if (e.target === loginModalOverlay) {
                     hideModal(loginModalOverlay);
                 }
             });
 
-            playDailyLevelButton.addEventListener('click', () => {
+            if (playDailyLevelButton) playDailyLevelButton.addEventListener('click', () => {
                 if (currentDailyLevel) {
                     playCommunityLevel(currentDailyLevel);
                 } else {
-                    messageBox.textContent = "No daily level is currently set.";
-                    setTimeout(() => messageBox.textContent = "", 3000);
+                    if (messageBox) messageBox.textContent = "No daily level is currently set.";
+                    setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                 }
             });
 
-            buildCanvas.addEventListener('mousedown', handleBuildCanvasInteraction);
-            buildCanvas.addEventListener('mouseup', handleBuildCanvasInteraction);
-            buildCanvas.addEventListener('mousemove', handleBuildCanvasInteraction);
-            buildCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            if (buildCanvas) {
+                buildCanvas.addEventListener('mousedown', handleBuildCanvasInteraction);
+                buildCanvas.addEventListener('mouseup', handleBuildCanvasInteraction);
+                buildCanvas.addEventListener('mousemove', handleBuildCanvasInteraction);
+                buildCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            }
 
             window.addEventListener('keydown', (e) => {
                 if (currentActiveScreen === 'gamePlayArea') {
@@ -3229,31 +3272,33 @@
                 }
             });
 
-            touchControls.addEventListener('click', (e) => {
-                if (currentActiveScreen !== 'gamePlayArea') return;
+            if (touchControls) {
+                touchControls.addEventListener('click', (e) => {
+                    if (currentActiveScreen !== 'gamePlayArea') return;
 
-                const button = e.target.closest('.touch-button');
-                if (!button) return;
+                    const button = e.target.closest('.touch-button');
+                    if (!button) return;
 
-                const direction = button.dataset.direction;
-                switch (direction) {
-                    case 'up':
-                        movePlayer(0, -1);
-                        break;
-                    case 'down':
-                        movePlayer(0, 1);
-                        break;
-                    case 'left':
-                        movePlayer(-1, 0);
-                        break;
-                    case 'right':
-                        movePlayer(1, 0);
-                        break;
-                }
-            });
-
-            window.addEventListener('resize', resizeCanvas); // Keep this outside for immediate responsiveness
+                    const direction = button.dataset.direction;
+                    switch (direction) {
+                        case 'up':
+                            movePlayer(0, -1);
+                            break;
+                        case 'down':
+                            movePlayer(0, 1);
+                            break;
+                        case 'left':
+                            movePlayer(-1, 0);
+                            break;
+                        case 'right':
+                            movePlayer(1, 0);
+                            break;
+                    }
+                });
+            }
+            // window.addEventListener('resize', resizeCanvas); // This one is already outside, keep it.
         };
+        window.addEventListener('resize', resizeCanvas);
     </script>
 </body>
 </html>
