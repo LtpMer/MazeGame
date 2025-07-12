@@ -1158,7 +1158,7 @@
         <div class="modal-content">
             <h2>Menu</h2>
             <p id="userIdDisplay">User ID: Loading...</p>
-            <p id="playerBricksDisplay">Bricks: � 0</p> <!-- New Bricks Display -->
+            <p id="playerBricksDisplay">Bricks: 🧱 0</p> <!-- New Bricks Display -->
             <p>Choose your game mode:</p>
             <div class="button-row menu-modal-buttons">
                 <button id="startRandomMazeButton">Start Random Maze</button>
@@ -1249,6 +1249,10 @@
                     Supported actions: "wait", "damagePlayer", "message", "teleportPlayer", "changeBlockType", "loop".<br>
                     For "teleportPlayer" and "changeBlockType", use "self" for targetX/Y to refer to the block's own position.
                 </p>
+                <div class="custom-block-editor-form-group">
+                    <input type="checkbox" id="autoActivateCheckbox">
+                    <label for="autoActivateCheckbox">Auto-activate on level start</label>
+                </div>
                 <div class="custom-block-editor-buttons">
                     <button type="button" id="saveCustomBlockDefinitionButton">Save Definition</button>
                     <button type="button" id="deleteCustomBlockDefinitionButton" style="display: none;">Delete Current</button>
@@ -1289,7 +1293,7 @@
         let communityLevelsButtonMenu; // NEW: Button for Community Levels in Menu
 
         // Custom Block Editor elements
-        let customBlockEditorModalOverlay, customBlockNameInput, customBlockColorPicker, customBlockScriptInput, saveCustomBlockDefinitionButton, deleteCustomBlockDefinitionButton, customBlockDefinitionsList, closeCustomBlockEditorButton;
+        let customBlockEditorModalOverlay, customBlockNameInput, customBlockColorPicker, customBlockScriptInput, autoActivateCheckbox, saveCustomBlockDefinitionButton, deleteCustomBlockDefinitionButton, customBlockDefinitionsList, closeCustomBlockEditorButton;
 
         // Maze dimensions
         const MAZE_WIDTH = 31;
@@ -1345,7 +1349,7 @@
         let editingLevelId = null; // New: Stores the ID of the level being edited, if any
 
         // Custom Block Definitions
-        let customBlockDefinitions = {}; // Stores {customId: {color, script}}
+        let customBlockDefinitions = {}; // Stores {customId: {color, script, autoActivate}}
         let currentSelectedCustomBlockId = null; // The ID of the custom block definition chosen for placement.
         let editingCustomBlockId = null; // The ID of the custom block definition currently being edited in the modal.
 
@@ -2085,6 +2089,21 @@
                 startLevelTimer(); // Start timer for playable levels
                 checkWinCondition();
                 if (mazeCtx) drawGame();
+
+                // NEW: Auto-activate custom blocks
+                for (let y = 0; y < MAZE_HEIGHT; y++) {
+                    for (let x = 0; x < MAZE_WIDTH; x++) {
+                        const block = mazeGrid[y][x];
+                        if (typeof block === 'object' && block.type === BLOCK_TYPES.CUSTOM_BLOCK) {
+                            const definition = customBlockDefinitions[block.customId];
+                            if (definition && definition.autoActivate) {
+                                console.log(`Auto-activating custom block at (${x}, ${y}) with ID: ${block.customId}`);
+                                executeCustomBlockScript(block, { x, y });
+                            }
+                        }
+                    }
+                }
+
             } else {
                 if (buildCtx) drawBuild();
             }
@@ -2126,7 +2145,7 @@
         function showScreen(screenId) {
             if (startScreen) startScreen.classList.remove('active');
             if (gamePlayArea) gamePlayArea.classList.remove('active');
-            if (buildModeArea) buildModeArea.classList.remove('active'); // Fixed typo here
+            if (buildModeArea) buildModeArea.classList.remove('active');
 
             currentActiveScreen = screenId;
 
@@ -2834,7 +2853,7 @@
                     const creatorDisplay = data.creatorName ? `<span class="level-creator">By ${data.creatorName}</span>` : '';
 
                     let adminActionsHtml = '';
-                    if (isLtpMer || isCreator) { // This is the line where the error was occurring
+                    if (isLtpMer || isCreator) { 
                         adminActionsHtml += `
                             <div class="community-level-actions">
                                 ${isLtpMer ? `
@@ -2890,67 +2909,68 @@
                 });
 
                 // Add event listeners for admin actions (if applicable)
-                if (true) { // This block needs to run to attach listeners, even if isLtpMer/isCreator are false
-                    targetListElement.querySelectorAll('.update-level-props-button').forEach(button => {
-                        button.addEventListener('click', async (e) => {
-                            const levelId = e.target.dataset.levelId;
-                            const parentDiv = e.target.closest('.community-level-actions');
-                            const difficultySelect = parentDiv.querySelector('.set-difficulty-select');
-                            const bricksInput = parentDiv.querySelector('.set-bricks-input');
+                // These listeners need to be attached regardless of isLtpMer/isCreator status
+                // as the buttons might be present for other users to interact with (e.g., play)
+                // The actual logic inside the handlers will check permissions.
+                targetListElement.querySelectorAll('.update-level-props-button').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const levelId = e.target.dataset.levelId;
+                        const parentDiv = e.target.closest('.community-level-actions');
+                        const difficultySelect = parentDiv.querySelector('.set-difficulty-select');
+                        const bricksInput = parentDiv.querySelector('.set-bricks-input');
 
-                            const newDifficulty = difficultySelect.value;
-                            const newBricks = parseInt(bricksInput.value);
+                        const newDifficulty = difficultySelect.value;
+                        const newBricks = parseInt(bricksInput.value);
 
-                            if (!newDifficulty || isNaN(newBricks) || newBricks < 0 || newBricks > 4) {
-                                if (messageBox) messageBox.textContent = "Invalid difficulty or bricks value.";
-                                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                                return;
-                            }
+                        if (!newDifficulty || isNaN(newBricks) || newBricks < 0 || newBricks > 4) {
+                            if (messageBox) messageBox.textContent = "Invalid difficulty or bricks value.";
+                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                            return;
+                        }
 
-                            try {
-                                const levelRef = doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId);
-                                await updateDoc(levelRef, {
-                                    difficulty: newDifficulty,
-                                    brickReward: newBricks
-                                });
-                                if (messageBox) messageBox.textContent = `Level ${levelId} properties updated!`;
-                                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                                loadCommunityLevels(searchQuery); // Refresh list to show changes
-                            } catch (error) {
-                                console.error("Error updating level properties:", error);
-                                if (messageBox) messageBox.textContent = `Error updating properties: ${error.message}.`;
-                                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                            }
-                        });
-                    });
-
-                    targetListElement.querySelectorAll('.set-daily-button-community').forEach(button => {
-                        button.addEventListener('click', async (e) => {
-                            const levelId = e.target.dataset.levelId;
-                            // Set this level as the daily level
-                            await setDailyLevel(levelId);
+                        try {
+                            const levelRef = doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId);
+                            await updateDoc(levelRef, {
+                                difficulty: newDifficulty,
+                                brickReward: newBricks
+                            });
+                            if (messageBox) messageBox.textContent = `Level ${levelId} properties updated!`;
+                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                             loadCommunityLevels(searchQuery); // Refresh list to show changes
-                        });
+                        } catch (error) {
+                            console.error("Error updating level properties:", error);
+                            if (messageBox) messageBox.textContent = `Error updating properties: ${error.message}.`;
+                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                        }
                     });
+                });
 
-                    targetListElement.querySelectorAll('.delete-level-button').forEach(button => {
-                        button.addEventListener('click', async (e) => {
-                            const levelId = e.target.dataset.levelId;
-                            if (window.confirm("Are you sure you want to delete this community level?")) {
-                                try {
-                                    await deleteDoc(doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId));
-                                    if (messageBox) messageBox.textContent = "Community level deleted successfully!";
-                                    setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                                    loadCommunityLevels(searchQuery); // Refresh the list
-                                } catch (error) {
-                                    console.error("Error deleting community level:", error);
-                                    if (messageBox) messageBox.textContent = `Error deleting level: ${error.message}.`;
-                                    setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                                }
-                            }
-                        });
+                targetListElement.querySelectorAll('.set-daily-button-community').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const levelId = e.target.dataset.levelId;
+                        // Set this level as the daily level
+                        await setDailyLevel(levelId);
+                        loadCommunityLevels(searchQuery); // Refresh list to show changes
                     });
-                }
+                });
+
+                targetListElement.querySelectorAll('.delete-level-button').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const levelId = e.target.dataset.levelId;
+                        if (window.confirm("Are you sure you want to delete this community level?")) {
+                            try {
+                                await deleteDoc(doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId));
+                                if (messageBox) messageBox.textContent = "Community level deleted successfully!";
+                                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                                loadCommunityLevels(searchQuery); // Refresh the list
+                            } catch (error) {
+                                console.error("Error deleting community level:", error);
+                                if (messageBox) messageBox.textContent = `Error deleting level: ${error.message}.`;
+                                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                            }
+                        }
+                    });
+                });
 
             } catch (e) {
                 console.error("Error loading community levels:", e);
@@ -3068,8 +3088,11 @@
 
         // Fetch the daily level
         async function fetchDailyLevel() {
+            console.log("Attempting to fetch daily level...");
             if (!window.db) {
                 console.warn("Cannot fetch daily level: Firebase not initialized.");
+                if (dailyLevelName) dailyLevelName.textContent = "Error: Firebase not initialized.";
+                if (dailyLevelContainer) dailyLevelContainer.style.display = 'none';
                 return;
             }
             try {
@@ -3087,6 +3110,7 @@
                     if (dailyLevelName) dailyLevelName.textContent = "No daily level set.";
                     if (dailyLevelContainer) dailyLevelContainer.style.display = 'none';
                     currentDailyLevel = null;
+                    console.log("No daily level found in Firestore for this app ID.");
                 }
             } catch (e) {
                 console.error("Error fetching daily level:", e);
@@ -3204,6 +3228,7 @@
             const blockId = customBlockNameInput.value.trim();
             const blockColor = customBlockColorPicker.value;
             const blockScriptRaw = customBlockScriptInput.value.trim();
+            const autoActivate = autoActivateCheckbox.checked; // Get checkbox value
 
             if (!blockId) {
                 if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = "Block ID cannot be empty.";
@@ -3242,6 +3267,7 @@
                 await setDoc(docRef, {
                     color: blockColor,
                     script: parsedScript,
+                    autoActivate: autoActivate, // Save autoActivate property
                     createdAt: new Date(),
                     lastUpdated: new Date()
                 }, { merge: true }); // Use merge to update if exists
@@ -3253,6 +3279,7 @@
                 customBlockNameInput.value = '';
                 customBlockColorPicker.value = CUSTOM_BLOCK_DEFAULT_COLOR;
                 customBlockScriptInput.value = '';
+                autoActivateCheckbox.checked = false; // Reset checkbox
                 deleteCustomBlockDefinitionButton.style.display = 'none'; // Hide delete button
             } catch (e) {
                 console.error("Error saving custom block definition:", e);
@@ -3283,7 +3310,8 @@
                     const data = doc.data();
                     customBlockDefinitions[doc.id] = {
                         color: data.color,
-                        script: data.script
+                        script: data.script,
+                        autoActivate: data.autoActivate || false // Load autoActivate, default to false
                     };
                 });
                 renderCustomBlockDefinitionsList();
@@ -3307,6 +3335,7 @@
                 const itemDiv = document.createElement('div');
                 itemDiv.innerHTML = `
                     <span style="color: ${definition.color}; font-weight: bold;">${id}</span>
+                    ${definition.autoActivate ? '<span style="font-size: 0.8em; color: #68d391; margin-left: 5px;">(Auto)</span>' : ''}
                     <div>
                         <button class="select-custom-block-button" data-id="${id}">Select</button>
                         <button class="edit-custom-block-button" data-id="${id}">Edit</button>
@@ -3335,6 +3364,7 @@
                             customBlockNameInput.value = idToEdit;
                             customBlockColorPicker.value = definition.color;
                             customBlockScriptInput.value = JSON.stringify(definition.script, null, 2); // Pretty print JSON
+                            autoActivateCheckbox.checked = definition.autoActivate || false; // Set checkbox state
                             editingCustomBlockId = idToEdit; // Set editing state
                             deleteCustomBlockDefinitionButton.style.display = 'block'; // Show delete button when editing
                             if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = `Editing: ${idToEdit}`;
@@ -3361,6 +3391,7 @@
                                     customBlockNameInput.value = '';
                                     customBlockColorPicker.value = CUSTOM_BLOCK_DEFAULT_COLOR;
                                     customBlockScriptInput.value = '';
+                                    autoActivateCheckbox.checked = false; // Reset checkbox
                                     editingCustomBlockId = null;
                                     deleteCustomBlockDefinitionButton.style.display = 'none';
                                 }
@@ -3383,6 +3414,7 @@
                 customBlockNameInput.value = '';
                 customBlockColorPicker.value = CUSTOM_BLOCK_DEFAULT_COLOR;
                 customBlockScriptInput.value = '';
+                autoActivateCheckbox.checked = false; // Reset checkbox
                 deleteCustomBlockDefinitionButton.style.display = 'none';
             }
             if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = "Define or select a custom block behavior.";
@@ -3482,6 +3514,7 @@
             customBlockNameInput = document.getElementById('customBlockNameInput');
             customBlockColorPicker = document.getElementById('customBlockColorPicker');
             customBlockScriptInput = document.getElementById('customBlockScriptInput');
+            autoActivateCheckbox = document.getElementById('autoActivateCheckbox'); // Get checkbox reference
             saveCustomBlockDefinitionButton = document.getElementById('saveCustomBlockDefinitionButton');
             deleteCustomBlockDefinitionButton = document.getElementById('deleteCustomBlockDefinitionButton');
             customBlockDefinitionsList = document.getElementById('customBlockDefinitionsList');
@@ -3554,7 +3587,7 @@
                 showModal(communityLevelsModalOverlay);
                 loadCommunityLevels(); // Load all community levels initially
             });
-            if (closeCommunityLevelsModalButton) closeCommunityLevelsModalButton.addEventListener('click', () => hideModal(communityLevelsModalOverlay));
+            if (closeCommunityLevelsModalButton) closeCommunityLevelsButtonModal.addEventListener('click', () => hideModal(communityLevelsModalOverlay));
             if (searchCommunityLevelsButtonModal) searchCommunityLevelsButtonModal.addEventListener('click', () => {
                 loadCommunityLevels(communityLevelSearchInputModal.value);
             });
@@ -3653,6 +3686,7 @@
                                 customBlockNameInput.value = '';
                                 customBlockColorPicker.value = CUSTOM_BLOCK_DEFAULT_COLOR;
                                 customBlockScriptInput.value = '';
+                                autoActivateCheckbox.checked = false; // Reset checkbox
                                 editingCustomBlockId = null;
                                 deleteCustomBlockDefinitionButton.style.display = 'none';
                             }
@@ -3669,6 +3703,7 @@
                 customBlockNameInput.value = '';
                 customBlockColorPicker.value = CUSTOM_BLOCK_DEFAULT_COLOR;
                 customBlockScriptInput.value = '';
+                autoActivateCheckbox.checked = false; // Reset checkbox
                 editingCustomBlockId = null;
                 deleteCustomBlockDefinitionButton.style.display = 'none';
             });
