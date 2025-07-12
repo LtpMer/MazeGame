@@ -620,7 +620,7 @@
             margin-left: 5px;
             text-transform: capitalize; /* Make it look nice */
         }
-        .level-bricks { /* New style for bricks display in lists */
+        .level-bricks {
             font-size: 0.8em;
             color: #f6ad55;
             margin-left: 5px;
@@ -844,6 +844,113 @@
             background-color: #4299e1;
         }
 
+        /* Health Display */
+        #playerHealthDisplay {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #e53e3e; /* Red for health */
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        /* Custom Block Editor Modal */
+        #customBlockEditorModalOverlay .modal-content {
+            max-width: 600px;
+        }
+        .custom-block-editor-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+            text-align: left;
+        }
+        .custom-block-editor-form label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .custom-block-editor-form input[type="text"],
+        .custom-block-editor-form textarea {
+            width: calc(100% - 22px); /* Adjust for padding and border */
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #4a5568;
+            background-color: #2d3748;
+            color: #e2e8f0;
+            font-size: 1rem;
+        }
+        .custom-block-editor-form textarea {
+            min-height: 150px;
+            font-family: 'monospace';
+        }
+        .custom-block-editor-form .color-input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .custom-block-editor-form input[type="color"] {
+            width: 50px;
+            height: 35px;
+            padding: 0;
+            border-radius: 5px;
+            cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        .custom-block-editor-form input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        .custom-block-editor-form input[type="color"]::-webkit-color-swatch { border: none; border-radius: 5px; }
+        .custom-block-editor-form input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
+
+        .custom-block-editor-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .custom-block-editor-buttons button {
+            flex-grow: 1;
+            max-width: 150px;
+        }
+        #saveCustomBlockDefinitionButton { background-color: #4CAF50; }
+        #saveCustomBlockDefinitionButton:hover { background-color: #388E3C; }
+        #deleteCustomBlockDefinitionButton { background-color: #e53e3e; }
+        #deleteCustomBlockDefinitionButton:hover { background-color: #c53030; }
+        #closeCustomBlockEditorButton { background-color: #a0aec0; }
+        #closeCustomBlockEditorButton:hover { background-color: #718096; }
+
+        .custom-block-definitions-list-container {
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 15px;
+            width: 100%;
+            text-align: left;
+        }
+        .custom-block-definitions-list-container > div {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px dashed #4a5568;
+        }
+        .custom-block-definitions-list-container > div:last-child {
+            border-bottom: none;
+        }
+        .custom-block-definitions-list-container button {
+            margin-left: 5px;
+            padding: 3px 8px;
+            font-size: 0.8rem;
+            max-width: 70px;
+        }
+        .custom-block-definitions-list-container .select-custom-block-button { background-color: #63b3ed; }
+        .custom-block-definitions-list-container .select-custom-block-button:hover { background-color: #4299e1; }
+        .custom-block-definitions-list-container .edit-custom-block-button { background-color: #f6ad55; }
+        .custom-block-definitions-list-container .edit-custom-block-button:hover { background-color: #ed8936; }
+        .custom-block-definitions-list-container .delete-custom-block-button { background-color: #e53e3e; }
+        .custom-block-definitions-list-container .delete-custom-block-button:hover { background-color: #c53030; }
+
 
         @media (max-width: 768px) {
             h1 {
@@ -951,6 +1058,7 @@
         <div id="gamePlayArea" class="game-play-area">
             <canvas id="mazeCanvas"></canvas>
             <div class="message-box" id="messageBox">Use arrow keys or WASD to move!</div>
+            <div id="playerHealthDisplay">Health: ❤️ 10</div> <!-- Health Display -->
             <div class="controls">
                 <div class="button-row">
                     <button id="nextLevelButton" style="display: none;">Next Level</button> <!-- Only for Level Mode -->
@@ -978,9 +1086,9 @@
                     <button id="toolPath">Path</button>
                     <button id="toolPlayer">Player</button>
                     <button id="toolWinpad">Win Pad</button>
-                    <button id="toolTrigger">Trigger</button>
-                    <button id="toolMovingBlock">Moving</button>
+                    <button id="toolDamagingBlock">Damaging</button> <!-- New Damaging Block Tool -->
                     <button id="toolPushBlock">Push</button>
+                    <button id="toolCustomBlock">Custom</button> <!-- New Custom Block Tool -->
                     <button id="toolSelection">Selection</button> <!-- New Selection Tool -->
                 </div>
                 <div class="button-row" id="selectionActions" style="display: none;">
@@ -1000,6 +1108,7 @@
 
     <!-- Info and Login Buttons in corner -->
     <div class="corner-buttons">
+        <button id="guidesButton">Guides</button>
         <button id="loginButton">Login</button>
         <button id="infoButton">Info</button>
     </div>
@@ -1019,6 +1128,22 @@
                 **Menu:** Access other game modes like random generation, build mode, or saved levels.
             </p>
             <button class="close-button" id="closeInfoModalButton">Close</button>
+        </div>
+    </div>
+
+    <!-- Guides Modal -->
+    <div id="guidesModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Guides</h2>
+            <div class="button-row menu-modal-buttons">
+                <a href="#new-player-guide" target="_blank" style="text-decoration: none; width: 100%; max-width: 300px;">
+                    <button style="width: 100%; background-color: #63b3ed;">New Player Guide</button>
+                </a>
+                <a href="#custom-block-scripting-guide" target="_blank" style="text-decoration: none; width: 100%; max-width: 300px;">
+                    <button style="width: 100%; background-color: #63b3ed;">Scripting Guide</button>
+                </a>
+            </div>
+            <button class="close-button" id="closeGuidesModalButton" style="margin-top: 20px;">Close</button>
         </div>
     </div>
 
@@ -1121,6 +1246,40 @@
         </div>
     </div>
 
+    <!-- Custom Block Editor Modal -->
+    <div id="customBlockEditorModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Custom Block Editor</h2>
+            <form class="custom-block-editor-form">
+                <label for="customBlockNameInput">Block ID (Unique Name):</label>
+                <input type="text" id="customBlockNameInput" placeholder="e.g., 'teleport_trap', 'healing_pad'">
+                
+                <div class="color-input-group">
+                    <label for="customBlockColorPicker">Block Color:</label>
+                    <input type="color" id="customBlockColorPicker" value="#800080">
+                </div>
+
+                <label for="customBlockScriptInput">Behavior Script (JSON Array):</label>
+                <textarea id="customBlockScriptInput" placeholder='[{"type": "message", "params": {"text": "Hello!"}}, {"type": "wait", "params": {"duration": 1000}}]'></textarea>
+                <p style="font-size: 0.9em; color: #a0aec0; text-align: left;">
+                    Supported actions: "wait", "damagePlayer", "message", "teleportPlayer", "changeBlockType", "loop".<br>
+                    For "teleportPlayer" and "changeBlockType", use "self" for targetX/Y to refer to the block's own position.
+                </p>
+                <div class="custom-block-editor-buttons">
+                    <button type="button" id="saveCustomBlockDefinitionButton">Save Definition</button>
+                    <button type="button" id="deleteCustomBlockDefinitionButton" style="display: none;">Delete Current</button>
+                </div>
+            </form>
+
+            <h3>My Custom Block Definitions</h3>
+            <div id="customBlockDefinitionsList" class="custom-block-definitions-list-container">
+                <!-- Custom block definitions will be loaded here -->
+                Loading definitions...
+            </div>
+            <button class="close-button" id="closeCustomBlockEditorButton" style="margin-top: 20px;">Close Editor</button>
+        </div>
+    </div>
+
     <script type="module">
         // Import Firestore functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -1128,20 +1287,25 @@
         import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Declare variables globally, but initialize them inside window.onload
-        let startScreen, gamePlayArea, buildModeArea, infoButton, loginButton;
+        let startScreen, gamePlayArea, buildModeArea, infoButton, loginButton, guidesButton;
         let playButton, customizationButtonStart, menuButtonStart, leaderboardButton, dailyLevelContainer, dailyLevelName, playDailyLevelButton;
         let mazeCanvas, mazeCtx, messageBox, nextLevelButton, editCurrentLevelButton, backToMainMenuButtonGame, touchControls;
         let buildCanvas, buildCtx, buildMessageBox, clearBuildGridButton, saveLevelButton, publishLevelButton, backToMainMenuButtonBuild;
         let infoModalOverlay, closeInfoModalButton, customizationModalOverlay, closeCustomizationModalButton, menuModalOverlay, closeMenuModalButton, loginModalOverlay, playerNameInput, passwordInput, loginSubmitButton, loginCancelButton;
+        let guidesModalOverlay, closeGuidesModalButton;
         let communityLevelsModalOverlay, communityLevelsListInMenu, levelSearchInput, searchCommunityLevelsButton, refreshCommunityLevelsButton; // Removed levelSearchInput, searchCommunityLevelsButton, refreshCommunityLevelsButton from menu modal context
         let communityLevelSearchInputModal, searchCommunityLevelsButtonModal, communityLevelsListModal, refreshCommunityLevelsButtonModal, closeCommunityLevelsModalButton;
         let startRandomMazeButton, startRandomBlocksButton, buildModeButton, userIdDisplay, playerBricksDisplay, myLevelsList, refreshMyLevelsButton;
         let playerColorPicker, wallColorPicker, pathColorPicker;
         let drawingToolsContainer, selectionActionsContainer;
-        let toolWall, toolEraser, toolPath, toolPlayer, toolWinpad, toolTrigger, toolMovingBlock, toolPushBlock, toolSelection;
+        let toolWall, toolEraser, toolPath, toolPlayer, toolWinpad, toolPushBlock, toolSelection; // Removed toolTrigger, toolMovingBlock
+        let toolDamagingBlock, toolCustomBlock; // Added new tools
         let fillSelectionButton, clearSelectionButton, exitSelectionButton;
         let leaderboardList, refreshLeaderboardButton, closeLeaderboardModalButton;
         let communityLevelsButtonMenu; // NEW: Button for Community Levels in Menu
+
+        // Custom Block Editor elements
+        let customBlockEditorModalOverlay, customBlockNameInput, customBlockColorPicker, customBlockScriptInput, saveCustomBlockDefinitionButton, deleteCustomBlockDefinitionButton, customBlockDefinitionsList, closeCustomBlockEditorButton;
 
         // Maze dimensions
         const MAZE_WIDTH = 31;
@@ -1153,9 +1317,9 @@
         let WALL_COLOR = '#000000';
         let PATH_COLOR = '#f0f0f0';
         const END_COLOR = '#4CAF50';
-        const TRIGGER_COLOR = '#8A2BE2';
-        const MOVING_BLOCK_COLOR = '#4682B4';
         const PUSH_BLOCK_COLOR = '#FFD700';
+        const DAMAGING_BLOCK_COLOR = '#FF4500'; // Orange-Red
+        const CUSTOM_BLOCK_DEFAULT_COLOR = '#800080'; // Purple
 
         // Block Types
         const BLOCK_TYPES = {
@@ -1163,11 +1327,9 @@
             WALL: 1,
             PLAYER_START: 2,
             WINPAD: 3,
-            TRIGGER: 4,
-            MOVING_BLOCK: 5,
-            PUSH_BLOCK: 6
-            // ERASER is handled by setting currentBuildTool to PATH
-            // SELECTION is handled by setting currentBuildTool to 'selection' string
+            PUSH_BLOCK: 6,
+            DAMAGING_BLOCK: 7, // New damaging block
+            CUSTOM_BLOCK: 8 // New custom block
         };
 
         let currentBuildTool = BLOCK_TYPES.WALL; // The currently active tool for drawing/selection
@@ -1190,9 +1352,18 @@
         let currentLevelId = null; // ID of the level currently being played (for leaderboard)
         let currentLevelName = ''; // Name of the level currently being played (for leaderboard)
 
+        const PLAYER_MAX_HEALTH = 10;
+        let currentHealth = PLAYER_MAX_HEALTH;
+        let playerHealthDisplay; // Reference to the HTML element
+
         let currentPlayerName = "Anonymous";
         let playerBricks = 0;
         let editingLevelId = null; // New: Stores the ID of the level being edited, if any
+
+        // Custom Block Definitions
+        let customBlockDefinitions = {}; // Stores {customId: {color, script}}
+        let currentSelectedCustomBlockId = null; // The ID of the custom block definition chosen for placement.
+        let editingCustomBlockId = null; // The ID of the custom block definition currently being edited in the modal.
 
         // Game Modes
         const GAME_MODES = {
@@ -1340,14 +1511,15 @@
                         case BLOCK_TYPES.WINPAD:
                             color = END_COLOR;
                             break;
-                        case BLOCK_TYPES.TRIGGER:
-                            color = TRIGGER_COLOR;
-                            break;
-                        case BLOCK_TYPES.MOVING_BLOCK:
-                            color = MOVING_BLOCK_COLOR;
+                        case BLOCK_TYPES.DAMAGING_BLOCK: // New damaging block
+                            color = DAMAGING_BLOCK_COLOR;
                             break;
                         case BLOCK_TYPES.PUSH_BLOCK:
                             color = PUSH_BLOCK_COLOR;
+                            break;
+                        case BLOCK_TYPES.CUSTOM_BLOCK: // New custom block
+                            // Try to get color from definition, fallback to default
+                            color = customBlockDefinitions[block.customId]?.color || CUSTOM_BLOCK_DEFAULT_COLOR;
                             break;
                         case BLOCK_TYPES.PATH:
                         default:
@@ -1392,14 +1564,15 @@
                         case BLOCK_TYPES.WINPAD:
                             color = END_COLOR;
                             break;
-                        case BLOCK_TYPES.TRIGGER:
-                            color = TRIGGER_COLOR;
-                            break;
-                        case BLOCK_TYPES.MOVING_BLOCK:
-                            color = MOVING_BLOCK_COLOR;
+                        case BLOCK_TYPES.DAMAGING_BLOCK: // New damaging block
+                            color = DAMAGING_BLOCK_COLOR;
                             break;
                         case BLOCK_TYPES.PUSH_BLOCK:
                             color = PUSH_BLOCK_COLOR;
+                            break;
+                        case BLOCK_TYPES.CUSTOM_BLOCK: // New custom block
+                            // Try to get color from definition, fallback to default
+                            color = customBlockDefinitions[block.customId]?.color || CUSTOM_BLOCK_DEFAULT_COLOR;
                             break;
                         case BLOCK_TYPES.PATH:
                         default:
@@ -1427,7 +1600,7 @@
         }
 
         // Handles player movement based on arrow keys or touch controls
-        function movePlayer(dx, dy) {
+        async function movePlayer(dx, dy) { // Made async to support custom block scripts
             if (gameWon) return;
 
             const newX = player.x + dx;
@@ -1476,31 +1649,149 @@
             player.x = newX;
             player.y = newY;
             drawGame();
-            checkWinCondition();
+            checkWinCondition(); // Check win condition after player moves
 
-            // Handle Trigger block after player moves onto it
-            if (targetBlockType === BLOCK_TYPES.TRIGGER) {
-                if (typeof targetBlock === 'object' && targetBlock.targetX !== undefined && targetBlock.targetY !== undefined) {
-                    const tx = targetBlock.targetX;
-                    const ty = targetBlock.targetY;
-                    const targetChangeType = targetBlock.targetType || BLOCK_TYPES.PATH; // Default to path if not specified
+            // Handle Damaging Block
+            if (targetBlockType === BLOCK_TYPES.DAMAGING_BLOCK) {
+                takeDamage(1);
+            }
 
-                    if (mazeGrid[ty] && mazeGrid[ty][tx] !== undefined) {
-                        mazeGrid[ty][tx] = targetChangeType; // Change the target block
-                        drawGame(); // Redraw to show the change
-                        messageBox.textContent = `Trigger activated! Block at (${tx},${ty}) changed.`;
-                        setTimeout(() => checkWinCondition(), 1000); // Re-check win condition after message
-                    } else {
-                        console.warn(`Trigger target invalid: (${tx},${ty})`);
-                    }
-                } else {
-                    console.warn("Trigger block missing target properties.");
+            // Handle Custom Block
+            if (targetBlockType === BLOCK_TYPES.CUSTOM_BLOCK) {
+                await executeCustomBlockScript(targetBlock, { x: newX, y: newY });
+            }
+        }
+
+        // Executes the script of a custom block
+        async function executeCustomBlockScript(blockData, blockCoords) {
+            const definition = customBlockDefinitions[blockData.customId];
+            if (!definition || !definition.script || !Array.isArray(definition.script)) {
+                console.warn(`Custom block definition or script not found for ID: ${blockData.customId}`);
+                return;
+            }
+
+            for (const action of definition.script) {
+                if (currentHealth <= 0) break; // Stop script if player dies
+                switch (action.type) {
+                    case 'wait':
+                        if (action.params && typeof action.params.duration === 'number') {
+                            await new Promise(resolve => setTimeout(resolve, action.params.duration));
+                        }
+                        break;
+                    case 'damagePlayer':
+                        if (action.params && typeof action.params.amount === 'number') {
+                            takeDamage(action.params.amount);
+                        }
+                        break;
+                    case 'message':
+                        if (action.params && typeof action.params.text === 'string') {
+                            messageBox.textContent = action.params.text;
+                        }
+                        break;
+                    case 'teleportPlayer':
+                        if (action.params && typeof action.params.targetX === 'number' && typeof action.params.targetY === 'number') {
+                            player.x = action.params.targetX;
+                            player.y = action.params.targetY;
+                            drawGame();
+                            checkWinCondition();
+                        }
+                        break;
+                    case 'changeBlockType':
+                        if (action.params && (typeof action.params.targetX === 'number' || action.params.targetX === 'self') && (typeof action.params.targetY === 'number' || action.params.targetY === 'self') && typeof action.params.newType === 'number') {
+                            let targetX = action.params.targetX === 'self' ? blockCoords.x : action.params.targetX;
+                            let targetY = action.params.targetY === 'self' ? blockCoords.y : action.params.targetY;
+
+                            if (targetX >= 0 && targetX < MAZE_WIDTH && targetY >= 0 && targetY < MAZE_HEIGHT) {
+                                mazeGrid[targetY][targetX] = action.params.newType;
+                                drawGame();
+                            }
+                        }
+                        break;
+                    case 'loop':
+                        if (action.params && typeof action.params.count === 'number' && Array.isArray(action.params.actions)) {
+                            for (let i = 0; i < action.params.count; i++) {
+                                // Recursively execute nested actions
+                                for (const nestedAction of action.params.actions) {
+                                    if (currentHealth <= 0) break; // Stop nested loop if player dies
+                                    switch (nestedAction.type) {
+                                        case 'wait':
+                                            if (nestedAction.params && typeof nestedAction.params.duration === 'number') {
+                                                await new Promise(resolve => setTimeout(resolve, nestedAction.params.duration));
+                                            }
+                                            break;
+                                        case 'damagePlayer':
+                                            if (nestedAction.params && typeof nestedAction.params.amount === 'number') {
+                                                takeDamage(nestedAction.params.amount);
+                                            }
+                                            break;
+                                        case 'message':
+                                            if (nestedAction.params && typeof nestedAction.params.text === 'string') {
+                                                messageBox.textContent = nestedAction.params.text;
+                                            }
+                                            break;
+                                        case 'teleportPlayer':
+                                            if (nestedAction.params && typeof nestedAction.params.targetX === 'number' && typeof nestedAction.params.targetY === 'number') {
+                                                player.x = nestedAction.params.targetX;
+                                                player.y = nestedAction.params.targetY;
+                                                drawGame();
+                                                checkWinCondition();
+                                            }
+                                            break;
+                                        case 'changeBlockType':
+                                            if (nestedAction.params && (typeof nestedAction.params.targetX === 'number' || nestedAction.params.targetX === 'self') && (typeof nestedAction.params.targetY === 'number' || nestedAction.params.targetY === 'self') && typeof nestedAction.params.newType === 'number') {
+                                                let targetX = nestedAction.params.targetX === 'self' ? blockCoords.x : nestedAction.params.targetX;
+                                                let targetY = nestedAction.params.targetY === 'self' ? blockCoords.y : nestedAction.params.targetY;
+
+                                                if (targetX >= 0 && targetX < MAZE_WIDTH && targetY >= 0 && targetY < MAZE_HEIGHT) {
+                                                    mazeGrid[targetY][targetX] = nestedAction.params.newType;
+                                                    drawGame();
+                                                }
+                                            }
+                                            break;
+                                        default:
+                                            console.warn(`Unknown nested script action type: ${nestedAction.type}`);
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    default:
+                        console.warn(`Unknown script action type: ${action.type}`);
                 }
             }
         }
 
+        // Updates the player's health and checks for game over
+        function takeDamage(amount) {
+            currentHealth -= amount;
+            if (currentHealth < 0) currentHealth = 0;
+            updateHealthDisplay();
+            if (currentHealth <= 0) {
+                gameWon = true; // Set gameWon to true to stop further movement
+                messageBox.textContent = "Game Over! You ran out of health.";
+                // Optionally, restart level or go to main menu
+                setTimeout(() => {
+                    showScreen('startScreen');
+                }, 3000);
+            }
+        }
+
+        // Updates the health display in the UI
+        function updateHealthDisplay() {
+            if (playerHealthDisplay) {
+                playerHealthDisplay.textContent = `Health: ❤️ ${currentHealth}`;
+            }
+        }
+
+
         // Checks if the player has reached the end point
         function checkWinCondition() {
+            if (currentHealth <= 0) { // If health is 0, it's already game over
+                gameWon = true;
+                messageBox.textContent = "Game Over! You ran out of health.";
+                return;
+            }
+
             if (player.x === end.x && player.y === end.y) {
                 gameWon = true;
                 messageBox.textContent = "Congratulations! You reached the end!";
@@ -1546,9 +1837,8 @@
                 // For this request, we'll just save the current brick count with the level completion.
                 const leaderboardRef = collection(window.db, `artifacts/${window.__app_id}/public/data/leaderboard`);
                 
-                // To make the leaderboard show "amount of bricks", we need to store the player's total bricks
-                // in a way that can be queried. The simplest way is to update a 'user_bricks_scores' collection
-                // with the player's latest total brick count.
+                // To make the leaderboard show "amount of bricks", we need to store the player's latest total brick count.
+                // This will be stored in a 'user_bricks_scores' collection.
                 const userBricksScoreRef = doc(window.db, `artifacts/${window.__app_id}/public/data/user_bricks_scores`, window.userId);
 
                 await setDoc(userBricksScoreRef, {
@@ -1754,6 +2044,8 @@
         // Initializes the game state based on the current mode
         function initializeGame() {
             gameWon = false;
+            currentHealth = PLAYER_MAX_HEALTH; // Reset health for new game
+            updateHealthDisplay(); // Update health display
             currentLevelId = null;
             currentLevelName = '';
             currentLevelDifficulty = ''; // Reset difficulty for new game
@@ -1853,6 +2145,7 @@
             if (buildModeArea) buildModeArea.classList.remove('active');
             if (infoButton) infoButton.style.display = 'none';
             if (loginButton) loginButton.style.display = 'none';
+            if (guidesButton) guidesButton.style.display = 'none'; // Hide guides button too
 
             currentActiveScreen = screenId;
 
@@ -1860,15 +2153,18 @@
                 if (startScreen) startScreen.classList.add('active');
                 if (infoButton) infoButton.style.display = 'block';
                 if (loginButton) loginButton.style.display = 'block';
+                if (guidesButton) guidesButton.style.display = 'block'; // Show guides button
             } else if (screenId === 'gamePlayArea') {
                 if (gamePlayArea) gamePlayArea.classList.add('active');
                 if (infoButton) infoButton.style.display = 'block';
                 if (loginButton) loginButton.style.display = 'block';
+                if (guidesButton) guidesButton.style.display = 'block'; // Show guides button
                 initializeGame();
             } else if (screenId === 'buildModeArea') {
-                if (buildModeArea) buildModeArea.classList.add('active');
+                if (buildModeArea) buildModeModeArea.classList.add('active');
                 if (infoButton) infoButton.style.display = 'block';
                 if (loginButton) loginButton.style.display = 'block';
+                if (guidesButton) guidesButton.style.display = 'block'; // Show guides button
                 initializeGame();
                 selectBuildTool(BLOCK_TYPES.WALL); // Default to Wall tool
             }
@@ -1960,24 +2256,25 @@
                         buildGrid[y][x] = { type: BLOCK_TYPES.WINPAD }; // Store as object for consistency
                         drawBuild();
                     }
-                } else if (currentBuildTool === BLOCK_TYPES.TRIGGER) {
-                    if (event.type === 'mousedown') { // For trigger, prompt for target coordinates only on mousedown
-                        let targetX = parseInt(prompt("Enter target X for trigger (0-" + (MAZE_WIDTH - 1) + "):"));
-                        let targetY = parseInt(prompt("Enter target Y for trigger (0-" + (MAZE_HEIGHT - 1) + "):"));
-                        if (!isNaN(targetX) && !isNaN(targetY) && targetX >= 0 && targetX < MAZE_WIDTH && targetY >= 0 && targetY < MAZE_HEIGHT) {
-                            buildGrid[y][x] = { type: BLOCK_TYPES.TRIGGER, targetX: targetX, targetY: targetY, targetType: BLOCK_TYPES.PATH };
-                            if (buildMessageBox) buildMessageBox.textContent = `Trigger at (${x},${y}) set to affect (${targetX},${ty}).`;
-                            drawBuild();
-                        } else {
-                            if (buildMessageBox) buildMessageBox.textContent = "Invalid target coordinates for trigger.";
+                } else if (currentBuildTool === BLOCK_TYPES.CUSTOM_BLOCK) {
+                    if (event.type === 'mousedown') {
+                        if (!currentSelectedCustomBlockId) {
+                            if (buildMessageBox) buildMessageBox.textContent = "Please select a Custom Block Definition first!";
+                            showCustomBlockEditorModal(); // Open editor to select/create
+                            return;
                         }
+                        // Place the custom block, linking it to its definition
+                        buildGrid[y][x] = { type: BLOCK_TYPES.CUSTOM_BLOCK, customId: currentSelectedCustomBlockId };
+                        if (buildMessageBox) buildMessageBox.textContent = `Placed Custom Block: ${currentSelectedCustomBlockId}`;
+                        drawBuild();
                     }
                 } else {
-                    // For other blocks (Wall, Path, Moving, Push), and Eraser (which sets to PATH)
+                    // For other blocks (Wall, Path, Damaging, Push), and Eraser (which sets to PATH)
                     const targetTool = (currentBuildTool === 'eraser') ? BLOCK_TYPES.PATH : currentBuildTool;
 
                     // Only change the block if the current block type is different from the target tool
-                    if (currentBlockType !== targetTool) {
+                    // and it's not a player/winpad or the current tool is player/winpad
+                    if (currentBlockType !== targetTool || (targetTool === BLOCK_TYPES.PLAYER_START || targetTool === BLOCK_TYPES.WINPAD)) {
                         buildGrid[y][x] = targetTool; // Set to current tool
                     }
                     // If player or end was on this spot and it's now PATH, reset their positions
@@ -2034,7 +2331,10 @@
             } else { // It's a drawing block type
                 currentBuildTool = toolType;
                 lastSelectedDrawingTool = toolType; // Store the actual block type
-                if (buildMessageBox) buildMessageBox.textContent = `Tool: ${Object.keys(BLOCK_TYPES).find(key => BLOCK_TYPES[key] === toolType).replace('_', ' ')}`;
+                if (buildMessageBox) {
+                    const toolName = Object.keys(BLOCK_TYPES).find(key => BLOCK_TYPES[key] === toolType)?.replace('_', ' ') || 'Unknown';
+                    buildMessageBox.textContent = `Tool: ${toolName}`;
+                }
                 // Hide selection action buttons, show drawing tools
                 if (selectionActionsContainer) selectionActionsContainer.style.display = 'none';
                 if (drawingToolsContainer) drawingToolsContainer.style.display = 'flex';
@@ -2048,9 +2348,9 @@
                 case BLOCK_TYPES.PATH: if (toolPath) toolPath.classList.add('active-tool'); break;
                 case BLOCK_TYPES.PLAYER_START: if (toolPlayer) toolPlayer.classList.add('active-tool'); break;
                 case BLOCK_TYPES.WINPAD: if (toolWinpad) toolWinpad.classList.add('active-tool'); break;
-                case BLOCK_TYPES.TRIGGER: if (toolTrigger) toolTrigger.classList.add('active-tool'); break;
-                case BLOCK_TYPES.MOVING_BLOCK: if (toolMovingBlock) toolMovingBlock.classList.add('active-tool'); break;
+                case BLOCK_TYPES.DAMAGING_BLOCK: if (toolDamagingBlock) toolDamagingBlock.classList.add('active-tool'); break;
                 case BLOCK_TYPES.PUSH_BLOCK: if (toolPushBlock) toolPushBlock.classList.add('active-tool'); break;
+                case BLOCK_TYPES.CUSTOM_BLOCK: if (toolCustomBlock) toolCustomBlock.classList.add('active-tool'); break;
                 case 'selection': if (toolSelection) toolSelection.classList.add('active-tool'); break; // Highlight selection button
             }
         }
@@ -2074,11 +2374,23 @@
                         end = { x: -1, y: -1 }; // Invalidate end position
                         if (buildMessageBox) buildMessageBox.textContent = "Win Pad removed! Place a new one.";
                     }
-                    buildGrid[y][x] = fillType;
+                    // If filling with a custom block, ensure to use the selected customId
+                    if (fillType === BLOCK_TYPES.CUSTOM_BLOCK) {
+                        if (!currentSelectedCustomBlockId) {
+                             if (buildMessageBox) buildMessageBox.textContent = "Please select a Custom Block Definition first!";
+                             return;
+                        }
+                        buildGrid[y][x] = { type: BLOCK_TYPES.CUSTOM_BLOCK, customId: currentSelectedCustomBlockId };
+                    } else {
+                        buildGrid[y][x] = fillType;
+                    }
                 }
             }
             drawBuild();
-            if (buildMessageBox) buildMessageBox.textContent = `Selected area filled with ${Object.keys(BLOCK_TYPES).find(key => BLOCK_TYPES[key] === fillType).replace('_', ' ')}.`;
+            if (buildMessageBox) {
+                const fillTypeName = Object.keys(BLOCK_TYPES).find(key => BLOCK_TYPES[key] === fillType)?.replace('_', ' ') || 'Unknown';
+                buildMessageBox.textContent = `Selected area filled with ${fillTypeName}.`;
+            }
             clearSelection(); // Clear selection after filling
         }
 
@@ -2103,11 +2415,13 @@
 
         function hideAllModals() {
             hideModal(infoModalOverlay);
+            hideModal(guidesModalOverlay);
             hideModal(customizationModalOverlay);
             hideModal(menuModalOverlay);
             hideModal(loginModalOverlay);
             hideModal(communityLevelsModalOverlay);
             hideModal(leaderboardModalOverlay);
+            hideModal(customBlockEditorModalOverlay); // Hide custom block editor
         }
 
         // --- Simulated Login Functions ---
@@ -2139,6 +2453,7 @@
                 hideModal(loginModalOverlay);
                 loadMyLevels(); // Refresh levels for the "logged in" user
                 fetchPlayerBricks(); // Fetch bricks on login
+                loadCustomBlockDefinitionsFromFirestore(); // Load custom block definitions on login
 
                 // Save player name to Firestore profile
                 if (window.userId && window.db) {
@@ -2170,6 +2485,8 @@
             if (myLevelsList) myLevelsList.innerHTML = "<div>No levels loaded.</div>"; // Clear levels on logout
             playerBricks = 0; // Reset bricks on logout
             updateBricksDisplay();
+            customBlockDefinitions = {}; // Clear custom block definitions on logout
+            renderCustomBlockDefinitionsList(); // Clear list
         }
 
         function updateUserIdDisplay() {
@@ -2547,16 +2864,14 @@
                                         <option value="very_hard">Very Hard</option>
                                         <option value="super_hard">Super Hard</option>
                                     </select>
-                                    <input type="number" class="set-bricks-input" data-level-id="${levelId}" min="0" max="4" placeholder="Bricks" value="${data.brickReward || 0}">
-                                    <button class="update-level-props-button" data-level-id="${levelId}">Update</button>
-                                    <button class="set-official-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${JSON.stringify(data.grid)}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-creator-name="${data.creatorName}" data-creator-id="${data.creatorId}" data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Set as Official</button>
-                                    <button class="set-daily-button-community" data-level-id="${levelId}" data-level-name="${data.name}">Set as Daily</button>
+                                    <input type="number" class="set-bricks-input" data-level-id="${levelId}" placeholder="Bricks" min="0" max="4" value="${data.brickReward || 0}">
+                                    <button class="update-level-props-button" data-level-id="${levelId}">Update Props</button>
+                                    <button class="set-daily-button-community" data-level-id="${levelId}">Set Daily</button>
                                 ` : ''}
-                                <button class="delete-community-level-button" data-level-id="${levelId}">Delete</button>
+                                ${isCreator ? `<button class="delete-level-button" data-level-id="${levelId}">Delete</button>` : ''}
                             </div>
                         `;
                     }
-
 
                     const levelDiv = document.createElement('div');
                     levelDiv.innerHTML = `
@@ -2568,27 +2883,15 @@
                             </div>
                         </div>
                         <div class="level-buttons-row">
-                            <button class="play-level-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${JSON.stringify(data.grid)}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Play</button>
-                            ${adminActionsHtml}
+                            <button class="play-level-button" data-level-id="${levelId}" data-level-name="${data.name}" data-level-grid='${data.grid}' data-player-start='${JSON.stringify(data.playerStart)}' data-winpad-end='${JSON.stringify(data.winpadEnd)}' data-level-difficulty="${data.difficulty || ''}" data-level-brick-reward="${data.brickReward || 0}">Play</button>
                         </div>
                         ${creatorDisplay}
+                        ${adminActionsHtml}
                     `;
                     targetListElement.appendChild(levelDiv);
-
-                    // Set initial values for dropdowns/inputs if they exist and if LtpMer is logged in
-                    if (isLtpMer) {
-                        const selectElement = levelDiv.querySelector(`.set-difficulty-select[data-level-id="${levelId}"]`);
-                        if (selectElement && data.difficulty) {
-                            selectElement.value = data.difficulty;
-                        }
-                        const inputElement = levelDiv.querySelector(`.set-bricks-input[data-level-id="${levelId}"]`);
-                        if (inputElement && (data.brickReward !== undefined && data.brickReward !== null)) {
-                            inputElement.value = data.brickReward;
-                        }
-                    }
                 });
 
-                // Add event listeners to the dynamically created buttons
+                // Add event listeners for play buttons
                 targetListElement.querySelectorAll('.play-level-button').forEach(button => {
                     button.addEventListener('click', (e) => {
                         const levelData = {
@@ -2597,342 +2900,295 @@
                             grid: JSON.parse(e.target.dataset.levelGrid),
                             playerStart: JSON.parse(e.target.dataset.playerStart),
                             winpadEnd: JSON.parse(e.target.dataset.winpadEnd),
-                            difficulty: e.target.dataset.levelDifficulty, // Pass difficulty
-                            brickReward: parseInt(e.target.dataset.levelBrickReward) // Pass brick reward
+                            difficulty: e.target.dataset.levelDifficulty,
+                            brickReward: parseInt(e.target.dataset.levelBrickReward)
                         };
                         playCommunityLevel(levelData);
                     });
                 });
 
-                // Admin (LtpMer) and Creator actions for community levels
-                targetListElement.querySelectorAll('.update-level-props-button').forEach(button => {
-                    button.addEventListener('click', async (e) => {
-                        const levelId = e.target.dataset.levelId;
-                        const parentDiv = e.target.closest('div');
-                        const difficultySelect = parentDiv.querySelector('.set-difficulty-select');
-                        const bricksInput = parentDiv.querySelector('.set-bricks-input');
+                // Add event listeners for admin actions (if applicable)
+                if (isLtpMer || isCreator) {
+                    targetListElement.querySelectorAll('.update-level-props-button').forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            const levelId = e.target.dataset.levelId;
+                            const parentDiv = e.target.closest('.community-level-actions');
+                            const difficultySelect = parentDiv.querySelector('.set-difficulty-select');
+                            const bricksInput = parentDiv.querySelector('.set-bricks-input');
 
-                        const newDifficulty = difficultySelect.value;
-                        const newBricks = parseInt(bricksInput.value);
+                            const newDifficulty = difficultySelect.value;
+                            const newBricks = parseInt(bricksInput.value);
 
-                        if (!newDifficulty) {
-                            if (messageBox) messageBox.textContent = "Please select a difficulty.";
-                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                            return;
-                        }
-                        if (isNaN(newBricks) || newBricks < 0 || newBricks > 4) {
-                            if (messageBox) messageBox.textContent = "Bricks must be between 0 and 4.";
-                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                            return;
-                        }
-
-                        try {
-                            const levelRef = doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId);
-                            await updateDoc(levelRef, {
-                                difficulty: newDifficulty,
-                                brickReward: newBricks
-                            });
-                            if (messageBox) messageBox.textContent = `Level properties updated for ${levelId}!`;
-                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                            loadCommunityLevels(searchQuery); // Refresh list to show changes with current search query
-                        } catch (error) {
-                            console.error("Error updating level properties:", error);
-                            if (messageBox) messageBox.textContent = `Error updating level properties: ${error.message}`;
-                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                        }
-                    });
-                });
-
-                targetListElement.querySelectorAll('.set-official-button').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        // When setting as official from community levels, use the current properties
-                        const levelData = {
-                            id: e.target.dataset.levelId,
-                            name: e.target.dataset.levelName,
-                            grid: e.target.dataset.levelGrid,
-                            playerStart: JSON.parse(e.target.dataset.playerStart),
-                            winpadEnd: JSON.parse(e.target.dataset.winpadEnd),
-                            creatorName: e.target.dataset.creatorName,
-                            creatorId: e.target.dataset.creatorId,
-                            difficulty: e.target.dataset.levelDifficulty, // Use the difficulty from the data-attribute
-                            brickReward: parseInt(e.target.dataset.levelBrickReward) // Use the brick reward from the data-attribute
-                        };
-                        setOfficialLevel(levelData);
-                    });
-                });
-
-                // NEW: Set as Daily Level button handler
-                targetListElement.querySelectorAll('.set-daily-button-community').forEach(button => {
-                    button.addEventListener('click', async (e) => {
-                        const levelId = e.target.dataset.levelId;
-                        const levelName = e.target.dataset.levelName;
-
-                        let targetDate = prompt(`Enter the target date for "${levelName}" to be the Daily Level (YYYY-MM-DD):`);
-                        if (!targetDate) {
-                            if (messageBox) messageBox.textContent = "Setting daily level cancelled.";
-                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                            return;
-                        }
-
-                        // Basic date validation (YYYY-MM-DD format)
-                        if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
-                            if (messageBox) messageBox.textContent = "Invalid date format. Please use YYYY-MM-DD.";
-                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                            return;
-                        }
-
-                        if (!window.confirm(`Are you sure you want to set "${levelName}" as the Daily Level for ${targetDate}? This will overwrite any existing daily level for that date.`)) {
-                            return;
-                        }
-
-                        try {
-                            const publicLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/levels`);
-
-                            // 1. Find and unset any existing daily level for the target date
-                            const existingDailyQuery = query(publicLevelsCollectionRef, where("dailyLevelTargetDate", "==", targetDate));
-                            const existingDailySnapshot = await getDocs(existingDailyQuery);
-                            existingDailySnapshot.forEach(async (docToUnset) => {
-                                await updateDoc(doc(publicLevelsCollectionRef, docToUnset.id), {
-                                    isDailyLevel: false,
-                                    dailyLevelTargetDate: null
-                                });
-                                console.log(`Unset previous daily level for ${targetDate}: ${docToUnset.id}`);
-                            });
-
-                            // 2. Set the selected level as the daily level for the target date
-                            await updateDoc(doc(publicLevelsCollectionRef, levelId), {
-                                isDailyLevel: true,
-                                dailyLevelTargetDate: targetDate // Store the target date
-                            });
-
-                            if (messageBox) messageBox.textContent = `Level "${levelName}" set as Daily Level for ${targetDate}!`;
-                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                            fetchDailyLevel(); // Refresh the daily level display on the main screen
-                            loadCommunityLevels(searchQuery); // Refresh community levels list to reflect changes
-                        } catch (error) {
-                            console.error("Error setting daily level:", error);
-                            if (messageBox) messageBox.textContent = `Error setting daily level: ${error.message}. See console.`;
-                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                        }
-                    });
-                });
-
-                // New: Add event listener for "Delete" button in Community Levels for LtpMer and Creator
-                targetListElement.querySelectorAll('.delete-community-level-button').forEach(button => {
-                    button.addEventListener('click', async (e) => {
-                        const levelId = e.target.dataset.levelId;
-                        if (window.confirm("Are you sure you want to delete this community level? This will also remove it if it's an official level.")) {
-                            try {
-                                // Delete from public levels
-                                await deleteDoc(doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId));
-                                console.log(`Deleted community level: ${levelId}`);
-
-                                // Also check and delete from official levels if it exists there
-                                const officialLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/official_levels`);
-                                const qOfficial = query(officialLevelsCollectionRef, where("id", "==", levelId));
-                                const officialSnapshot = await getDocs(qOfficial);
-                                officialSnapshot.forEach(async (officialDoc) => {
-                                    await deleteDoc(doc(officialLevelsCollectionRef, officialDoc.id));
-                                    console.log(`Deleted associated official level document: ${officialDoc.id}`);
-                                });
-
-                                // Also check and unset if it was a daily level
-                                const dailyLevelRef = doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId);
-                                await updateDoc(dailyLevelRef, {
-                                    isDailyLevel: false,
-                                    dailyLevelTargetDate: null
-                                }).catch(error => {
-                                    // Catch error if document doesn't exist (already deleted)
-                                    if (error.code !== "not-found") {
-                                        console.error("Error unsetting daily level flag during delete:", error);
-                                    }
-                                });
-
-
-                                if (messageBox) messageBox.textContent = "Community level deleted successfully!";
+                            if (!newDifficulty || isNaN(newBricks) || newBricks < 0 || newBricks > 4) {
+                                if (messageBox) messageBox.textContent = "Invalid difficulty or bricks value.";
                                 setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                                loadCommunityLevels(searchQuery); // Refresh the list with current search query
-                                fetchOfficialPlayableLevels(); // Refresh official levels in case one was deleted
-                                fetchDailyLevel(); // Refresh daily level in case it was deleted
+                                return;
+                            }
+
+                            try {
+                                const levelRef = doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId);
+                                await updateDoc(levelRef, {
+                                    difficulty: newDifficulty,
+                                    brickReward: newBricks
+                                });
+                                if (messageBox) messageBox.textContent = `Level ${levelId} properties updated!`;
+                                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                                loadCommunityLevels(searchQuery); // Refresh list to show changes
                             } catch (error) {
-                                console.error("Error deleting community level:", error);
-                                if (messageBox) messageBox.textContent = `Error deleting community level: ${error.message}. See console.`;
+                                console.error("Error updating level properties:", error);
+                                if (messageBox) messageBox.textContent = `Error updating properties: ${error.message}.`;
                                 setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                             }
-                        }
+                        });
                     });
-                });
 
-            } catch (e) {
-                console.error("Error loading community documents: ", e);
-                if (targetListElement) targetListElement.innerHTML = `<div>Error loading community levels: ${e.message}.</div>`;
-            }
-        }
+                    targetListElement.querySelectorAll('.set-daily-button-community').forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            const levelId = e.target.dataset.levelId;
+                            // Set this level as the daily level
+                            await setDailyLevel(levelId);
+                            loadCommunityLevels(searchQuery); // Refresh list to show changes
+                        });
+                    });
 
-        async function fetchDailyLevel() {
-            if (dailyLevelContainer) dailyLevelContainer.style.display = 'none'; // Hide by default
-            if (dailyLevelName) dailyLevelName.textContent = 'Loading daily level...';
-            if (playDailyLevelButton) playDailyLevelButton.onclick = null; // Clear previous handler
-
-            if (!window.db) {
-                if (dailyLevelName) dailyLevelName.textContent = "Firebase not initialized. Cannot fetch daily level.";
-                if (dailyLevelContainer) dailyLevelContainer.style.display = 'block';
-                console.warn("Cannot fetch daily level: Firebase database not available.");
-                return;
-            }
-
-            try {
-                const publicLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/levels`);
-                
-                // Get today's date in YYYY-MM-DD format
-                const today = new Date();
-                const year = today.getFullYear();
-                const month = (today.getMonth() + 1).toString().padStart(2, '0');
-                const day = today.getDate().toString().padStart(2, '0');
-                const todayDateString = `${year}-${month}-${day}`;
-
-                // Query for the level whose dailyLevelTargetDate matches today's date
-                const q = query(publicLevelsCollectionRef, where("dailyLevelTargetDate", "==", todayDateString));
-                const querySnapshot = await getDocs(q);
-
-                if (!querySnapshot.empty) {
-                    const dailyDoc = querySnapshot.docs[0];
-                    const data = dailyDoc.data();
-                    currentDailyLevel = {
-                        id: dailyDoc.id,
-                        name: data.name,
-                        grid: JSON.parse(data.grid),
-                        playerStart: data.playerStart,
-                        winpadEnd: data.winpadEnd,
-                        difficulty: data.difficulty || 'N/A', // Fetch difficulty for daily level
-                        brickReward: data.brickReward || 0 // Fetch brick reward for daily level
-                    };
-                    if (dailyLevelName) {
-                        dailyLevelName.textContent = `${currentDailyLevel.name} by ${data.creatorName || 'Anonymous'}`;
-                        if (currentDailyLevel.difficulty && currentDailyLevel.difficulty !== 'N/A') {
-                            dailyLevelName.textContent += ` (${currentDailyLevel.difficulty.replace('_', ' ')})`;
-                        }
-                        if (currentDailyLevel.brickReward > 0) {
-                            dailyLevelName.textContent += ` 🧱 ${currentDailyLevel.brickReward}`;
-                        }
-                    }
-                    if (playDailyLevelButton) playDailyLevelButton.onclick = () => playCommunityLevel(currentDailyLevel);
-                    if (dailyLevelContainer) dailyLevelContainer.style.display = 'block';
-                } else {
-                    if (dailyLevelName) dailyLevelName.textContent = "No daily level set for today.";
-                    if (dailyLevelContainer) dailyLevelContainer.style.display = 'block';
+                    targetListElement.querySelectorAll('.delete-level-button').forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            const levelId = e.target.dataset.levelId;
+                            if (window.confirm("Are you sure you want to delete this community level?")) {
+                                try {
+                                    await deleteDoc(doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId));
+                                    if (messageBox) messageBox.textContent = "Community level deleted successfully!";
+                                    setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                                    loadCommunityLevels(searchQuery); // Refresh the list
+                                } catch (error) {
+                                    console.error("Error deleting community level:", error);
+                                    if (messageBox) messageBox.textContent = `Error deleting level: ${error.message}.`;
+                                    setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                                }
+                            }
+                        });
+                    });
                 }
+
             } catch (e) {
-                console.error("Error fetching daily level:", e);
-                if (dailyLevelName) dailyLevelName.textContent = `Error loading daily level: ${e.message}.`;
-                if (dailyLevelContainer) dailyLevelContainer.style.display = 'block';
+                console.error("Error loading community levels:", e);
+                targetListElement.innerHTML = `<div>Error loading community levels: ${e.message}.</div>`;
             }
         }
 
+        async function playSavedLevel(levelData) {
+            mazeGrid = levelData.grid;
+            player = levelData.playerStart;
+            end = levelData.winpadEnd;
+            currentLevelId = levelData.id;
+            currentLevelName = levelData.name;
+            currentLevelDifficulty = levelData.difficulty || 'N/A';
+            currentLevelBrickReward = levelData.brickReward || 0;
+            currentGameType = GAME_MODES.SAVED_LEVEL;
+            hideAllModals();
+            showScreen('gamePlayArea');
+        }
+
+        async function playCommunityLevel(levelData) {
+            mazeGrid = levelData.grid;
+            player = levelData.playerStart;
+            end = levelData.winpadEnd;
+            currentLevelId = levelData.id;
+            currentLevelName = levelData.name;
+            currentLevelDifficulty = levelData.difficulty || 'N/A';
+            currentLevelBrickReward = levelData.brickReward || 0;
+            currentGameType = GAME_MODES.COMMUNITY_LEVEL;
+            hideAllModals();
+            showScreen('gamePlayArea');
+        }
+
+        async function editLevel(levelData) {
+            buildGrid = levelData.grid;
+            player = levelData.playerStart;
+            end = levelData.winpadEnd;
+            editingLevelId = levelData.id; // Set the ID of the level being edited
+            hideAllModals();
+            currentGameType = GAME_MODES.BUILD;
+            showScreen('buildModeArea');
+            if (buildMessageBox) buildMessageBox.textContent = `Editing level: "${levelData.name}"`;
+            drawBuild(); // Ensure build canvas is drawn with the loaded level
+        }
+
+        // Admin function to set a level as official
         async function setOfficialLevel(levelData) {
             if (currentPlayerName !== 'LtpMer') {
                 if (messageBox) messageBox.textContent = "Only LtpMer can set official levels.";
                 setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                 return;
             }
-            if (!window.db) {
-                if (messageBox) messageBox.textContent = "Firebase not initialized. Cannot set official level.";
+
+            let orderNum = prompt(`Enter an order number for this official level (e.g., 1, 2, 3...). This will be its new ID in the official list.`);
+            if (!orderNum) {
+                if (messageBox) messageBox.textContent = "Operation cancelled.";
                 setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                 return;
             }
-
-            let order = prompt(`Enter an order number for "${levelData.name}" (e.g., 1, 2, 3...). Existing levels with this order will be overwritten.`);
-            order = parseInt(order);
-
-            if (isNaN(order) || order < 1) {
-                if (messageBox) messageBox.textContent = "Invalid order number. Please enter a positive integer.";
+            orderNum = parseInt(orderNum);
+            if (isNaN(orderNum) || orderNum < 1) {
+                if (messageBox) messageBox.textContent = "Invalid order number. Must be a positive integer.";
                 setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                return;
-            }
-            
-            // Difficulty and brickReward are now passed in levelData, no prompt needed.
-            const difficultyToSet = levelData.difficulty || 'N/A';
-            const brickRewardToSet = levelData.brickReward || 0;
-
-            if (!window.confirm(`Are you sure you want to set "${levelData.name}" as official level #${order} (Difficulty: ${difficultyToSet.replace('_', ' ')}, Bricks: ${brickRewardToSet})?`)) {
                 return;
             }
 
             try {
-                // Official levels are simply ordered, no difficulty in their ID
-                const officialLevelDocId = `level-${order}`;
-                const officialLevelsRef = doc(window.db, `artifacts/${window.__app_id}/public/data/official_levels`, officialLevelDocId);
-                
-                await setDoc(officialLevelsRef, {
-                    id: levelData.id, // Original level ID
+                const officialLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/official_levels`);
+                const officialDocRef = doc(officialLevelsCollectionRef, `level-${orderNum}`); // Use order number as doc ID
+
+                await setDoc(officialDocRef, {
+                    id: levelData.id, // Keep original ID for reference
                     name: levelData.name,
-                    grid: levelData.grid, // Already stringified
+                    grid: levelData.grid, // Grid is already stringified
                     playerStart: levelData.playerStart,
                     winpadEnd: levelData.winpadEnd,
+                    order: orderNum,
+                    createdAt: new Date(),
                     creatorName: levelData.creatorName,
                     creatorId: levelData.creatorId,
-                    order: order,
-                    difficulty: difficultyToSet, // Store difficulty
-                    brickReward: brickRewardToSet, // Store brick reward
-                    setAt: new Date()
+                    difficulty: levelData.difficulty,
+                    brickReward: levelData.brickReward
                 });
-                if (messageBox) messageBox.textContent = `Level "${levelData.name}" set as official level #${order} successfully!`;
+                if (messageBox) messageBox.textContent = `Level "${levelData.name}" set as official level ${orderNum}!`;
                 setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
-                fetchOfficialPlayableLevels(); // Refresh official levels after modification
+                fetchOfficialPlayableLevels(); // Refresh the official levels list
             } catch (e) {
                 console.error("Error setting official level:", e);
-                if (messageBox) messageBox.textContent = `Error setting official level: ${e.message}. See console for details.`;
+                if (messageBox) messageBox.textContent = `Error setting official level: ${e.message}.`;
                 setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
             }
         }
 
-        // Modified: No difficulty parameter, just fetches all official levels by order
+        // Fetch official levels for the "Play" button
         async function fetchOfficialPlayableLevels() {
             if (!window.db) {
-                officialPlayableLevels = [];
-                console.warn("Firestore not available, cannot fetch official levels.");
+                console.warn("Cannot fetch official levels: Firebase not initialized.");
                 return;
             }
             try {
                 const officialLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/official_levels`);
-                // Query by order only
-                const q = query(officialLevelsCollectionRef, orderBy("order", "asc")); 
+                const q = query(officialLevelsCollectionRef, orderBy("order", "asc")); // Order by the 'order' field
                 const querySnapshot = await getDocs(q);
-
                 officialPlayableLevels = [];
-                if (!querySnapshot.empty) {
-                    querySnapshot.forEach((doc) => {
-                        const data = doc.data();
-                        officialPlayableLevels.push(data);
-                    });
-                    console.log(`Official playable levels loaded:`, officialPlayableLevels);
-                } else {
-                    console.log(`No official playable levels found.`);
-                }
+                querySnapshot.forEach((doc) => {
+                    officialPlayableLevels.push({ id: doc.id, ...doc.data() });
+                });
+                console.log("Official playable levels loaded:", officialPlayableLevels);
+                // Reset currentLevelIndex if needed, e.g., if levels change
+                currentLevelIndex = 0;
             } catch (e) {
                 console.error("Error fetching official playable levels:", e);
-                officialPlayableLevels = []; // Clear on error
-                if (messageBox) messageBox.textContent = `Error fetching official levels: ${e.message}. Check console for details.`;
             }
         }
 
+        // Fetch the daily level
+        async function fetchDailyLevel() {
+            if (!window.db) {
+                console.warn("Cannot fetch daily level: Firebase not initialized.");
+                return;
+            }
+            try {
+                const dailyLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/daily_level`);
+                // Get the single daily level document (assuming there's only one or we pick the first)
+                const querySnapshot = await getDocs(query(dailyLevelsCollectionRef, limit(1)));
 
+                if (!querySnapshot.empty) {
+                    const dailyLevelDoc = querySnapshot.docs[0];
+                    currentDailyLevel = { id: dailyLevelDoc.id, ...dailyLevelDoc.data() };
+                    if (dailyLevelName) dailyLevelName.textContent = `Level: ${currentDailyLevel.name}`;
+                    if (dailyLevelContainer) dailyLevelContainer.style.display = 'block';
+                    console.log("Daily level loaded:", currentDailyLevel);
+                } else {
+                    if (dailyLevelName) dailyLevelName.textContent = "No daily level set.";
+                    if (dailyLevelContainer) dailyLevelContainer.style.display = 'none';
+                    currentDailyLevel = null;
+                }
+            } catch (e) {
+                console.error("Error fetching daily level:", e);
+                if (dailyLevelName) dailyLevelName.textContent = "Error loading daily level.";
+                if (dailyLevelContainer) dailyLevelContainer.style.display = 'none';
+                currentDailyLevel = null;
+            }
+        }
+
+        // Admin function to set a level as the daily level
+        async function setDailyLevel(levelId) {
+            if (currentPlayerName !== 'LtpMer') {
+                if (messageBox) messageBox.textContent = "Only LtpMer can set daily levels.";
+                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                return;
+            }
+
+            if (!window.db) {
+                if (messageBox) messageBox.textContent = "Error: Firebase not initialized.";
+                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                return;
+            }
+
+            try {
+                // First, get the level data from public levels
+                const levelRef = doc(window.db, `artifacts/${window.__app_id}/public/data/levels`, levelId);
+                const levelSnap = await getDoc(levelRef);
+
+                if (!levelSnap.exists()) {
+                    if (messageBox) messageBox.textContent = "Level not found in community levels.";
+                    setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                    return;
+                }
+
+                const levelData = levelSnap.data();
+
+                // Delete existing daily level (if any)
+                const dailyLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/daily_level`);
+                const existingDailyLevels = await getDocs(dailyLevelsCollectionRef);
+                existingDailyLevels.forEach(async (doc) => {
+                    await deleteDoc(doc.ref);
+                });
+
+                // Add the new daily level
+                await addDoc(dailyLevelsCollectionRef, {
+                    id: levelId, // Store the original level ID
+                    name: levelData.name,
+                    grid: levelData.grid,
+                    playerStart: levelData.playerStart,
+                    winpadEnd: levelData.winpadEnd,
+                    creatorName: levelData.creatorName,
+                    creatorId: levelData.creatorId,
+                    difficulty: levelData.difficulty,
+                    brickReward: levelData.brickReward,
+                    setAt: new Date() // Timestamp when it was set
+                });
+
+                if (messageBox) messageBox.textContent = `Level "${levelData.name}" set as the daily level!`;
+                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                fetchDailyLevel(); // Refresh the daily level display
+            } catch (e) {
+                console.error("Error setting daily level:", e);
+                if (messageBox) messageBox.textContent = `Error setting daily level: ${e.message}.`;
+                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+            }
+        }
+
+        // Load leaderboard data
         async function loadLeaderboard() {
             if (!window.db) {
                 if (leaderboardList) leaderboardList.innerHTML = "<div>Leaderboard not available.</div>";
-                console.warn("Cannot load leaderboard: Firebase database not available.");
+                console.warn("Cannot load leaderboard: Firebase not initialized.");
                 return;
             }
+
             if (leaderboardList) leaderboardList.innerHTML = "<div>Loading leaderboard...</div>";
             try {
-                // Fetch from the new 'user_bricks_scores' collection
-                const userBricksScoresCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/user_bricks_scores`);
-                // Order by bricks in descending order (highest bricks first)
-                const q = query(userBricksScoresCollectionRef, orderBy("bricks", "desc"), limit(10)); 
+                // Leaderboard now shows top players by bricks
+                const leaderboardCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/user_bricks_scores`);
+                const q = query(leaderboardCollectionRef, orderBy("bricks", "desc"), limit(10)); // Top 10 by bricks
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty) {
-                    if (leaderboardList) leaderboardList.innerHTML = "<div>No brick scores yet. Play levels to earn bricks!</div>";
+                    if (leaderboardList) leaderboardList.innerHTML = "<div>No scores yet. Play some levels!</div>";
                     return;
                 }
 
@@ -2945,233 +3201,252 @@
                     entryDiv.innerHTML = `
                         <span class="rank">${rank}.</span>
                         <span class="player-name">${data.playerName || 'Anonymous'}</span>
-                        <span class="bricks">🧱 ${data.bricks || 0}</span>
+                        <span class="bricks">🧱 ${data.bricks}</span>
                     `;
                     if (leaderboardList) leaderboardList.appendChild(entryDiv);
                     rank++;
                 });
-            }
-            catch (e) {
+            } catch (e) {
                 console.error("Error loading leaderboard:", e);
                 if (leaderboardList) leaderboardList.innerHTML = `<div>Error loading leaderboard: ${e.message}.</div>`;
             }
         }
 
-
-        function playSavedLevel(levelData) {
-            // Ensure grid data is handled correctly, it could be a string or array
-            mazeGrid = typeof levelData.grid === 'string' ? JSON.parse(levelData.grid) : levelData.grid;
-            player = { ...levelData.playerStart }; // Reset player position
-            end = levelData.winpadEnd;
-            currentGameType = GAME_MODES.SAVED_LEVEL;
-            currentLevelId = levelData.id;
-            currentLevelName = levelData.name;
-            currentLevelDifficulty = levelData.difficulty || 'N/A'; // Set difficulty for saved levels
-            currentLevelBrickReward = levelData.brickReward || 0; // Set brick reward for saved levels
-            hideAllModals();
-            showScreen('gamePlayArea');
-        }
-
-        function playCommunityLevel(levelData) {
-            // Ensure grid data is handled correctly, it could be a string or array
-            mazeGrid = typeof levelData.grid === 'string' ? JSON.parse(levelData.grid) : levelData.grid;
-            player = { ...levelData.playerStart }; // Reset player position
-            end = levelData.winpadEnd;
-            currentGameType = GAME_MODES.COMMUNITY_LEVEL;
-            currentLevelId = levelData.id;
-            currentLevelName = levelData.name;
-            currentLevelDifficulty = levelData.difficulty || 'N/A'; // Set difficulty for community levels
-            currentLevelBrickReward = levelData.brickReward || 0; // Set brick reward for community levels
-            hideAllModals();
-            showScreen('gamePlayArea');
-        }
-
-        // New function to load a level into build mode for editing
-        function editLevel(levelData) {
-            // Set the ID of the level being edited
-            editingLevelId = levelData.id;
-
-            // Copy the grid data into buildGrid
-            buildGrid = levelData.grid.map(row => row.map(block => {
-                return typeof block === 'object' ? { ...block } : block; // Deep copy objects
-            }));
-
-            // Set player and end positions
-            player = { ...levelData.playerStart };
-            end = { ...levelData.winpadEnd };
-
-            hideAllModals();
-            showScreen('buildModeArea');
-            if (buildMessageBox) buildMessageBox.textContent = `Editing level "${levelData.name}". Click 'Save Level' to update.`;
-        }
-
-
-        // New function to transfer current maze to build grid and switch to build mode
-        function editCurrentLevel() { // Renamed from saveCurrentLevel
-            // Copy mazeGrid to buildGrid
-            buildGrid = mazeGrid.map(row => row.map(block => {
-                // Ensure block objects are copied by value, not reference
-                return typeof block === 'object' ? { ...block } : block;
-            }));
-
-            // Update player and end in buildGrid as objects
-            if (player.x !== -1 && player.y !== -1) {
-                buildGrid[player.y][player.x] = { type: BLOCK_TYPES.PLAYER_START };
-            }
-            if (end.x !== -1 && end.y !== -1) {
-                buildGrid[end.y][end.x] = { type: BLOCK_TYPES.WINPAD };
+        // --- Custom Block Definition Functions ---
+        async function saveCustomBlockDefinition() {
+            if (!window.userId || !window.db) {
+                if (messageBox) messageBox.textContent = "Error: Firebase not initialized or user not authenticated.";
+                return;
             }
 
-            hideAllModals();
-            showScreen('buildModeArea');
-            if (buildMessageBox) buildMessageBox.textContent = "Current level loaded into Build Mode. You can now save or modify it!";
-            // Set editingLevelId if the current game type is a saved or community level
-            if (currentGameType === GAME_MODES.SAVED_LEVEL || currentGameType === GAME_MODES.COMMUNITY_LEVEL) {
-                editingLevelId = currentLevelId;
-            } else {
-                editingLevelId = null; // For random levels, it's a new save
+            const blockId = customBlockNameInput.value.trim();
+            const blockColor = customBlockColorPicker.value;
+            const blockScriptRaw = customBlockScriptInput.value.trim();
+
+            if (!blockId) {
+                if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = "Block ID cannot be empty.";
+                return;
             }
-        }
-
-        // Drag functionality for touch controls
-        let isDraggingTouchControls = false;
-        let initialX, initialY;
-        let offsetX, offsetY;
-
-        function startDragTouchControls(e) {
-            if (e.target.classList.contains('touch-button')) return; // Don't drag if clicking on a button inside
-
-            isDraggingTouchControls = true;
-            touchControls.style.cursor = 'grabbing';
-
-            const rect = touchControls.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-            initialX = clientX;
-            initialY = clientY;
-            offsetX = clientX - rect.left;
-            offsetY = clientY - rect.top;
-
-            // Prevent default touch behavior (scrolling, zooming)
-            if (e.type === 'touchstart') {
-                e.preventDefault();
+            if (blockId.length > 50) {
+                if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = "Block ID max 50 characters.";
+                return;
             }
-        }
-
-        function dragTouchControls(e) {
-            if (!isDraggingTouchControls) return;
-
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-            let newLeft = clientX - offsetX;
-            let newTop = clientY - offsetY;
-
-            // Get boundaries of the game-container to keep controls within it
-            const gameContainer = document.querySelector('.game-container');
-            const containerRect = gameContainer.getBoundingClientRect();
-            const controlsRect = touchControls.getBoundingClientRect();
-
-            // Clamp newLeft and newTop to stay within container bounds
-            newLeft = Math.max(containerRect.left, newLeft);
-            newLeft = Math.min(containerRect.right - controlsRect.width, newLeft);
-            newTop = Math.max(containerRect.top, newTop);
-            newTop = Math.min(containerRect.bottom - controlsRect.height, newTop);
-
-            // Convert to relative position within the game-container
-            touchControls.style.left = `${newLeft - containerRect.left}px`;
-            touchControls.style.top = `${newTop - containerRect.top}px`;
-
-            // Prevent default touch behavior (scrolling, zooming)
-            if (e.type === 'touchmove') {
-                e.preventDefault();
+            if (!/^[a-zA-Z0-9_]+$/.test(blockId)) {
+                if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = "Block ID can only contain letters, numbers, and underscores.";
+                return;
             }
-        }
 
-        function stopDragTouchControls() {
-            isDraggingTouchControls = false;
-            touchControls.style.cursor = 'grab';
-            // Save the final position to localStorage
-            if (touchControls) {
-                localStorage.setItem('touchControlsLeft', touchControls.style.left);
-                localStorage.setItem('touchControlsTop', touchControls.style.top);
-            }
-        }
-
-        function positionTouchControls() {
-            if (!touchControls) return;
-
-            const savedLeft = localStorage.getItem('touchControlsLeft');
-            const savedTop = localStorage.getItem('touchControlsTop');
-
-            if (savedLeft && savedTop) {
-                // Apply saved positions
-                touchControls.style.left = savedLeft;
-                touchControls.style.top = savedTop;
-            } else {
-                // Apply default positions if no saved state
-                // These are relative to the parent, which is .game-play-area
-                // For absolute positioning, they need to be relative to the closest positioned ancestor.
-                // Since .game-container is relative, we can position them relative to it.
-                // Let's calculate initial position relative to game-container
-                const gameContainer = document.querySelector('.game-container');
-                if (gameContainer) {
-                    const containerRect = gameContainer.getBoundingClientRect();
-                    const controlsWidth = touchControls.offsetWidth;
-                    const controlsHeight = touchControls.offsetHeight;
-
-                    // Default to bottom-left corner with some padding
-                    const defaultLeft = 20; // 20px from left of container
-                    const defaultBottom = 20; // 20px from bottom of container
-                    const defaultTop = containerRect.height - controlsHeight - defaultBottom;
-
-                    touchControls.style.left = `${defaultLeft}px`;
-                    touchControls.style.top = `${defaultTop}px`;
+            let parsedScript;
+            try {
+                parsedScript = JSON.parse(blockScriptRaw);
+                if (!Array.isArray(parsedScript)) {
+                    throw new Error("Script must be a JSON array.");
                 }
+                // Basic validation for script structure (can be expanded)
+                for (const action of parsedScript) {
+                    if (typeof action !== 'object' || !action.type || !action.params) {
+                        throw new Error("Each action must be an object with 'type' and 'params'.");
+                    }
+                }
+            } catch (e) {
+                if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = `Invalid JSON script: ${e.message}`;
+                return;
+            }
+
+            try {
+                const definitionsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/users/${window.userId}/custom_block_definitions`);
+                const docRef = doc(definitionsCollectionRef, blockId); // Use blockId as document ID
+
+                await setDoc(docRef, {
+                    color: blockColor,
+                    script: parsedScript,
+                    createdAt: new Date(),
+                    lastUpdated: new Date()
+                }, { merge: true }); // Use merge to update if exists
+
+                if (messageBox) messageBox.textContent = `Custom Block '${blockId}' saved successfully!`;
+                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                loadCustomBlockDefinitionsFromFirestore(); // Refresh the list
+                editingCustomBlockId = null; // Clear editing state
+                customBlockNameInput.value = '';
+                customBlockColorPicker.value = CUSTOM_BLOCK_DEFAULT_COLOR;
+                customBlockScriptInput.value = '';
+                deleteCustomBlockDefinitionButton.style.display = 'none'; // Hide delete button
+            } catch (e) {
+                console.error("Error saving custom block definition:", e);
+                if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = `Error saving definition: ${e.message}`;
             }
         }
 
+        async function loadCustomBlockDefinitionsFromFirestore() {
+            if (!window.userId || !window.db) {
+                if (customBlockDefinitionsList) customBlockDefinitionsList.innerHTML = "<div>Please log in to see your custom block definitions.</div>";
+                console.warn("Cannot load custom block definitions: Firebase not initialized or user not authenticated.");
+                return;
+            }
 
-        // Initial setup when the window loads
+            customBlockDefinitions = {}; // Clear existing definitions
+            if (customBlockDefinitionsList) customBlockDefinitionsList.innerHTML = "<div>Loading definitions...</div>";
+
+            try {
+                const definitionsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/users/${window.userId}/custom_block_definitions`);
+                const querySnapshot = await getDocs(definitionsCollectionRef);
+
+                if (querySnapshot.empty) {
+                    if (customBlockDefinitionsList) customBlockDefinitionsList.innerHTML = "<div>No custom block definitions saved yet.</div>";
+                    return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    customBlockDefinitions[doc.id] = {
+                        color: data.color,
+                        script: data.script
+                    };
+                });
+                renderCustomBlockDefinitionsList();
+            } catch (e) {
+                console.error("Error loading custom block definitions:", e);
+                if (customBlockDefinitionsList) customBlockDefinitionsList.innerHTML = `<div>Error loading definitions: ${e.message}.</div>`;
+            }
+        }
+
+        function renderCustomBlockDefinitionsList() {
+            if (customBlockDefinitionsList) customBlockDefinitionsList.innerHTML = ''; // Clear previous list
+            const definitionIds = Object.keys(customBlockDefinitions);
+
+            if (definitionIds.length === 0) {
+                if (customBlockDefinitionsList) customBlockDefinitionsList.innerHTML = "<div>No custom block definitions saved yet.</div>";
+                return;
+            }
+
+            definitionIds.forEach(id => {
+                const definition = customBlockDefinitions[id];
+                const itemDiv = document.createElement('div');
+                itemDiv.innerHTML = `
+                    <span style="color: ${definition.color}; font-weight: bold;">${id}</span>
+                    <div>
+                        <button class="select-custom-block-button" data-id="${id}">Select</button>
+                        <button class="edit-custom-block-button" data-id="${id}">Edit</button>
+                        <button class="delete-custom-block-button" data-id="${id}">Delete</button>
+                    </div>
+                `;
+                if (customBlockDefinitionsList) customBlockDefinitionsList.appendChild(itemDiv);
+            });
+
+            // Add event listeners to dynamically created buttons
+            if (customBlockDefinitionsList) {
+                customBlockDefinitionsList.querySelectorAll('.select-custom-block-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        currentSelectedCustomBlockId = e.target.dataset.id;
+                        if (buildMessageBox) buildMessageBox.textContent = `Custom Block Tool: '${currentSelectedCustomBlockId}' selected.`;
+                        hideModal(customBlockEditorModalOverlay);
+                        selectBuildTool(BLOCK_TYPES.CUSTOM_BLOCK); // Ensure custom block tool is active
+                    });
+                });
+
+                customBlockDefinitionsList.querySelectorAll('.edit-custom-block-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const idToEdit = e.target.dataset.id;
+                        const definition = customBlockDefinitions[idToEdit];
+                        if (definition) {
+                            customBlockNameInput.value = idToEdit;
+                            customBlockColorPicker.value = definition.color;
+                            customBlockScriptInput.value = JSON.stringify(definition.script, null, 2); // Pretty print JSON
+                            editingCustomBlockId = idToEdit; // Set editing state
+                            deleteCustomBlockDefinitionButton.style.display = 'block'; // Show delete button when editing
+                            if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = `Editing: ${idToEdit}`;
+                        }
+                    });
+                });
+
+                customBlockDefinitionsList.querySelectorAll('.delete-custom-block-button').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const idToDelete = e.target.dataset.id;
+                        if (window.confirm(`Are you sure you want to delete custom block definition '${idToDelete}'?`)) {
+                            try {
+                                await deleteDoc(doc(window.db, `artifacts/${window.__app_id}/users/${window.userId}/custom_block_definitions`, idToDelete));
+                                if (messageBox) messageBox.textContent = `Custom Block '${idToDelete}' deleted.`;
+                                setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                                loadCustomBlockDefinitionsFromFirestore(); // Refresh the list
+                                // If the deleted block was currently selected, clear selection
+                                if (currentSelectedCustomBlockId === idToDelete) {
+                                    currentSelectedCustomBlockId = null;
+                                    if (buildMessageBox) buildMessageBox.textContent = "Custom Block selection cleared.";
+                                }
+                                // If the deleted block was being edited, clear editor fields
+                                if (editingCustomBlockId === idToDelete) {
+                                    customBlockNameInput.value = '';
+                                    customBlockColorPicker.value = CUSTOM_BLOCK_DEFAULT_COLOR;
+                                    customBlockScriptInput.value = '';
+                                    editingCustomBlockId = null;
+                                    deleteCustomBlockDefinitionButton.style.display = 'none';
+                                }
+                            } catch (error) {
+                                console.error("Error deleting custom block definition:", error);
+                                if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = `Error deleting definition: ${error.message}`;
+                            }
+                        }
+                    });
+                });
+            }
+        }
+
+        function showCustomBlockEditorModal() {
+            hideAllModals(); // Hide other modals
+            showModal(customBlockEditorModalOverlay);
+            loadCustomBlockDefinitionsFromFirestore(); // Load definitions when opening
+            // Reset form fields if not editing
+            if (!editingCustomBlockId) {
+                customBlockNameInput.value = '';
+                customBlockColorPicker.value = CUSTOM_BLOCK_DEFAULT_COLOR;
+                customBlockScriptInput.value = '';
+                deleteCustomBlockDefinitionButton.style.display = 'none';
+            }
+            if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = "Define or select a custom block behavior.";
+        }
+
+        // --- Event Listeners and Initialization ---
         window.onload = () => {
-            // Get main UI elements
+            // Get references to HTML elements
             startScreen = document.getElementById('startScreen');
             gamePlayArea = document.getElementById('gamePlayArea');
             buildModeArea = document.getElementById('buildModeArea');
+
             infoButton = document.getElementById('infoButton');
             loginButton = document.getElementById('loginButton');
+            guidesButton = document.getElementById('guidesButton'); // Get guides button
 
-            // Get start screen buttons
             playButton = document.getElementById('playButton');
             customizationButtonStart = document.getElementById('customizationButtonStart');
             menuButtonStart = document.getElementById('menuButtonStart');
-            leaderboardButton = document.getElementById('leaderboardButton');
+            leaderboardButton = document.getElementById('leaderboardButton'); // Get leaderboard button
             dailyLevelContainer = document.getElementById('dailyLevelContainer');
             dailyLevelName = document.getElementById('dailyLevelName');
             playDailyLevelButton = document.getElementById('playDailyLevelButton');
 
-            // Get game play area elements
             mazeCanvas = document.getElementById('mazeCanvas');
-            mazeCtx = mazeCanvas ? mazeCanvas.getContext('2d') : null; // Initialize context only if canvas exists
+            mazeCtx = mazeCanvas ? mazeCanvas.getContext('2d') : null;
             messageBox = document.getElementById('messageBox');
+            playerHealthDisplay = document.getElementById('playerHealthDisplay'); // Get health display
             nextLevelButton = document.getElementById('nextLevelButton');
             editCurrentLevelButton = document.getElementById('editCurrentLevelButton');
             backToMainMenuButtonGame = document.getElementById('backToMainMenuButtonGame');
             touchControls = document.querySelector('.touch-controls');
 
-            // Get build mode area elements
+
             buildCanvas = document.getElementById('buildCanvas');
-            buildCtx = buildCanvas ? buildCanvas.getContext('2d') : null; // Initialize context only if canvas exists
+            buildCtx = buildCanvas ? buildCanvas.getContext('2d') : null;
             buildMessageBox = document.getElementById('buildMessageBox');
             clearBuildGridButton = document.getElementById('clearBuildGridButton');
             saveLevelButton = document.getElementById('saveLevelButton');
             publishLevelButton = document.getElementById('publishLevelButton');
             backToMainMenuButtonBuild = document.getElementById('backToMainMenuButtonBuild');
 
-            // Modals
             infoModalOverlay = document.getElementById('infoModalOverlay');
             closeInfoModalButton = document.getElementById('closeInfoModalButton');
+            guidesModalOverlay = document.getElementById('guidesModalOverlay'); // Get guides modal
+            closeGuidesModalButton = document.getElementById('closeGuidesModalButton'); // Get guides close button
             customizationModalOverlay = document.getElementById('customizationModalOverlay');
             closeCustomizationModalButton = document.getElementById('closeCustomizationModalButton');
             menuModalOverlay = document.getElementById('menuModalOverlay');
@@ -3182,226 +3457,62 @@
             loginSubmitButton = document.getElementById('loginSubmitButton');
             loginCancelButton = document.getElementById('loginCancelButton');
             communityLevelsModalOverlay = document.getElementById('communityLevelsModalOverlay');
-            // communityLevelsListInMenu is no longer directly in menu modal, but still used as a variable for consistency
-            communityLevelsListInMenu = document.getElementById('communityLevelsList'); // This will now be null or undefined, but that's okay as it's not used for display anymore.
-            // levelSearchInput, searchCommunityLevelsButton, refreshCommunityLevelsButton are now only in the dedicated modal.
-
             communityLevelSearchInputModal = document.getElementById('communityLevelSearchInputModal');
             searchCommunityLevelsButtonModal = document.getElementById('searchCommunityLevelsButtonModal');
             communityLevelsListModal = document.getElementById('communityLevelsListModal');
             refreshCommunityLevelsButtonModal = document.getElementById('refreshCommunityLevelsButtonModal');
             closeCommunityLevelsModalButton = document.getElementById('closeCommunityLevelsModalButton');
-
-            // Buttons inside Menu Modal
-            startRandomMazeButton = document.getElementById('startRandomMazeButton');
-            startRandomBlocksButton = document.getElementById('startRandomBlocksButton');
-            buildModeButton = document.getElementById('buildModeButton');
-            communityLevelsButtonMenu = document.getElementById('communityLevelsButtonMenu'); // NEW
-            userIdDisplay = document.getElementById('userIdDisplay');
-            playerBricksDisplay = document.getElementById('playerBricksDisplay');
-            myLevelsList = document.getElementById('myLevelsList');
-            refreshMyLevelsButton = document.getElementById('refreshMyLevelsButton');
-            // searchLevelsButton is not present in HTML, removed from here
-
-            // Customization elements
-            playerColorPicker = document.getElementById('playerColorPicker');
-            wallColorPicker = document.getElementById('wallColorPicker');
-            pathColorPicker = document.getElementById('pathColorPicker');
-
-            // Build Mode Tools
-            drawingToolsContainer = document.getElementById('drawingTools');
-            selectionActionsContainer = document.getElementById('selectionActions');
-
-            toolWall = document.getElementById('toolWall');
-            toolEraser = document.getElementById('toolEraser'); 
-            toolPath = document.getElementById('toolPath'); 
-            toolPlayer = document.getElementById('toolPlayer');
-            toolWinpad = document.getElementById('toolWinpad');
-            toolTrigger = document.getElementById('toolTrigger');
-            toolMovingBlock = document.getElementById('toolMovingBlock');
-            toolPushBlock = document.getElementById('toolPushBlock');
-            toolSelection = document.getElementById('toolSelection');
-            fillSelectionButton = document.getElementById('fillSelectionButton');
-            clearSelectionButton = document.getElementById('clearSelectionButton');
-            exitSelectionButton = document.getElementById('exitSelectionButton');
-
-            // Leaderboard elements
             leaderboardList = document.getElementById('leaderboardList');
             refreshLeaderboardButton = document.getElementById('refreshLeaderboardButton');
             closeLeaderboardModalButton = document.getElementById('closeLeaderboardModalButton');
 
+            startRandomMazeButton = document.getElementById('startRandomMazeButton');
+            startRandomBlocksButton = document.getElementById('startRandomBlocksButton');
+            buildModeButton = document.getElementById('buildModeButton');
+            userIdDisplay = document.getElementById('userIdDisplay');
+            playerBricksDisplay = document.getElementById('playerBricksDisplay');
+            myLevelsList = document.getElementById('myLevelsList');
+            refreshMyLevelsButton = document.getElementById('refreshMyLevelsButton');
+            communityLevelsButtonMenu = document.getElementById('communityLevelsButtonMenu'); // New button
 
-            // Immediately show the start screen and resize the canvas
-            showScreen('startScreen');
-            resizeCanvas();
-            positionTouchControls(); // Position controls on load
+            playerColorPicker = document.getElementById('playerColorPicker');
+            wallColorPicker = document.getElementById('wallColorPicker');
+            pathColorPicker = document.getElementById('pathColorPicker');
 
-            // Listen for Firebase auth readiness and then load user data and levels
-            document.addEventListener('firebaseAuthReady', async () => {
-                await loadUserProfile(); // Load user profile and customization first
-                fetchOfficialPlayableLevels(); // Fetch official levels on startup
-                fetchDailyLevel(); // Fetch daily level after auth
-                // Start leaderboard auto-update
-                setInterval(loadLeaderboard, 60000); // Update every 60 seconds (1 minute)
-            });
-            // If firebaseAuthReady event already fired before onload, manually trigger
-            if (window.userId) {
-                loadUserProfile();
-                fetchOfficialPlayableLevels(); // Fetch official levels on startup
-                fetchDailyLevel();
-                setInterval(loadLeaderboard, 60000); // Update every 60 seconds (1 minute)
-            }
+            drawingToolsContainer = document.getElementById('drawingTools');
+            selectionActionsContainer = document.getElementById('selectionActions');
 
-            // --- Event Listeners (Moved inside window.onload) ---
-            if (playButton) playButton.addEventListener('click', async () => {
-                await fetchOfficialPlayableLevels();
-                currentLevelIndex = 0;
-                if (officialPlayableLevels.length > 0) {
-                    currentGameType = GAME_MODES.LEVEL;
-                    hideAllModals();
-                    showScreen('gamePlayArea');
-                } else {
-                    if (messageBox) messageBox.textContent = "No official levels found. Please ask LtpMer to set some!";
-                    setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 5000);
-                }
-            });
+            toolEraser = document.getElementById('toolEraser');
+            toolWall = document.getElementById('toolWall');
+            toolPath = document.getElementById('toolPath');
+            toolPlayer = document.getElementById('toolPlayer');
+            toolWinpad = document.getElementById('toolWinpad');
+            toolDamagingBlock = document.getElementById('toolDamagingBlock');
+            toolPushBlock = document.getElementById('toolPushBlock');
+            toolCustomBlock = document.getElementById('toolCustomBlock');
+            toolSelection = document.getElementById('toolSelection');
 
-            if (nextLevelButton) nextLevelButton.addEventListener('click', () => {
-                currentLevelIndex = (currentLevelIndex + 1) % officialPlayableLevels.length;
-                initializeGame();
-            });
+            fillSelectionButton = document.getElementById('fillSelectionButton');
+            clearSelectionButton = document.getElementById('clearSelectionButton');
+            exitSelectionButton = document.getElementById('exitSelectionButton');
 
-            if (editCurrentLevelButton) editCurrentLevelButton.addEventListener('click', editCurrentLevel);
+            // Custom Block Editor elements
+            customBlockEditorModalOverlay = document.getElementById('customBlockEditorModalOverlay');
+            customBlockNameInput = document.getElementById('customBlockNameInput');
+            customBlockColorPicker = document.getElementById('customBlockColorPicker');
+            customBlockScriptInput = document.getElementById('customBlockScriptInput');
+            saveCustomBlockDefinitionButton = document.getElementById('saveCustomBlockDefinitionButton');
+            deleteCustomBlockDefinitionButton = document.getElementById('deleteCustomBlockDefinitionButton');
+            customBlockDefinitionsList = document.getElementById('customBlockDefinitionsList');
+            closeCustomBlockEditorButton = document.getElementById('closeCustomBlockEditorButton');
 
+
+            // Event Listeners
             if (infoButton) infoButton.addEventListener('click', () => showModal(infoModalOverlay));
             if (closeInfoModalButton) closeInfoModalButton.addEventListener('click', () => hideModal(infoModalOverlay));
-            if (infoModalOverlay) infoModalOverlay.addEventListener('click', (e) => {
-                if (e.target === infoModalOverlay) {
-                    hideModal(infoModalOverlay);
-                }
-            });
 
-            if (customizationButtonStart) customizationButtonStart.addEventListener('click', () => showModal(customizationModalOverlay));
-            if (closeCustomizationModalButton) closeCustomizationModalButton.addEventListener('click', () => {
-                hideModal(customizationModalOverlay);
-                saveCustomization();
-            });
-            if (customizationModalOverlay) customizationModalOverlay.addEventListener('click', (e) => {
-                if (e.target === customizationModalOverlay) {
-                    hideModal(customizationModalOverlay);
-                    saveCustomization();
-                }
-            });
-
-            if (playerColorPicker) playerColorPicker.addEventListener('input', (e) => { PLAYER_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
-            if (wallColorPicker) wallColorPicker.addEventListener('input', (e) => { WALL_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
-            if (pathColorPicker) pathColorPicker.addEventListener('input', (e) => { PATH_COLOR = e.target.value; drawGame(); drawBuild(); saveCustomization(); });
-
-            if (menuButtonStart) menuButtonStart.addEventListener('click', () => {
-                showModal(menuModalOverlay);
-                loadMyLevels();
-                updateUserIdDisplay();
-                fetchPlayerBricks();
-                // Removed loadCommunityLevels('') from here as it's now triggered by the new button
-            });
-            if (closeMenuModalButton) closeMenuModalButton.addEventListener('click', () => hideModal(menuModalOverlay));
-            if (menuModalOverlay) menuModalOverlay.addEventListener('click', (e) => {
-                if (e.target === menuModalOverlay) {
-                    hideModal(menuModalOverlay);
-                }
-            });
-
-            // NEW: Event listener for the Community Levels button in the Menu modal
-            if (communityLevelsButtonMenu) communityLevelsButtonMenu.addEventListener('click', () => {
-                hideModal(menuModalOverlay); // Hide the menu modal first
-                showModal(communityLevelsModalOverlay);
-                loadCommunityLevels(''); // Load all community levels when opening this modal
-            });
-
-            if (startRandomMazeButton) startRandomMazeButton.addEventListener('click', () => {
-                currentGameType = GAME_MODES.MAZE;
-                hideAllModals();
-                showScreen('gamePlayArea');
-            });
-
-            if (startRandomBlocksButton) startRandomBlocksButton.addEventListener('click', () => {
-                currentGameType = GAME_MODES.BLOCKS;
-                hideAllModals();
-                showScreen('gamePlayArea');
-            });
-
-            if (buildModeButton) buildModeButton.addEventListener('click', () => {
-                currentGameType = GAME_MODES.BUILD;
-                hideAllModals();
-                showScreen('buildModeArea');
-                editingLevelId = null;
-                initBuildGrid();
-                drawBuild();
-            });
-
-            if (refreshMyLevelsButton) refreshMyLevelsButton.addEventListener('click', loadMyLevels);
-
-            // Event listeners for search in the Community Levels Modal (now the primary place)
-            if (searchCommunityLevelsButtonModal) searchCommunityLevelsButtonModal.addEventListener('click', () => {
-                loadCommunityLevels(communityLevelSearchInputModal.value);
-            });
-            if (communityLevelSearchInputModal) communityLevelSearchInputModal.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    loadCommunityLevels(communityLevelSearchInputModal.value);
-                }
-            });
-            if (refreshCommunityLevelsButtonModal) refreshCommunityLevelsButtonModal.addEventListener('click', () => loadCommunityLevels(''));
-            if (closeCommunityLevelsModalButton) closeCommunityLevelsModalButton.addEventListener('click', () => hideModal(communityLevelsModalOverlay));
-            if (communityLevelsModalOverlay) communityLevelsModalOverlay.addEventListener('click', (e) => {
-                if (e.target === communityLevelsModalOverlay) {
-                    hideModal(communityLevelsModalOverlay);
-                }
-            });
-
-            if (leaderboardButton) leaderboardButton.addEventListener('click', () => {
-                showModal(leaderboardModalOverlay);
-                loadLeaderboard();
-            });
-            if (refreshLeaderboardButton) refreshLeaderboardButton.addEventListener('click', loadLeaderboard);
-            if (closeLeaderboardModalButton) closeLeaderboardModalButton.addEventListener('click', () => hideModal(leaderboardModalOverlay));
-            if (leaderboardModalOverlay) leaderboardModalOverlay.addEventListener('click', (e) => {
-                if (e.target === leaderboardModalOverlay) {
-                    hideModal(leaderboardModalOverlay);
-                }
-            });
-
-            if (clearBuildGridButton) clearBuildGridButton.addEventListener('click', () => {
-                initBuildGrid();
-                drawBuild();
-                if (buildMessageBox) buildMessageBox.textContent = "Grid cleared! Start building!";
-                editingLevelId = null;
-            });
-
-            if (saveLevelButton) saveLevelButton.addEventListener('click', saveLevel);
-            if (publishLevelButton) publishLevelButton.addEventListener('click', publishLevel);
-
-            if (toolEraser) toolEraser.addEventListener('click', () => selectBuildTool('eraser'));
-            if (toolWall) toolWall.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WALL));
-            if (toolPath) toolPath.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PATH));
-            if (toolPlayer) toolPlayer.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PLAYER_START));
-            if (toolWinpad) toolWinpad.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WINPAD));
-            if (toolTrigger) toolTrigger.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.TRIGGER));
-            if (toolMovingBlock) toolMovingBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.MOVING_BLOCK));
-            if (toolPushBlock) toolPushBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PUSH_BLOCK));
-            if (toolSelection) toolSelection.addEventListener('click', () => selectBuildTool('selection'));
-
-            if (fillSelectionButton) fillSelectionButton.addEventListener('click', () => {
-                if (lastSelectedDrawingTool !== 'selection') {
-                    fillSelection(lastSelectedDrawingTool);
-                } else {
-                    if (buildMessageBox) buildMessageBox.textContent = "Please select a drawing tool first (e.g., Wall, Player) to fill the selection.";
-                }
-            });
-            if (clearSelectionButton) clearSelectionButton.addEventListener('click', () => fillSelection(BLOCK_TYPES.PATH));
-            if (exitSelectionButton) exitSelectionButton.addEventListener('click', () => selectBuildTool(lastSelectedDrawingTool));
-
-            if (backToMainMenuButtonGame) backToMainMenuButtonGame.addEventListener('click', () => showScreen('startScreen'));
-            if (backToMainMenuButtonBuild) backToMainMenuButtonBuild.addEventListener('click', () => showScreen('startScreen'));
+            if (guidesButton) guidesButton.addEventListener('click', () => showModal(guidesModalOverlay)); // Guides button listener
+            if (closeGuidesModalButton) closeGuidesModalButton.addEventListener('click', () => hideModal(guidesModalOverlay)); // Guides close button listener
 
             if (loginButton) loginButton.addEventListener('click', () => {
                 if (loginButton.classList.contains('logged-in')) {
@@ -3412,105 +3523,298 @@
             });
             if (loginSubmitButton) loginSubmitButton.addEventListener('click', handleLogin);
             if (loginCancelButton) loginCancelButton.addEventListener('click', () => hideModal(loginModalOverlay));
-            if (loginModalOverlay) loginModalOverlay.addEventListener('click', (e) => {
-                if (e.target === loginModalOverlay) {
-                    hideModal(loginModalOverlay);
-                }
+
+            if (playButton) playButton.addEventListener('click', () => {
+                currentGameType = GAME_MODES.LEVEL;
+                currentLevelIndex = 0; // Start from the first official level
+                showScreen('gamePlayArea');
             });
+            if (customizationButtonStart) customizationButtonStart.addEventListener('click', () => showModal(customizationModalOverlay));
+            if (closeCustomizationModalButton) closeCustomizationModalButton.addEventListener('click', () => {
+                hideModal(customizationModalOverlay);
+                saveCustomization(); // Save settings when closing customization
+            });
+            if (menuButtonStart) menuButtonStart.addEventListener('click', () => {
+                showModal(menuModalOverlay);
+                loadMyLevels(); // Load levels when menu is opened
+                fetchPlayerBricks(); // Refresh bricks display
+            });
+            if (closeMenuModalButton) closeMenuModalButton.addEventListener('click', () => hideModal(menuModalOverlay));
+            if (leaderboardButton) leaderboardButton.addEventListener('click', () => {
+                showModal(leaderboardModalOverlay);
+                loadLeaderboard();
+            });
+            if (closeLeaderboardModalButton) closeLeaderboardModalButton.addEventListener('click', () => hideModal(leaderboardModalOverlay));
+
+
+            if (playerColorPicker) playerColorPicker.addEventListener('input', (e) => { PLAYER_COLOR = e.target.value; drawGame(); drawBuild(); });
+            if (wallColorPicker) wallColorPicker.addEventListener('input', (e) => { WALL_COLOR = e.target.value; drawGame(); drawBuild(); });
+            if (pathColorPicker) pathColorPicker.addEventListener('input', (e) => { PATH_COLOR = e.target.value; drawGame(); drawBuild(); });
+
+            if (startRandomMazeButton) startRandomMazeButton.addEventListener('click', () => {
+                currentGameType = GAME_MODES.MAZE;
+                hideAllModals();
+                showScreen('gamePlayArea');
+            });
+            if (startRandomBlocksButton) startRandomBlocksButton.addEventListener('click', () => {
+                currentGameType = GAME_MODES.BLOCKS;
+                hideAllModals();
+                showScreen('gamePlayArea');
+            });
+            if (buildModeButton) buildModeButton.addEventListener('click', () => {
+                currentGameType = GAME_MODES.BUILD;
+                hideAllModals();
+                showScreen('buildModeArea');
+            });
+            if (communityLevelsButtonMenu) communityLevelsButtonMenu.addEventListener('click', () => { // New button listener
+                showModal(communityLevelsModalOverlay);
+                loadCommunityLevels(); // Load all community levels initially
+            });
+            if (closeCommunityLevelsModalButton) closeCommunityLevelsModalButton.addEventListener('click', () => hideModal(communityLevelsModalOverlay));
+            if (searchCommunityLevelsButtonModal) searchCommunityLevelsButtonModal.addEventListener('click', () => {
+                loadCommunityLevels(communityLevelSearchInputModal.value);
+            });
+            if (refreshCommunityLevelsButtonModal) refreshCommunityLevelsButtonModal.addEventListener('click', () => {
+                loadCommunityLevels(communityLevelSearchInputModal.value);
+            });
+
+
+            if (refreshMyLevelsButton) refreshMyLevelsButton.addEventListener('click', loadMyLevels);
+            if (refreshLeaderboardButton) refreshLeaderboardButton.addEventListener('click', loadLeaderboard);
 
             if (playDailyLevelButton) playDailyLevelButton.addEventListener('click', () => {
                 if (currentDailyLevel) {
-                    playCommunityLevel(currentDailyLevel);
+                    playCommunityLevel({ // Use playCommunityLevel as it handles the data structure correctly
+                        id: currentDailyLevel.id,
+                        name: currentDailyLevel.name,
+                        grid: JSON.parse(currentDailyLevel.grid),
+                        playerStart: currentDailyLevel.playerStart,
+                        winpadEnd: currentDailyLevel.winpadEnd,
+                        difficulty: currentDailyLevel.difficulty,
+                        brickReward: currentDailyLevel.brickReward
+                    });
                 } else {
-                    if (messageBox) messageBox.textContent = "No daily level is currently set.";
-                    setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                    if (messageBox) messageBox.textContent = "No daily level available.";
                 }
             });
 
-            if (buildCanvas) {
-                buildCanvas.addEventListener('mousedown', handleBuildCanvasInteraction);
-                buildCanvas.addEventListener('mouseup', handleBuildCanvasInteraction);
-                buildCanvas.addEventListener('mousemove', handleBuildCanvasInteraction);
-                buildCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
-            }
 
-            window.addEventListener('keydown', (e) => {
-                if (currentActiveScreen === 'gamePlayArea') {
-                    switch (e.key) {
+            // Game Play Area Buttons
+            if (nextLevelButton) nextLevelButton.addEventListener('click', () => {
+                if (currentGameType === GAME_MODES.LEVEL) {
+                    currentLevelIndex++;
+                    if (currentLevelIndex >= officialPlayableLevels.length) {
+                        currentLevelIndex = 0; // Loop back to first level or show completion message
+                        if (messageBox) messageBox.textContent = "You've completed all official levels!";
+                        setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                    }
+                    initializeGame();
+                }
+            });
+            if (editCurrentLevelButton) editCurrentLevelButton.addEventListener('click', () => {
+                // Set buildGrid to current mazeGrid for editing
+                buildGrid = JSON.parse(JSON.stringify(mazeGrid)); // Deep copy
+                updatePlayerAndEndFromBuildGrid(); // Ensure player/end are correctly set for build mode
+                editingLevelId = currentLevelId; // Set the ID of the level being edited
+                hideAllModals();
+                currentGameType = GAME_MODES.BUILD;
+                showScreen('buildModeArea');
+                if (buildMessageBox) buildMessageBox.textContent = `Editing level: "${currentLevelName}"`;
+            });
+            if (backToMainMenuButtonGame) backToMainMenuButtonGame.addEventListener('click', () => showScreen('startScreen'));
+
+            // Build Mode Area Buttons
+            if (clearBuildGridButton) clearBuildGridButton.addEventListener('click', () => {
+                initBuildGrid();
+                drawBuild();
+                if (buildMessageBox) buildMessageBox.textContent = "Grid cleared!";
+            });
+            if (saveLevelButton) saveLevelButton.addEventListener('click', saveLevel);
+            if (publishLevelButton) publishLevelButton.addEventListener('click', publishLevel);
+            if (backToMainMenuButtonBuild) backToMainMenuButtonBuild.addEventListener('click', () => showScreen('startScreen'));
+
+            // Build Tools
+            if (toolEraser) toolEraser.addEventListener('click', () => selectBuildTool('eraser'));
+            if (toolWall) toolWall.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WALL));
+            if (toolPath) toolPath.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PATH));
+            if (toolPlayer) toolPlayer.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PLAYER_START));
+            if (toolWinpad) toolWinpad.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.WINPAD));
+            if (toolDamagingBlock) toolDamagingBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.DAMAGING_BLOCK));
+            if (toolPushBlock) toolPushBlock.addEventListener('click', () => selectBuildTool(BLOCK_TYPES.PUSH_BLOCK));
+            if (toolCustomBlock) toolCustomBlock.addEventListener('click', () => showCustomBlockEditorModal()); // Opens custom block editor
+            if (toolSelection) toolSelection.addEventListener('click', () => selectBuildTool('selection'));
+
+            // Selection Actions
+            if (fillSelectionButton) fillSelectionButton.addEventListener('click', () => fillSelection(lastSelectedDrawingTool));
+            if (clearSelectionButton) clearSelectionButton.addEventListener('click', () => fillSelection(BLOCK_TYPES.PATH));
+            if (exitSelectionButton) exitSelectionButton.addEventListener('click', () => selectBuildTool(lastSelectedDrawingTool)); // Return to last drawing tool
+
+            // Custom Block Editor Buttons
+            if (saveCustomBlockDefinitionButton) saveCustomBlockDefinitionButton.addEventListener('click', saveCustomBlockDefinition);
+            if (deleteCustomBlockDefinitionButton) deleteCustomBlockDefinitionButton.addEventListener('click', async () => {
+                if (editingCustomBlockId) {
+                    if (window.confirm(`Are you sure you want to delete custom block definition '${editingCustomBlockId}'?`)) {
+                        try {
+                            await deleteDoc(doc(window.db, `artifacts/${window.__app_id}/users/${window.userId}/custom_block_definitions`, editingCustomBlockId));
+                            if (messageBox) messageBox.textContent = `Custom Block '${editingCustomBlockId}' deleted.`;
+                            setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
+                            loadCustomBlockDefinitionsFromFirestore(); // Refresh the list
+                            // Clear editor fields and reset editing state
+                            customBlockNameInput.value = '';
+                            customBlockColorPicker.value = CUSTOM_BLOCK_DEFAULT_COLOR;
+                            customBlockScriptInput.value = '';
+                            editingCustomBlockId = null;
+                            deleteCustomBlockDefinitionButton.style.display = 'none';
+                        } catch (error) {
+                            console.error("Error deleting custom block definition:", error);
+                            if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = `Error deleting definition: ${error.message}`;
+                        }
+                    }
+                }
+            });
+            if (closeCustomBlockEditorButton) closeCustomBlockEditorButton.addEventListener('click', () => {
+                hideModal(customBlockEditorModalOverlay);
+                // Reset editor fields and editing state when closing
+                customBlockNameInput.value = '';
+                customBlockColorPicker.value = CUSTOM_BLOCK_DEFAULT_COLOR;
+                customBlockScriptInput.value = '';
+                editingCustomBlockId = null;
+                deleteCustomBlockDefinitionButton.style.display = 'none';
+            });
+
+
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (gamePlayArea && gamePlayArea.classList.contains('active') && !gameWon) {
+                    // Prevent default scrolling behavior for arrow keys and space
+                    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) {
+                        e.preventDefault();
+                    }
+                    switch (e.code) {
                         case 'ArrowUp':
-                        case 'w':
-                        case 'W':
+                        case 'KeyW':
                             movePlayer(0, -1);
                             break;
                         case 'ArrowDown':
-                        case 's':
-                        case 'S':
+                        case 'KeyS':
                             movePlayer(0, 1);
                             break;
                         case 'ArrowLeft':
-                        case 'a':
-                        case 'A':
+                        case 'KeyA':
                             movePlayer(-1, 0);
                             break;
                         case 'ArrowRight':
-                        case 'd':
-                        case 'D':
+                        case 'KeyD':
                             movePlayer(1, 0);
                             break;
-                        case 'Escape':
-                            hideAllModals();
-                            break;
-                    }
-                } else {
-                    if (e.key === 'Escape') {
-                        hideAllModals();
                     }
                 }
             });
 
+            // Touch controls (drag to reposition)
+            let isDraggingTouchControls = false;
+            let touchOffsetX, touchOffsetY;
+
             if (touchControls) {
-                // Add drag listeners to the touch controls container
-                touchControls.addEventListener('mousedown', startDragTouchControls);
-                touchControls.addEventListener('mousemove', dragTouchControls);
-                touchControls.addEventListener('mouseup', stopDragTouchControls);
+                touchControls.addEventListener('touchstart', (e) => {
+                    if (e.target.classList.contains('touch-button')) return; // Don't drag if tapping a button
+                    isDraggingTouchControls = true;
+                    const rect = touchControls.getBoundingClientRect();
+                    touchOffsetX = e.touches[0].clientX - rect.left;
+                    touchOffsetY = e.touches[0].clientY - rect.top;
+                    touchControls.style.cursor = 'grabbing';
+                    e.preventDefault(); // Prevent scrolling
+                });
 
-                // Add touch listeners for mobile devices
-                touchControls.addEventListener('touchstart', startDragTouchControls);
-                touchControls.addEventListener('touchmove', dragTouchControls);
-                touchControls.addEventListener('touchend', stopDragTouchControls);
+                document.addEventListener('touchmove', (e) => {
+                    if (!isDraggingTouchControls) return;
+                    e.preventDefault(); // Prevent scrolling while dragging
 
-                touchControls.addEventListener('click', (e) => {
-                    // Prevent movement if the drag just ended (to avoid accidental button clicks)
+                    const newX = e.touches[0].clientX - touchOffsetX;
+                    const newY = e.touches[0].clientY - touchOffsetY;
+
+                    // Constrain within viewport
+                    const maxX = window.innerWidth - touchControls.offsetWidth;
+                    const maxY = window.innerHeight - touchControls.offsetHeight;
+
+                    const finalX = Math.min(Math.max(0, newX), maxX);
+                    const finalY = Math.min(Math.max(0, newY), maxY);
+
+                    touchControls.style.left = `${finalX}px`;
+                    touchControls.style.top = `${finalY}px`;
+                });
+
+                document.addEventListener('touchend', () => {
                     if (isDraggingTouchControls) {
-                        isDraggingTouchControls = false; // Reset drag state
-                        return; // Do not process as a button click
-                    }
-
-                    if (currentActiveScreen !== 'gamePlayArea') return;
-
-                    const button = e.target.closest('.touch-button');
-                    if (!button) return;
-
-                    const direction = button.dataset.direction;
-                    switch (direction) {
-                        case 'up':
-                            movePlayer(0, -1);
-                            break;
-                        case 'down':
-                            movePlayer(0, 1);
-                            break;
-                        case 'left':
-                            movePlayer(-1, 0);
-                            break;
-                        case 'right':
-                            movePlayer(1, 0);
-                            break;
+                        isDraggingTouchControls = false;
+                        touchControls.style.cursor = 'grab';
+                        // Save position to localStorage
+                        localStorage.setItem('touchControlsPosition', JSON.stringify({
+                            left: touchControls.style.left,
+                            top: touchControls.style.top
+                        }));
                     }
                 });
+
+                // Touch button actions
+                touchControls.querySelectorAll('.touch-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const direction = e.target.dataset.direction;
+                        switch (direction) {
+                            case 'up': movePlayer(0, -1); break;
+                            case 'down': movePlayer(0, 1); break;
+                            case 'left': movePlayer(-1, 0); break;
+                            case 'right': movePlayer(1, 0); break;
+                        }
+                    });
+                });
             }
-            // window.addEventListener('resize', resizeCanvas); // This one is already outside, keep it.
+
+            // Position touch controls on load
+            positionTouchControls();
+
+            // Handle canvas drawing for build mode
+            if (buildCanvas) {
+                buildCanvas.addEventListener('mousedown', handleBuildCanvasInteraction);
+                buildCanvas.addEventListener('mousemove', handleBuildCanvasInteraction);
+                buildCanvas.addEventListener('mouseup', handleBuildCanvasInteraction);
+                // Prevent context menu on right-click for canvas
+                buildCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            }
+
+            // Initial setup
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Listen for Firebase Auth Ready event before loading user data
+            document.addEventListener('firebaseAuthReady', () => {
+                console.log("Firebase Auth is ready. Loading user profile and data.");
+                loadUserProfile();
+                fetchOfficialPlayableLevels();
+                fetchDailyLevel();
+                loadCustomBlockDefinitionsFromFirestore(); // Load definitions after auth is ready
+            });
+
+            // Show the start screen initially
+            showScreen('startScreen');
         };
-        window.addEventListener('resize', resizeCanvas);
+
+        // Function to position touch controls, loading from localStorage if available
+        function positionTouchControls() {
+            if (touchControls) {
+                const savedPosition = localStorage.getItem('touchControlsPosition');
+                if (savedPosition) {
+                    const pos = JSON.parse(savedPosition);
+                    touchControls.style.left = pos.left;
+                    touchControls.style.top = pos.top;
+                } else {
+                    // Default position if not saved
+                    touchControls.style.left = '20px';
+                    touchControls.style.bottom = '20px'; // Use bottom for initial placement
+                    touchControls.style.top = 'auto'; // Clear top if bottom is used
+                }
+            }
+        }
     </script>
 </body>
 </html>
