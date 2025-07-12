@@ -1131,22 +1131,6 @@
         </div>
     </div>
 
-    <!-- Guides Modal -->
-    <div id="guidesModalOverlay" class="modal-overlay">
-        <div class="modal-content">
-            <h2>Guides</h2>
-            <div class="button-row menu-modal-buttons">
-                <a href="#new-player-guide" target="_blank" style="text-decoration: none; width: 100%; max-width: 300px;">
-                    <button style="width: 100%; background-color: #63b3ed;">New Player Guide</button>
-                </a>
-                <a href="#custom-block-scripting-guide" target="_blank" style="text-decoration: none; width: 100%; max-width: 300px;">
-                    <button style="width: 100%; background-color: #63b3ed;">Scripting Guide</button>
-                </a>
-            </div>
-            <button class="close-button" id="closeGuidesModalButton" style="margin-top: 20px;">Close</button>
-        </div>
-    </div>
-
     <!-- Customization Modal -->
     <div id="customizationModalOverlay" class="modal-overlay">
         <div class="modal-content">
@@ -1292,7 +1276,7 @@
         let mazeCanvas, mazeCtx, messageBox, nextLevelButton, editCurrentLevelButton, backToMainMenuButtonGame, touchControls;
         let buildCanvas, buildCtx, buildMessageBox, clearBuildGridButton, saveLevelButton, publishLevelButton, backToMainMenuButtonBuild;
         let infoModalOverlay, closeInfoModalButton, customizationModalOverlay, closeCustomizationModalButton, menuModalOverlay, closeMenuModalButton, loginModalOverlay, playerNameInput, passwordInput, loginSubmitButton, loginCancelButton;
-        let guidesModalOverlay, closeGuidesModalButton;
+        // Removed guidesModalOverlay and closeGuidesModalButton as they are no longer needed
         let communityLevelsModalOverlay, communityLevelsListInMenu, levelSearchInput, searchCommunityLevelsButton, refreshCommunityLevelsButton; // Removed levelSearchInput, searchCommunityLevelsButton, refreshCommunityLevelsButton from menu modal context
         let communityLevelSearchInputModal, searchCommunityLevelsButtonModal, communityLevelsListModal, refreshCommunityLevelsButtonModal, closeCommunityLevelsModalButton;
         let startRandomMazeButton, startRandomBlocksButton, buildModeButton, userIdDisplay, playerBricksDisplay, myLevelsList, refreshMyLevelsButton;
@@ -2143,9 +2127,6 @@
             if (startScreen) startScreen.classList.remove('active');
             if (gamePlayArea) gamePlayArea.classList.remove('active');
             if (buildModeArea) buildModeArea.classList.remove('active');
-            if (infoButton) infoButton.style.display = 'none';
-            if (loginButton) loginButton.style.display = 'none';
-            if (guidesButton) guidesButton.style.display = 'none'; // Hide guides button too
 
             currentActiveScreen = screenId;
 
@@ -2161,7 +2142,7 @@
                 if (guidesButton) guidesButton.style.display = 'block'; // Show guides button
                 initializeGame();
             } else if (screenId === 'buildModeArea') {
-                if (buildModeArea) buildModeModeArea.classList.add('active');
+                if (buildModeArea) buildModeArea.classList.add('active'); // Fixed typo here
                 if (infoButton) infoButton.style.display = 'block';
                 if (loginButton) loginButton.style.display = 'block';
                 if (guidesButton) guidesButton.style.display = 'block'; // Show guides button
@@ -2415,7 +2396,7 @@
 
         function hideAllModals() {
             hideModal(infoModalOverlay);
-            hideModal(guidesModalOverlay);
+            // Removed hideModal(guidesModalOverlay);
             hideModal(customizationModalOverlay);
             hideModal(menuModalOverlay);
             hideModal(loginModalOverlay);
@@ -3445,8 +3426,7 @@
 
             infoModalOverlay = document.getElementById('infoModalOverlay');
             closeInfoModalButton = document.getElementById('closeInfoModalButton');
-            guidesModalOverlay = document.getElementById('guidesModalOverlay'); // Get guides modal
-            closeGuidesModalButton = document.getElementById('closeGuidesModalButton'); // Get guides close button
+            // Removed guidesModalOverlay and closeGuidesModalButton as they are no longer needed
             customizationModalOverlay = document.getElementById('customizationModalOverlay');
             closeCustomizationModalButton = document.getElementById('closeCustomizationModalButton');
             menuModalOverlay = document.getElementById('menuModalOverlay');
@@ -3511,8 +3491,11 @@
             if (infoButton) infoButton.addEventListener('click', () => showModal(infoModalOverlay));
             if (closeInfoModalButton) closeInfoModalButton.addEventListener('click', () => hideModal(infoModalOverlay));
 
-            if (guidesButton) guidesButton.addEventListener('click', () => showModal(guidesModalOverlay)); // Guides button listener
-            if (closeGuidesModalButton) closeGuidesModalButton.addEventListener('click', () => hideModal(guidesModalOverlay)); // Guides close button listener
+            // Guides button now opens external URL
+            if (guidesButton) guidesButton.addEventListener('click', () => {
+                window.open('https://ltpmer.github.io/GuidesforMazeGame', '_blank');
+            });
+            // Removed event listener for closeGuidesModalButton as the modal is removed.
 
             if (loginButton) loginButton.addEventListener('click', () => {
                 if (loginButton.classList.contains('logged-in')) {
@@ -3659,12 +3642,19 @@
                             if (messageBox) messageBox.textContent = `Custom Block '${editingCustomBlockId}' deleted.`;
                             setTimeout(() => { if (messageBox) messageBox.textContent = ""; }, 3000);
                             loadCustomBlockDefinitionsFromFirestore(); // Refresh the list
-                            // Clear editor fields and reset editing state
-                            customBlockNameInput.value = '';
-                            customBlockColorPicker.value = CUSTOM_BLOCK_DEFAULT_COLOR;
-                            customBlockScriptInput.value = '';
-                            editingCustomBlockId = null;
-                            deleteCustomBlockDefinitionButton.style.display = 'none';
+                            // If the deleted block was currently selected, clear selection
+                            if (currentSelectedCustomBlockId === editingCustomBlockId) {
+                                currentSelectedCustomBlockId = null;
+                                if (buildMessageBox) buildMessageBox.textContent = "Custom Block selection cleared.";
+                            }
+                            // If the deleted block was being edited, clear editor fields
+                            if (editingCustomBlockId === editingCustomBlockId) { // Changed condition to match the variable
+                                customBlockNameInput.value = '';
+                                customBlockColorPicker.value = CUSTOM_BLOCK_DEFAULT_COLOR;
+                                customBlockScriptInput.value = '';
+                                editingCustomBlockId = null;
+                                deleteCustomBlockDefinitionButton.style.display = 'none';
+                            }
                         } catch (error) {
                             console.error("Error deleting custom block definition:", error);
                             if (customBlockEditorModalOverlay) customBlockEditorModalOverlay.querySelector('.modal-content p').textContent = `Error deleting definition: ${error.message}`;
