@@ -631,6 +631,13 @@
             color: #4CAF50;
             flex-shrink: 0;
         }
+        .leaderboard-entry .bricks { /* New style for bricks display */
+            font-weight: bold;
+            color: #f6ad55; /* Orange for bricks */
+            margin-left: 10px;
+            flex-shrink: 0;
+        }
+
 
         /* Login Modal specific styles */
         .login-form-group {
@@ -681,6 +688,22 @@
         #toolEraser:hover {
             background-color: #c53030; /* Darker red on hover */
         }
+
+        /* Difficulty selection buttons */
+        .difficulty-buttons button {
+            background-color: #4CAF50; /* Green */
+            font-size: 1.2rem;
+            padding: 15px 30px;
+            max-width: 200px;
+        }
+        .difficulty-buttons button:hover {
+            background-color: #388E3C;
+        }
+        .difficulty-buttons button.active-difficulty {
+            background-color: #28a745; /* Darker green for active */
+            box-shadow: 0 0 0 3px #28a745, 0 0 0 6px #4CAF50;
+        }
+
 
         @media (max-width: 768px) {
             h1 {
@@ -925,6 +948,20 @@
         </div>
     </div>
 
+    <!-- NEW: Play Mode Selection Modal -->
+    <div id="playModeSelectionModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Choose Difficulty</h2>
+            <p>Select a difficulty for the official levels:</p>
+            <div class="button-row difficulty-buttons">
+                <button id="easyDifficultyButton" data-difficulty="easy">Easy</button>
+                <button id="mediumDifficultyButton" data-difficulty="medium">Medium</button>
+                <button id="hardDifficultyButton" data-difficulty="hard">Hard</button>
+            </div>
+            <button class="close-button" id="closePlayModeSelectionModalButton">Cancel</button>
+        </div>
+    </div>
+
     <script type="module">
         // Import Firestore functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -985,6 +1022,14 @@
         const leaderboardList = document.getElementById('leaderboardList');
         const refreshLeaderboardButton = document.getElementById('refreshLeaderboardButton');
         const closeLeaderboardModalButton = document.getElementById('closeLeaderboardModalButton');
+
+        // NEW: Play Mode Selection Modal elements
+        const playModeSelectionModalOverlay = document.getElementById('playModeSelectionModalOverlay');
+        const easyDifficultyButton = document.getElementById('easyDifficultyButton');
+        const mediumDifficultyButton = document.getElementById('mediumDifficultyButton');
+        const hardDifficultyButton = document.getElementById('hardDifficultyButton');
+        const closePlayModeSelectionModalButton = document.getElementById('closePlayModeSelectionModalButton');
+
 
         // Buttons inside Menu Modal
         const startRandomMazeButton = document.getElementById('startRandomMazeButton');
@@ -1079,6 +1124,7 @@
         };
         let currentGameType = GAME_MODES.LEVEL;
         let currentLevelIndex = 0; // Index within the `officialPlayableLevels` array
+        let currentDifficulty = 'easy'; // Default difficulty for official levels
 
         let officialPlayableLevels = []; // Array to hold levels fetched from Firestore for the "Play" button
         let currentDailyLevel = null;
@@ -1380,7 +1426,7 @@
                 const modeName = currentGameType.charAt(0).toUpperCase() + currentGameType.slice(1).replace('_', ' ');
                 let displayLevelName = currentLevelName;
                 if (currentGameType === GAME_MODES.LEVEL && officialPlayableLevels.length > 0) {
-                    displayLevelName = officialPlayableLevels[currentLevelIndex].name;
+                    displayLevelName = `${officialPlayableLevels[currentLevelIndex].name} (${currentDifficulty} level)`;
                 } else if (currentGameType === GAME_MODES.MAZE) {
                     displayLevelName = "Random Maze";
                 } else if (currentGameType === GAME_MODES.BLOCKS) {
@@ -1418,7 +1464,8 @@
                     playerName: currentPlayerName,
                     userId: window.userId,
                     timeTaken: timeTaken, // Store in milliseconds
-                    timestamp: new Date()
+                    timestamp: new Date(),
+                    bricks: playerBricks // Store current brick count
                 });
                 console.log(`Score submitted: ${timeTaken}ms for level ${currentLevelName}`);
                 messageBox.textContent += ` Your time: ${formatTime(timeTaken)}!`;
@@ -1610,14 +1657,19 @@
             currentLevelName = '';
             
             if (currentGameType === GAME_MODES.LEVEL) {
+                // Now, initializeGame for LEVEL mode will fetch levels based on currentDifficulty
+                // fetchOfficialPlayableLevels will be called with currentDifficulty
+                // and then loadOfficialLevel will be called with currentLevelIndex
+                // This logic is now handled by the playOfficialLevel function.
+                // This `initializeGame` function is now primarily for setting up the canvas and general game state.
                 if (officialPlayableLevels.length === 0) {
-                    messageBox.textContent = "No official levels found. Play a random maze or build your own!";
+                    messageBox.textContent = `No official ${currentDifficulty} levels found. Play a random maze or build your own!`;
                     nextLevelButton.style.display = 'none';
                     saveCurrentLevelButton.style.display = 'none'; // Hide save button for official levels
                     mazeCtx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height); // Clear canvas
                     return; // Don't start game if no levels
                 }
-                loadOfficialLevel(currentLevelIndex); // Now loads from officialPlayableLevels
+                loadOfficialLevel(currentLevelIndex); // Now loads from officialPlayableLevels filtered by difficulty
                 saveCurrentLevelButton.style.display = 'none'; // Hide save button for official levels
             } else if (currentGameType === GAME_MODES.MAZE) {
                 generateMaze();
@@ -1945,6 +1997,7 @@
             hideModal(loginModalOverlay);
             hideModal(communityLevelsModalOverlay);
             hideModal(leaderboardModalOverlay);
+            hideModal(playModeSelectionModalOverlay); // NEW: Hide play mode selection modal
         }
 
         // --- Simulated Login Functions ---
@@ -2183,7 +2236,7 @@
                                         await deleteDoc(doc(officialLevelsCollectionRef, officialDoc.id));
                                         console.log(`Admin (LtpMer) deleted official level document: ${officialDoc.id}`);
                                     });
-                                    fetchOfficialPlayableLevels(); // Refresh official levels after deletion
+                                    fetchOfficialPlayableLevels(currentDifficulty); // Refresh official levels after deletion
                                 }
                                 // Always delete from user's private levels
                                 await deleteDoc(doc(window.db, `artifacts/${window.__app_id}/users/${window.userId}/levels`, levelId));
@@ -2322,50 +2375,6 @@
             }
         }
 
-        async function setDailyLevel(levelIdToSet) {
-            if (currentPlayerName !== 'LtpMer') {
-                // Replaced confirm with a custom message box or modal if available
-                messageBox.textContent = "Only LtpMer can set daily levels.";
-                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
-                return;
-            }
-            if (!window.db) {
-                messageBox.textContent = "Firebase not initialized. Cannot set daily level.";
-                setTimeout(() => messageBox.textContent = "", 3000);
-                return;
-            }
-
-            // Replaced confirm with a custom message box or modal if available
-            if (!window.confirm("Are you sure you want to set this as the daily level? This will unset any current daily level.")) {
-                return;
-            }
-
-            try {
-                const publicLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/levels`);
-
-                // 1. Unset current daily level (if any)
-                const currentDailyQuery = query(publicLevelsCollectionRef, where("isDailyLevel", "==", true));
-                const currentDailySnapshot = await getDocs(currentDailyQuery);
-                currentDailySnapshot.forEach(async (docToUnset) => {
-                    await updateDoc(doc(publicLevelsCollectionRef, docToUnset.id), { isDailyLevel: false });
-                });
-
-                // 2. Set the new daily level
-                await updateDoc(doc(publicLevelsCollectionRef, levelIdToSet), { isDailyLevel: true });
-
-                // Replaced alert with a custom message box or modal if available
-                messageBox.textContent = "Daily level updated successfully!";
-                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
-                loadCommunityLevels(); // Refresh community list to show new daily
-                fetchDailyLevel(); // Refresh daily level display on start screen
-            } catch (e) {
-                console.error("Error setting daily level:", e);
-                // Replaced alert with a custom message box or modal if available
-                messageBox.textContent = `Error setting daily level: ${e.message}. See console for details.`;
-                setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
-            }
-        }
-
         async function setOfficialLevel(levelData) {
             if (currentPlayerName !== 'LtpMer') {
                 // Replaced confirm with a custom message box or modal if available
@@ -2379,7 +2388,7 @@
                 return;
             }
 
-            let order = prompt(`Enter an order number for "${levelData.name}" (e.g., 1, 2, 3...). Existing levels with this order will be overwritten.`);
+            let order = prompt(`Enter an order number for "${levelData.name}" (e.g., 1, 2, 3...). Existing levels with this order and difficulty will be overwritten.`);
             order = parseInt(order);
 
             if (isNaN(order) || order < 1) {
@@ -2389,13 +2398,23 @@
                 return;
             }
 
+            let difficulty = prompt(`Enter difficulty for "${levelData.name}" (easy, medium, hard):`).toLowerCase();
+            if (!['easy', 'medium', 'hard'].includes(difficulty)) {
+                messageBox.textContent = "Invalid difficulty. Please enter 'easy', 'medium', or 'hard'.";
+                setTimeout(() => messageBox.textContent = "", 3000);
+                return;
+            }
+
             // Replaced confirm with a custom message box or modal if available
-            if (!window.confirm(`Are you sure you want to set "${levelData.name}" as official level #${order}?`)) {
+            if (!window.confirm(`Are you sure you want to set "${levelData.name}" as official level #${order} (Difficulty: ${difficulty})?`)) {
                 return;
             }
 
             try {
-                const officialLevelsRef = doc(window.db, `artifacts/${window.__app_id}/public/data/official_levels`, `level-${order}`);
+                // Use a composite ID for official levels: level-{difficulty}-{order}
+                const officialLevelDocId = `level-${difficulty}-${order}`;
+                const officialLevelsRef = doc(window.db, `artifacts/${window.__app_id}/public/data/official_levels`, officialLevelDocId);
+                
                 await setDoc(officialLevelsRef, {
                     id: levelData.id, // Original level ID
                     name: levelData.name,
@@ -2405,12 +2424,13 @@
                     creatorName: levelData.creatorName,
                     creatorId: levelData.creatorId,
                     order: order,
+                    difficulty: difficulty, // Store difficulty
                     setAt: new Date()
                 });
                 // Replaced alert with a custom message box or modal if available
-                messageBox.textContent = `Level "${levelData.name}" set as official level #${order} successfully!`;
+                messageBox.textContent = `Level "${levelData.name}" set as official level #${order} (${difficulty}) successfully!`;
                 setTimeout(() => messageBox.textContent = "", 3000); // Clear message after 3 seconds
-                await fetchOfficialPlayableLevels(); // Refresh the official levels list
+                // No need to fetch all difficulties here, will be fetched on demand
             } catch (e) {
                 console.error("Error setting official level:", e);
                 // Replaced alert with a custom message box or modal if available
@@ -2419,7 +2439,8 @@
             }
         }
 
-        async function fetchOfficialPlayableLevels() {
+        // Modified to accept a difficulty parameter
+        async function fetchOfficialPlayableLevels(difficulty) {
             if (!window.db) {
                 officialPlayableLevels = [];
                 console.warn("Firestore not available, cannot fetch official levels.");
@@ -2427,8 +2448,8 @@
             }
             try {
                 const officialLevelsCollectionRef = collection(window.db, `artifacts/${window.__app_id}/public/data/official_levels`);
-                // Removed orderBy("order") to avoid index issues, will sort in memory
-                const q = query(officialLevelsCollectionRef); 
+                // Query by difficulty and order
+                const q = query(officialLevelsCollectionRef, where("difficulty", "==", difficulty), orderBy("order", "asc")); 
                 const querySnapshot = await getDocs(q);
 
                 officialPlayableLevels = [];
@@ -2437,11 +2458,9 @@
                         const data = doc.data();
                         officialPlayableLevels.push(data);
                     });
-                    // Sort by 'order' in memory after fetching
-                    officialPlayableLevels.sort((a, b) => (a.order || Infinity) - (b.order || Infinity));
-                    console.log("Official playable levels loaded:", officialPlayableLevels);
+                    console.log(`Official playable levels for ${difficulty} loaded:`, officialPlayableLevels);
                 } else {
-                    console.log("No official playable levels found in Firestore.");
+                    console.log(`No official playable levels found for difficulty: ${difficulty}.`);
                 }
             } catch (e) {
                 console.error("Error fetching official playable levels:", e);
@@ -2484,6 +2503,7 @@
                         <span class="player-name">${data.playerName || 'Anonymous'}</span>
                         <span class="level-name-lb">(${data.levelName || 'N/A'})</span>
                         <span class="time">${formatTime(data.timeTaken)}</span>
+                        <span class="bricks">🧱 ${data.bricks || 0}</span> <!-- Display bricks -->
                     `;
                     leaderboardList.appendChild(entryDiv);
                     rank++;
@@ -2541,13 +2561,40 @@
             buildMessageBox.textContent = "Current level loaded into Build Mode. You can now save or modify it!";
         }
 
+        // Function to start official levels with a chosen difficulty
+        async function startOfficialLevels(difficulty) {
+            currentDifficulty = difficulty; // Set the global current difficulty
+            await fetchOfficialPlayableLevels(currentDifficulty); // Fetch levels for this difficulty
+            currentLevelIndex = 0; // Start from the first level of this difficulty
+
+            if (officialPlayableLevels.length > 0) {
+                currentGameType = GAME_MODES.LEVEL;
+                hideAllModals();
+                showScreen('gamePlayArea');
+            } else {
+                messageBox.textContent = `No official ${currentDifficulty} levels found. Try another difficulty or build your own!`;
+                setTimeout(() => messageBox.textContent = "", 5000);
+                hideModal(playModeSelectionModalOverlay); // Hide modal even if no levels
+            }
+        }
+
         // --- Event Listeners ---
 
         playButton.addEventListener('click', () => {
-            currentGameType = GAME_MODES.LEVEL;
-            currentLevelIndex = 0;
-            showScreen('gamePlayArea');
+            showModal(playModeSelectionModalOverlay); // Show difficulty selection modal
         });
+
+        // Difficulty selection buttons
+        easyDifficultyButton.addEventListener('click', () => startOfficialLevels('easy'));
+        mediumDifficultyButton.addEventListener('click', () => startOfficialLevels('medium'));
+        hardDifficultyButton.addEventListener('click', () => startOfficialLevels('hard'));
+        closePlayModeSelectionModalButton.addEventListener('click', () => hideModal(playModeSelectionModalOverlay));
+        playModeSelectionModalOverlay.addEventListener('click', (e) => {
+            if (e.target === playModeSelectionModalOverlay) {
+                hideModal(playModeSelectionModalOverlay);
+            }
+        });
+
 
         nextLevelButton.addEventListener('click', () => {
             currentLevelIndex = (currentLevelIndex + 1) % officialPlayableLevels.length;
@@ -2686,13 +2733,13 @@
             // Listen for Firebase auth readiness and then load user data and levels
             document.addEventListener('firebaseAuthReady', async () => {
                 await loadUserProfile(); // Load user profile and customization first
-                await fetchOfficialPlayableLevels(); // Fetch official levels after auth
+                // No initial fetchOfficialPlayableLevels here, as it's now triggered by difficulty selection
                 fetchDailyLevel(); // Fetch daily level after auth
             });
             // If firebaseAuthReady event already fired before onload, manually trigger
             if (window.userId) {
                 loadUserProfile();
-                fetchOfficialPlayableLevels();
+                // No initial fetchOfficialPlayableLevels here, as it's now triggered by difficulty selection
                 fetchDailyLevel();
             }
         };
